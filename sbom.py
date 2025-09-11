@@ -15,10 +15,13 @@ import sys
 
 LIB_DIR = "lib/sbom"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
-
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-# from spdx_document import SPDXDocument
+from cmd_parser import cmdfiles_in_dir
+import spdx
+
+def initial_spdx_document():
+    return
 
 def main():
     """Main program"""
@@ -36,8 +39,33 @@ def main():
         level = logging.INFO
 
     logging.basicConfig(level=level, format="[%(levelname)s] %(message)s")
-    
+    # logger = logging.getLogger('sbom')
+    person = spdx.Person(
+        name="Luis Augenstein",
+        externalIdentifier=[spdx.ExternalIdentifier(
+            externalIdentifierType="email",
+            identifier="luis.augenstein@tngtech.com"
+        )]
+    )
+    creation_info = spdx.CreationInfo(createdBy=[person.spdxId])
+    software_sbom = spdx.SoftwareSbom(
+        software_sbomType=["build"]
+    )
+    spdx_document = spdx.SpdxDocument(
+        profileConformance=["core", "software", "licensing", "build"],
+        rootElement=[software_sbom.spdxId]
+    )
 
+    doc = spdx.JsonLdDocument(graph=[person, creation_info, spdx_document, software_sbom])
+
+    # for cmd_file in cmdfiles_in_dir(directory=args.output_tree):
+    #     spdx_entity = spdx_entity_from_cmd_file(cmd_file)
+    #     doc.graph.append(spdx_entity)
+
+    json_string = doc.to_json()
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(json_string)
+    
 
 # Call main method
 if __name__ == "__main__":
