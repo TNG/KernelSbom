@@ -30,8 +30,7 @@ Now execute the script via command line
 python3 sbom.py \
   --src-tree ../linux \
   --output-tree ../linux/kernel-build \
-  --root-outputs vmlinux \
-  --output sbom.spdx.json \
-  --debug 1
+  --root-output vmlinux \
+  --output sbom.spdx.json
 ```
 or debug the script in vscode using the [Python Debugger: sbom](./.vscode/launch.json) launch configuration.
