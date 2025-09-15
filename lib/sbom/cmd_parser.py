@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0
+# Copyright(c) 2025: Luis Augenstein <luis.augenstein@tngtech.com>.
+
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
