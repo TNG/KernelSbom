@@ -17,8 +17,8 @@ LIB_DIR = "lib/sbom"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-from cmd_parser import cmdfiles_in_dir
 import spdx
+from cmd_parser import cmdfiles_in_dir, parse_cmd_file
 
 def initial_spdx_document():
     return
@@ -58,9 +58,10 @@ def main():
 
     doc = spdx.JsonLdDocument(graph=[person, creation_info, spdx_document, software_sbom])
 
-    # for cmd_file in cmdfiles_in_dir(directory=args.output_tree):
-    #     spdx_entity = spdx_entity_from_cmd_file(cmd_file)
-    #     doc.graph.append(spdx_entity)
+    for cmd_file_path in cmdfiles_in_dir(directory=args.output_tree):
+        cmd_file = parse_cmd_file(cmd_file_path)
+        # spdx_entity = spdx_entity_from_cmd_file(cmd_file)
+        # doc.graph.append(spdx_entity)
 
     json_string = doc.to_json()
     with open(args.output, "w", encoding="utf-8") as f:
