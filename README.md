@@ -1,36 +1,29 @@
 # LinuxKernelSbomGenerator
 
-Script to generate an SBOM of the `vmlinux` kernel build in the [SPDX](https://github.com/spdx) format. 
+A script to generate an SPDX-format Software Bill of Materials (SBOM) for the `vmlinux` kernel build.
 
-To test the script first build the linux kernel out-of-tree into the `kernel-build` directory:
-```
-sudo apt update
-sudo apt install build-essential linux-headers-$(uname -r) bc flex bison python3
+## Getting Started
 
-# compile entire linux kernel (https://kernelnewbies.org/KernelBuild)
-cp /boot/config-$(uname -r) kernel-build/.config
-make O=kernel-build olddefconfig
-make -j$(nproc) O=kernel-build
-# build errors might need to be fixed by installing missing dependencies and disabling some configs. For example:
-sudo apt install libdwarf-dev libelf-dev libdw-dev libssl-dev gawk
-sudo ln -s /usr/include/libdwarf/dwarf.h /usr/include/dwarf.h
-scripts/config --file kernel-build/.config --disable SYSTEM_TRUSTED_KEYS
-scripts/config --file kernel-build/.config --disable MODULE_SIG
-scripts/config --file kernel-build/.config --disable MODULE_SIG_ALL
-scripts/config --file kernel-build/.config --disable SYSTEM_REVOCATION_KEYS
-```
-
-Next clone this repository next to the `linux` directory that contains the `kernel-build`
+To test the script install [Docker](https://docs.docker.com/engine/install/ubuntu/#installation-methods) and run:
 ```bash
-git clone git@github.com:TNG/LinuxKernelSbomGenerator.git`
-cd LinuxKernelSbomGenerator
+docker compose up
 ```
-Now execute the script via command line
-```
-python3 sbom.py \
-  --src-tree ../linux \
-  --output-tree ../linux/kernel-build \
-  --root-output vmlinux \
-  --output sbom.spdx.json
-```
-or debug the script in vscode using the [Python Debugger: sbom](./.vscode/launch.json) launch configuration.
+This will:
+- Build a Docker image based on the included [Dockerfile](./Dockerfile).
+- Clone the Linux kernel repository during the image build.
+- Compile the kernel out-of-tree into `linux/kernel-build`.
+- Start a container with this repository mounted as volume.
+- Automatically run the [sbom.py](./sbom.py) script inside the container:
+  ```bash
+  python3 sbom.py \
+    --src-tree ../linux \
+    --output-tree ../linux/kernel-build \
+    --root-output vmlinux \
+    --output sbom.spdx.json
+  ```
+Once complete, you should see the generated sbom.spdx.json file in your repository directory.
+
+## Development & Debugging
+
+For development and debugging, install the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension for [VSCode](https://code.visualstudio.com/). Then, open the Command Palette (F1) and select `Reopen in Dev Container`. This opens your project inside a development container based on the same Dockerfile used above.
+Inside the devcontainer, you can run the provided [Python Debugger: sbom](./.vscode/launch.json) launch configuration to step through the script interactively.
