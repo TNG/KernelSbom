@@ -28,7 +28,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description="Generate SPDX SBOM from kernel sources and build artifacts",)
     parser.add_argument("--src-tree", required=True, help="Path to the Linux kernel source tree (e.g. ~/linux)")
     parser.add_argument("--output-tree", required=True, help="Path to the build output tree directory (e.g. ~/linux/build)")
-    parser.add_argument("--root-outputs", required=True, nargs='+', help="list of root build outputs (e.g. vmlinux) the SBOM will be based on.")
+    parser.add_argument("--root-outputs", default="vmlinux", required=True, nargs='+', help="list of root build outputs (e.g. vmlinux) the SBOM will be based on relative to --output-tree.")
     parser.add_argument("--output", default="sbom.spdx.json", help="Path where to create the SPDX document (default: sbom.spdx.json)")
     parser.add_argument("-d", "--debug", type=int, default=0, help="debug level")
     args = parser.parse_args()
@@ -39,7 +39,7 @@ def main():
         level = logging.INFO
 
     logging.basicConfig(level=level, format="[%(levelname)s] %(message)s")
-    # logger = logging.getLogger('sbom')
+
     person = spdx.Person(
         name="Luis Augenstein",
         externalIdentifier=[spdx.ExternalIdentifier(
@@ -60,6 +60,8 @@ def main():
 
     for cmd_file_path in cmdfiles_in_dir(directory=args.output_tree):
         cmd_file = parse_cmd_file(cmd_file_path)
+        break
+        # TODO:
         # spdx_entity = spdx_entity_from_cmd_file(cmd_file)
         # doc.graph.append(spdx_entity)
 
