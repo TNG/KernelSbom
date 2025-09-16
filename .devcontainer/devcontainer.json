@@ -13,5 +13,8 @@
 			]
 		}
 	},
-	"postCreateCommand": "./post_create.sh"
+	"mounts": [
+		"source=${env:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached"
+	],
+	"postCreateCommand": ".devcontainer/post_create.sh"
 }
