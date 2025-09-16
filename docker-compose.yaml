@@ -1,0 +1,12 @@
+services:
+  sbom:
+    build: .
+    volumes:
+      - .:/workspace/LinuxKernelSbomGenerator
+    working_dir: /workspace/LinuxKernelSbomGenerator
+    command: >
+      python3 sbom.py
+        --src-tree ../linux
+        --output-tree ../linux/kernel-build
+        --root-output vmlinux
+        --output sbom.spdx.json

@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: sbom",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "sbom.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--src-tree", "../linux",
+                "--output-tree", "../linux/kernel-build",
+                "--root-output", "vmlinux",
+                "--output", "sbom.spdx.json",
+                "--debug", "1"
+            ]
+        }
+    ]
+}
