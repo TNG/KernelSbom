@@ -1,8 +1,12 @@
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH <info@tngtech.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
 FROM ubuntu:22.04
 RUN apt-get update && \
     apt-get install -y \
         build-essential linux-headers-generic bc \
-        flex bison python3 git libelf-dev libssl-dev 
+        flex bison python3 python3-pip python3-venv git libelf-dev libssl-dev
 WORKDIR /workspace
 RUN git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 RUN cd linux && \

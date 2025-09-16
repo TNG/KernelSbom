@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH <info@tngtech.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
 .venv
 __pycache__
 sbom.spdx.json

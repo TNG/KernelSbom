@@ -1,6 +1,12 @@
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH <info@tngtech.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
 services:
   sbom:
-    build: .
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
     volumes:
       - .:/workspace/LinuxKernelSbomGenerator
     working_dir: /workspace/LinuxKernelSbomGenerator

@@ -4,7 +4,7 @@
 	"workspaceFolder": "/workspace/LinuxKernelSbomGenerator",
 	"build": {
 		"context": "..",
-		"dockerfile": "../Dockerfile"
+		"dockerfile": "./Dockerfile"
 	},
 	"customizations": {
 		"vscode": {
@@ -12,5 +12,6 @@
 				"ms-python.python"
 			]
 		}
-	}
+	},
+	"postCreateCommand": "./post_create.sh"
 }

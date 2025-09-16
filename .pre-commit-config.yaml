@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-Dockerfile
-docker-compose.yaml
-sbom.spdx.json
+repos:
+  - repo: https://github.com/fsfe/reuse-tool
+    rev: v5.1.1
+    hooks:
+      - id: reuse

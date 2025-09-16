@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0
-# Copyright(c) 2025: Luis Augenstein <luis.augenstein@tngtech.com>.
+
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH <info@tngtech.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
 
 """
 Compute software bill of materials in SPDX format describing a kernel build.
