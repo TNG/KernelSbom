@@ -36,7 +36,7 @@ Inside the devcontainer, you can run the provided [Python Debugger: sbom](./.vsc
 
 ## Reuse
 
-when commiting `rerun lint` is executed as a pre-commit hook to check if all files have compliant License headers. If any file is missing a license header add it via 
+when commiting `reuse lint` is executed as a pre-commit hook to check if all files have compliant License headers. If any file is missing a license header add it via 
 ```
 reuse annotate --license="GPL-2.0-only" --copyright="TNG Technology Consulting GmbH <info@tngtech.com>" <filename>
 ```
