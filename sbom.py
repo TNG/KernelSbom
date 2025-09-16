@@ -17,7 +17,7 @@ SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
 import spdx
-from cmd_parser import parse_cmd_file
+from cmd.cmd_graph import build_cmd_graph, pretty_print_cmd_graph
 
 def initial_spdx_document():
     return
@@ -57,9 +57,10 @@ def main():
 
     doc = spdx.JsonLdDocument(graph=[person, creation_info, spdx_document, software_sbom])
 
-    root_output = Path(args.root_output)
-    cmd_file = parse_cmd_file(os.path.join(args.output_tree, root_output.parent, f".{root_output.name}.cmd"))
-    logging.info(f"Parsed: {cmd_file}")
+    root_output_path = Path(os.path.join(args.output_tree, args.root_output))
+    logging.info(f"Building cmd graph for {root_output_path}")
+    cmd_graph = build_cmd_graph(root_output_path)
+    logging.info("Parsed cmd graph:\n" + pretty_print_cmd_graph(cmd_graph))
 
     json_string = doc.to_json()
     with open(args.output, "w", encoding="utf-8") as f:

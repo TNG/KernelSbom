@@ -21,7 +21,7 @@ This will:
     --root-output vmlinux \
     --output sbom.spdx.json
   ```
-Once complete, you should see the generated sbom.spdx.json file in your repository directory.
+Once complete, you should see the generated `sbom.spdx.json` file in your repository directory.
 
 ## Development & Debugging
 
