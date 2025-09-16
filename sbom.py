@@ -27,9 +27,9 @@ def initial_spdx_document():
 def main():
     """Main program"""
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description="Generate SPDX SBOM from kernel sources and build artifacts",)
-    parser.add_argument("--src-tree", default="../linux", required=True, help="Path to the Linux kernel source tree (default: ../linux)")
-    parser.add_argument("--output-tree", default="../linux/kernel-build", required=True, help="Path to the build output tree directory (default: ../linux/kernel-build)")
-    parser.add_argument("--root-output", default="vmlinux", required=True, help="root build output path the SBOM will be based on relative to --output-tree (default: vmlinux)")
+    parser.add_argument("--src-tree", default="../linux", help="Path to the Linux kernel source tree (default: ../linux)")
+    parser.add_argument("--output-tree", default="../linux/kernel-build", help="Path to the build output tree directory (default: ../linux/kernel-build)")
+    parser.add_argument("--root-output-in-tree", default="vmlinux", help="root build output path relative to --output-tree the SBOM will be based on (default: vmlinux)")
     parser.add_argument("--output", default="sbom.spdx.json", help="Path where to create the SPDX document (default: sbom.spdx.json)")
     parser.add_argument("-d", "--debug", type=int, default=0, help="debug level (default: 0)")
     args = parser.parse_args()
@@ -59,7 +59,7 @@ def main():
 
     doc = spdx.JsonLdDocument(graph=[person, creation_info, spdx_document, software_sbom])
 
-    root_output_path = Path(os.path.join(args.output_tree, args.root_output))
+    root_output_path = Path(os.path.realpath(os.path.join(args.output_tree, args.root_output_in_tree)))
     logging.info(f"Building cmd graph for {root_output_path}")
     cmd_graph = build_cmd_graph(root_output_path)
     logging.info("Parsed cmd graph:\n" + pretty_print_cmd_graph(cmd_graph))
