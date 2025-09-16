@@ -11,7 +11,7 @@ services:
       - .:/workspace/LinuxKernelSbomGenerator
     working_dir: /workspace/LinuxKernelSbomGenerator
     command: >
-      python3 sbom.py
+      python3 src/sbom.py
         --src-tree ../linux
         --output-tree ../linux/kernel-build
         --root-output-in-tree vmlinux

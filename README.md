@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-2.0-only
 # LinuxKernelSbomGenerator
 
 A script to generate an SPDX-format Software Bill of Materials (SBOM) for the `vmlinux` kernel build.
+The eventual goal is to integrate the `src/` directory into the `linux/scripts/` directory of the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/) kernel source tree.
 
 ## Getting Started
 
@@ -19,9 +20,9 @@ This will:
 - Clone the Linux kernel repository during the image build.
 - Compile the kernel out-of-tree into `linux/kernel-build`.
 - Start a container with this repository mounted as volume.
-- Automatically run the [sbom.py](./sbom.py) script inside the container:
+- Run the [sbom.py](./sbom.py) script inside the container:
   ```bash
-  python3 sbom.py \
+  python3 src/sbom.py \
     --src-tree ../linux \
     --output-tree ../linux/kernel-build \
     --root-output-in-tree vmlinux \

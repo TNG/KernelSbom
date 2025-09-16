@@ -5,7 +5,7 @@
             "name": "Python Debugger: sbom",
             "type": "debugpy",
             "request": "launch",
-            "program": "sbom.py",
+            "program": "src/sbom.py",
             "console": "integratedTerminal",
             "args": [
                 "--src-tree", "../linux",
