@@ -4,5 +4,5 @@
 
 python3 -m venv .venv
 source .venv/bin/activate
-pip install pre-commit reuse
+pip install pre-commit reuse ruff
 pre-commit install
