@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 
-import os
 import re
 import logging
 from pathlib import Path
@@ -20,17 +19,20 @@ class CmdGraphNode:
     children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
 
-def _to_cmd(path: Path) -> Path:
-    return Path(os.path.join(path.parent, f".{path.name}.cmd"))
+def _to_cmd_path(path: Path) -> Path:
+    return path.parent / f".{path.name}.cmd"
 
 
-def build_cmd_graph(root_output_path: Path, cache: dict[Path, CmdGraphNode] | None = None) -> CmdGraphNode:
+def build_cmd_graph(
+    root_output_in_tree: Path, output_tree: Path, cache: dict[Path, CmdGraphNode] | None = None, depth: int = 0
+) -> CmdGraphNode:
     """
-    Recursively builds a command dependency graph starting from root_output_path.
-    Assumes that for the file at root_output_path a corresponding '.<root_output_path.name>.cmd' file exists.
+    Recursively builds a command dependency graph starting from `root_output_in_tree`. <br>
+    Assumes that for the given file a corresponding `.<root_output_in_tree.name>.cmd` file exists.
 
     Args:
-        root_output_path (Path): Path to the root output file.
+        root_output_in_tree (Path): Path to the root output file relative to output_tree.
+        output_tree (Path): absolute Path to the base directory of the output_tree.
         cache (dict, optional): Tracks processed nodes to prevent cycles.
 
     Returns:
@@ -39,28 +41,22 @@ def build_cmd_graph(root_output_path: Path, cache: dict[Path, CmdGraphNode] | No
     if cache is None:
         cache = {}
 
-    cmd_file_path = Path(os.path.realpath(_to_cmd(root_output_path)))
-    if cmd_file_path in cache:
-        # temporary to check if we have any circles in the graph
-        raise RuntimeError(f"path {cmd_file_path} was already processed in the cmd graph.")
+    cmd_file_in_tree = _to_cmd_path(root_output_in_tree)
+    if cmd_file_in_tree in cache:
+        logging.debug(f"Reuse Node: {'  ' * depth}{cmd_file_in_tree}")
+        return cache[cmd_file_in_tree]
 
-    cmd_file = parse_cmd_file(cmd_file_path)
+    cmd_file = parse_cmd_file(output_tree / cmd_file_in_tree)
     node = CmdGraphNode(cmd_file=cmd_file)
-    logging.debug(f"Node {cmd_file_path} was created successfully.")
-    cache[cmd_file_path] = node
+    logging.debug(f"Build Node: {'  ' * depth}{cmd_file_in_tree}")
+    cache[cmd_file_in_tree] = node
 
     input_files = parse_savedcmd(cmd_file.savedcmd)
     for input_file in input_files:
-        child_path = Path(os.path.join(root_output_path.parent, input_file))
-        child_node = build_cmd_graph(child_path)
+        # Input paths in .cmd files are inconsistent: some are relative to the output tree root,
+        # others are relative to the .cmd file's directory.
+        child_path = Path(input_file) if (output_tree / input_file).exists() else cmd_file_in_tree.parent / input_file
+        child_node = build_cmd_graph(child_path, output_tree, cache, depth + 1)
         node.children.append(child_node)
 
     return node
-
-
-def pretty_print_cmd_graph(node: CmdGraphNode, indent: int = 0) -> str:
-    lines: list[str] = []
-    lines.append("  " * indent + node.cmd_file.cmd_file_path.name)
-    for child in node.children:
-        lines.append(pretty_print_cmd_graph(child, indent + 1))
-    return "\n".join(lines)

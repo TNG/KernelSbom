@@ -14,7 +14,7 @@ import logging
 import os
 from pathlib import Path
 from lib.sbom import spdx
-from lib.sbom.cmd.cmd_graph import build_cmd_graph, pretty_print_cmd_graph
+from lib.sbom.cmd.cmd_graph import build_cmd_graph
 
 
 @dataclass
@@ -80,10 +80,11 @@ def main():
     doc = create_basic_spdx_document()
 
     # Build cmd graph
-    root_output_path = Path(os.path.realpath(os.path.join(args.output_tree, args.root_output_in_tree)))
-    logging.info(f"Building cmd graph for {root_output_path}")
-    cmd_graph = build_cmd_graph(root_output_path)
-    logging.info("Parsed cmd graph:\n" + pretty_print_cmd_graph(cmd_graph))
+
+    logging.info(f"Building cmd graph for {args.root_output_in_tree}")
+    cmd_graph = build_cmd_graph(  # noqa: F841 # type: ignore
+        root_output_in_tree=Path(args.root_output_in_tree), output_tree=Path(os.path.realpath(args.output_tree))
+    )
 
     # Fill SPDX Document
     # TODO
