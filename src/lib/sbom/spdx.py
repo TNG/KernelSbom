@@ -4,7 +4,7 @@
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 import json
 import uuid
 
@@ -42,7 +42,7 @@ class Person(Element):
     type: str = field(init=False, default="Person")
     spdxId: SpdxId = field(default_factory=lambda: _generate_spdx_id("Person"))
     name: Optional[str] = None
-    externalIdentifier: list[ExternalIdentifier] = field(default_factory=list)
+    externalIdentifier: list[ExternalIdentifier] = field(default_factory=list[ExternalIdentifier])
 
 
 @dataclass(kw_only=True)
@@ -58,8 +58,8 @@ class CreationInfo:
 class SpdxDocument(Element):
     type: str = field(init=False, default="SpdxDocument")
     spdxId: SpdxId = field(default_factory=lambda: _generate_spdx_id("Document"))
-    profileConformance: list[str] = field(default_factory=list)
-    rootElement: list[SpdxId] = field(default_factory=list)
+    profileConformance: list[str] = field(default_factory=list[str])
+    rootElement: list[SpdxId] = field(default_factory=list[SpdxId])
 
 
 # @dataclass(kw_only=True)
@@ -100,15 +100,15 @@ class Relationship(Element):
 class SoftwareSbom(Element):
     type: str = field(init=False, default="software_Sbom")
     spdxId: SpdxId = field(default_factory=lambda: _generate_spdx_id("BOM"))
-    rootElement: list[SpdxId] = field(default_factory=list)
-    element: list[SpdxId] = field(default_factory=list)
-    software_sbomType: list[str] = field(default_factory=list)
+    rootElement: list[SpdxId] = field(default_factory=list[SpdxId])
+    element: list[SpdxId] = field(default_factory=list[SpdxId])
+    software_sbomType: list[str] = field(default_factory=list[str])
 
 
 @dataclass(kw_only=True)
 class JsonLdDocument:
     context: str = f"https://spdx.org/rdf/{SPDX_SPEC_VERSION}/spdx-context.jsonld"
-    graph: list = field(default_factory=list)
+    graph: list[Any] = field(default_factory=list[Any])
 
     def to_json(self):
         return json.dumps(

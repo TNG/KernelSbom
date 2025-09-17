@@ -12,7 +12,7 @@
                 "--output-tree", "../linux/kernel-build",
                 "--root-output-in-tree", "vmlinux",
                 "--output", "sbom.spdx.json",
-                "--debug", "1"
+                "--debug"
             ]
         }
     ]

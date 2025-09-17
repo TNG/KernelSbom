@@ -9,7 +9,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 
 CMD_FILENAME_PATTERN = r"^\..*\.cmd$"
-COMMAND_PATTERN = r"^savedcmd_.*?:=\s*(?P<full_command>.+)$"
+SAVEDCMD_PATTERN = r"^savedcmd_.*?:=\s*(?P<full_command>.+)$"
 SOURCE_PATTERN = r"^source.*?:=\s*(?P<full_command>.+)$"
 
 
@@ -18,8 +18,8 @@ class CmdFile:
     cmd_file_path: Path
     savedcmd: str
     source: Optional[str] = None
-    deps: list[str] = field(default_factory=list)
-    make_rules: list[str] = field(default_factory=list)
+    deps: list[str] = field(default_factory=list[str])
+    make_rules: list[str] = field(default_factory=list[str])
 
 
 def parse_cmd_file(cmd_file_path: Path) -> CmdFile:
@@ -39,7 +39,9 @@ def parse_cmd_file(cmd_file_path: Path) -> CmdFile:
     cmd_file_path = Path(os.path.realpath(cmd_file_path))
 
     # savedcmd
-    line0 = re.compile(COMMAND_PATTERN).match(lines[0])
+    line0 = re.compile(SAVEDCMD_PATTERN).match(lines[0])
+    if line0 is None:
+        raise ValueError(f"No 'savedcmd_' command found in {cmd_file_path}")
     savedcmd = line0.group("full_command")
 
     if len(lines) == 1:
@@ -47,10 +49,12 @@ def parse_cmd_file(cmd_file_path: Path) -> CmdFile:
 
     # source
     line1 = re.compile(SOURCE_PATTERN).match(lines[1])
+    if line1 is None:
+        raise ValueError(f"No 'source_' command found in second line of {cmd_file_path}")
     source = os.path.realpath(os.path.join(cmd_file_path.parent, line1.group("full_command")))
 
     # deps
-    deps = []
+    deps: list[str] = []
     i = 3  # lines[2] includes the variable assignment but no actual dependency, so we need to start at lines[3].
     while True:
         if not lines[i].endswith("\\"):

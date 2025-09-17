@@ -5,13 +5,7 @@
 import re
 import shlex
 from dataclasses import dataclass
-from typing import Callable, Optional, Union
-
-
-class CommandParserException(Exception):
-    """Raised when a command string cannot be parsed correctly."""
-
-    pass
+from typing import Optional, Union
 
 
 @dataclass
@@ -72,13 +66,15 @@ def _parse_objcopy_command(savedcmd: str) -> list[str]:
     positionals = [part.value for part in command_parts if isinstance(part, Positional)]
     # expect positionals to be ['objcopy', input_file] or ['objcopy', input_file, output_file]
     if not (len(positionals) == 2 or len(positionals) == 3):
-        raise CommandParserException("Invalid objcopy command format.")
+        raise ValueError(
+            f"Invalid objcopy command format: expected 2 or 3 positional arguments, got {len(positionals)} ({positionals})"
+        )
     return [positionals[1]]
 
 
 def _parse_link_vmlinux_command(savedcmd: str) -> list[str]:
     # TODO: Implement link-vmlinux.sh parsing
-    return ["vmlinux.a"]
+    return []
 
 
 # Command parser registry
@@ -94,10 +90,6 @@ def parse_savedcmd(savedcmd: str) -> list[str]:
 
     Returns:
         input_files (list[str]): Input files of the command.
-
-    Raises:
-        NotImplementedError: If no parser matches the command.
-        CommandParserException: If parsing fails inside a matched parser.
     """
     for pattern, parser in COMMAND_PARSERS:
         if pattern.search(savedcmd):
