@@ -12,6 +12,9 @@
   ],
   "settings": {
     "search.useIgnoreFiles": false,
+    "files.exclude": {
+      "**/__pycache__": true
+    },
     "search.exclude": {
       "**/.venv": true,
       "**/__pycache__": true,
