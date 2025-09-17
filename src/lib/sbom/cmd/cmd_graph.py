@@ -55,7 +55,11 @@ def build_cmd_graph(
     for input_file in input_files:
         # Input paths in .cmd files are inconsistent: some are relative to the output tree root,
         # others are relative to the .cmd file's directory.
-        child_path = Path(input_file) if (output_tree / input_file).exists() else cmd_file_in_tree.parent / input_file
+        child_path = (
+            cmd_file_in_tree.parent / input_file
+            if (output_tree / cmd_file_in_tree.parent / input_file).exists()
+            else Path(input_file)
+        )
         child_node = build_cmd_graph(child_path, output_tree, cache, depth + 1)
         node.children.append(child_node)
 

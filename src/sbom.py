@@ -80,7 +80,6 @@ def main():
     doc = create_basic_spdx_document()
 
     # Build cmd graph
-
     logging.info(f"Building cmd graph for {args.root_output_in_tree}")
     cmd_graph = build_cmd_graph(  # noqa: F841 # type: ignore
         root_output_in_tree=Path(args.root_output_in_tree), output_tree=Path(os.path.realpath(args.output_tree))
