@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0
-# Copyright(c) 2025: Luis Augenstein <luis.augenstein@tngtech.com>.
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH <info@tngtech.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -104,4 +104,3 @@ class JsonLdDocument:
             "@context": self.context,
             "@graph": [asdict(item) for item in self.graph]
         }, indent=2)
-

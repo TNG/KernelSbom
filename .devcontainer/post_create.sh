@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-Dockerfile
-docker-compose.yaml
-sbom.spdx.json
+python3 -m venv .venv
+source .venv/bin/activate
+pip install pre-commit reuse
+pre-commit install
