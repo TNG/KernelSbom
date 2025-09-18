@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH <info@tngtech.com>
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -29,57 +29,20 @@ class TestSavedCmdParser(unittest.TestCase):
     def test_ar_default(self):
         """tests ar command in `.lib.a.cmd` which follows the default syntax."""
         cmd = "rm -f lib/lib.a; ar cDPrsT lib/lib.a lib/argv_split.o lib/bug.o lib/buildid.o lib/clz_tab.o lib/cmdline.o lib/cpumask.o lib/ctype.o lib/dec_and_lock.o lib/decompress.o lib/decompress_bunzip2.o lib/decompress_inflate.o lib/decompress_unlz4.o lib/decompress_unlzma.o lib/decompress_unlzo.o lib/decompress_unxz.o lib/decompress_unzstd.o lib/dump_stack.o lib/earlycpio.o lib/extable.o lib/flex_proportions.o lib/idr.o lib/iomem_copy.o lib/irq_regs.o lib/is_single_threaded.o lib/klist.o lib/kobject.o lib/kobject_uevent.o lib/logic_pio.o lib/maple_tree.o lib/memcat_p.o lib/nmi_backtrace.o lib/objpool.o lib/plist.o lib/radix-tree.o lib/ratelimit.o lib/rbtree.o lib/seq_buf.o lib/siphash.o lib/string.o lib/sys_info.o lib/timerqueue.o lib/union_find.o lib/vsprintf.o lib/win_minmax.o lib/xarray.o"
-        expected = []
-        self.assertEqual(parse_savedcmd(cmd), expected)
+        expected = "lib/argv_split.o lib/bug.o lib/buildid.o lib/clz_tab.o lib/cmdline.o lib/cpumask.o lib/ctype.o lib/dec_and_lock.o lib/decompress.o lib/decompress_bunzip2.o lib/decompress_inflate.o lib/decompress_unlz4.o lib/decompress_unlzma.o lib/decompress_unlzo.o lib/decompress_unxz.o lib/decompress_unzstd.o lib/dump_stack.o lib/earlycpio.o lib/extable.o lib/flex_proportions.o lib/idr.o lib/iomem_copy.o lib/irq_regs.o lib/is_single_threaded.o lib/klist.o lib/kobject.o lib/kobject_uevent.o lib/logic_pio.o lib/maple_tree.o lib/memcat_p.o lib/nmi_backtrace.o lib/objpool.o lib/plist.o lib/radix-tree.o lib/ratelimit.o lib/rbtree.o lib/seq_buf.o lib/siphash.o lib/string.o lib/sys_info.o lib/timerqueue.o lib/union_find.o lib/vsprintf.o lib/win_minmax.o lib/xarray.o"
+        self.assertEqual(parse_savedcmd(cmd), expected.split(" "))
 
     def test_ar_printf(self):
         """tests ar command in `.built-in.a.cmd` which follows a `printf | xargs ar` syntax."""
         cmd = 'rm -f built-in.a;  printf "./%s " init/built-in.a usr/built-in.a arch/x86/built-in.a arch/x86/boot/startup/built-in.a kernel/built-in.a certs/built-in.a mm/built-in.a fs/built-in.a ipc/built-in.a security/built-in.a crypto/built-in.a block/built-in.a io_uring/built-in.a lib/built-in.a arch/x86/lib/built-in.a drivers/built-in.a sound/built-in.a net/built-in.a virt/built-in.a arch/x86/pci/built-in.a arch/x86/power/built-in.a arch/x86/video/built-in.a | xargs ar cDPrST built-in.a'
-        expected = [
-            "init/built-in.a",
-            "usr/built-in.a",
-            "arch/x86/built-in.a",
-            "arch/x86/boot/startup/built-in.a",
-            "kernel/built-in.a",
-            "certs/built-in.a",
-            "mm/built-in.a",
-            "fs/built-in.a",
-            "ipc/built-in.a",
-            "security/built-in.a",
-            "crypto/built-in.a",
-            "block/built-in.a",
-            "io_uring/built-in.a",
-            "lib/built-in.a",
-            "arch/x86/lib/built-in.a",
-            "drivers/built-in.a",
-            "sound/built-in.a",
-            "net/built-in.a",
-            "virt/built-in.a",
-            "arch/x86/pci/built-in.a",
-            "arch/x86/power/built-in.a",
-            "arch/x86/video/built-in.a",
-        ]
-        self.assertEqual(parse_savedcmd(cmd), expected)
+        expected = "init/built-in.a usr/built-in.a arch/x86/built-in.a arch/x86/boot/startup/built-in.a kernel/built-in.a certs/built-in.a mm/built-in.a fs/built-in.a ipc/built-in.a security/built-in.a crypto/built-in.a block/built-in.a io_uring/built-in.a lib/built-in.a arch/x86/lib/built-in.a drivers/built-in.a sound/built-in.a net/built-in.a virt/built-in.a arch/x86/pci/built-in.a arch/x86/power/built-in.a arch/x86/video/built-in.a"
+        self.assertEqual(parse_savedcmd(cmd), expected.split(" "))
 
     def test_ar_printf_nested(self):
         """tests ar command in `arch/x86/pci/.built-in.a.cmd` which follows a `printf | xargs ar` syntax."""
         cmd = 'rm -f arch/x86/pci/built-in.a;  printf "arch/x86/pci/%s " i386.o init.o mmconfig_64.o direct.o mmconfig-shared.o fixup.o acpi.o legacy.o irq.o common.o early.o bus_numa.o amd_bus.o | xargs ar cDPrST arch/x86/pci/built-in.a'
-        expected = [
-            "i386.o",
-            "init.o",
-            "mmconfig_64.o",
-            "direct.o",
-            "mmconfig-shared.o",
-            "fixup.o",
-            "acpi.o",
-            "legacy.o",
-            "irq.o",
-            "common.o",
-            "early.o",
-            "bus_numa.o",
-            "amd_bus.o",
-        ]
-        self.assertEqual(parse_savedcmd(cmd), expected)
+        expected = "i386.o init.o mmconfig_64.o direct.o mmconfig-shared.o fixup.o acpi.o legacy.o irq.o common.o early.o bus_numa.o amd_bus.o"
+        self.assertEqual(parse_savedcmd(cmd), expected.split(" "))
 
     # gcc command tests
 
