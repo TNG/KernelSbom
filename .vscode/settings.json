@@ -1,5 +1,16 @@
 {
     "python.analysis.extraPaths": [
         "./lib/sbom"
-    ]
+    ],
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./src/lib",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true,
+    "ruff.lineLength": 120,
+    "editor.formatOnSave": true
 }

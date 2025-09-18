@@ -8,22 +8,25 @@ import re
 import logging
 from pathlib import Path
 from dataclasses import dataclass, field
-from cmd.savedcmd_parser import parse_savedcmd
-from cmd.cmd_file_parser import CmdFile, parse_cmd_file
+from .savedcmd_parser import parse_savedcmd
+from .cmd_file_parser import CmdFile, parse_cmd_file
 
-LD_PATTERN = re.compile(r'(^|\s)ld\b')
+LD_PATTERN = re.compile(r"(^|\s)ld\b")
+
 
 @dataclass
-class CmdGraphNode():
+class CmdGraphNode:
     cmd_file: CmdFile
-    children: list['CmdGraphNode'] = field(default_factory=list)
+    children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
+
 
 def _to_cmd(path: Path) -> Path:
-    return os.path.join(path.parent, f".{path.name}.cmd")
+    return Path(os.path.join(path.parent, f".{path.name}.cmd"))
 
-def build_cmd_graph(root_output_path: Path, cache: dict[str, CmdGraphNode] = None) -> CmdGraphNode:
+
+def build_cmd_graph(root_output_path: Path, cache: dict[Path, CmdGraphNode] | None = None) -> CmdGraphNode:
     """
-    Recursively builds a command dependency graph starting from root_output_path.  
+    Recursively builds a command dependency graph starting from root_output_path.
     Assumes that for the file at root_output_path a corresponding '.<root_output_path.name>.cmd' file exists.
 
     Args:
@@ -32,10 +35,6 @@ def build_cmd_graph(root_output_path: Path, cache: dict[str, CmdGraphNode] = Non
 
     Returns:
         CmdGraphNode: Root of the command dependency graph.
-
-    Raises:
-        NotImplementedError: If no parser matches the command.
-        CommandParserException: If parsing fails inside a matched parser.
     """
     if cache is None:
         cache = {}
@@ -43,8 +42,8 @@ def build_cmd_graph(root_output_path: Path, cache: dict[str, CmdGraphNode] = Non
     cmd_file_path = Path(os.path.realpath(_to_cmd(root_output_path)))
     if cmd_file_path in cache:
         # temporary to check if we have any circles in the graph
-        raise Exception(f"path {cmd_file_path} was already processed in the cmd graph.")
-    
+        raise RuntimeError(f"path {cmd_file_path} was already processed in the cmd graph.")
+
     cmd_file = parse_cmd_file(cmd_file_path)
     node = CmdGraphNode(cmd_file=cmd_file)
     logging.debug(f"Node {cmd_file_path} was created successfully.")
@@ -58,8 +57,9 @@ def build_cmd_graph(root_output_path: Path, cache: dict[str, CmdGraphNode] = Non
 
     return node
 
-def pretty_print_cmd_graph(node: CmdGraphNode, indent=0) -> str:
-    lines = []
+
+def pretty_print_cmd_graph(node: CmdGraphNode, indent: int = 0) -> str:
+    lines: list[str] = []
     lines.append("  " * indent + node.cmd_file.cmd_file_path.name)
     for child in node.children:
         lines.append(pretty_print_cmd_graph(child, indent + 1))

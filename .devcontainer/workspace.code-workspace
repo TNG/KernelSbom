@@ -1,0 +1,21 @@
+// SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH <info@tngtech.com>
+//
+// SPDX-License-Identifier: GPL-2.0-only
+{
+  "folders": [
+    {
+      "path": "../../linux"
+    },
+    {
+      "path": ".."
+    }
+  ],
+  "settings": {
+    "search.useIgnoreFiles": false,
+    "search.exclude": {
+      "**/.venv": true,
+      "**/__pycache__": true,
+      "**/.git": true
+    }
+  }
+}
