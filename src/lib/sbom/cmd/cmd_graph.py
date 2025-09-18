@@ -4,6 +4,7 @@
 
 
 import logging
+import os
 from pathlib import Path
 from dataclasses import dataclass, field
 from .savedcmd_parser import parse_savedcmd
@@ -12,7 +13,8 @@ from .cmd_file_parser import CmdFile, parse_cmd_file
 
 @dataclass
 class CmdGraphNode:
-    cmd_file: CmdFile
+    absolute_path: Path
+    cmd_file: CmdFile | None
     children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
 
@@ -38,23 +40,27 @@ def build_cmd_graph(
     if cache is None:
         cache = {}
 
-    cmd_file_in_tree = _to_cmd_path(root_output_in_tree)
-    if cmd_file_in_tree in cache:
-        logging.debug(f"Reuse Node: {'  ' * depth}{cmd_file_in_tree}")
-        return cache[cmd_file_in_tree]
+    absolute_path = Path(os.path.realpath(output_tree / root_output_in_tree))
+    if absolute_path in cache:
+        logging.debug(f"Reuse Node: {absolute_path}")
+        return cache[absolute_path]
 
-    cmd_file = parse_cmd_file(output_tree / cmd_file_in_tree)
-    node = CmdGraphNode(cmd_file=cmd_file)
-    logging.debug(f"Build Node: {'  ' * depth}{cmd_file_in_tree}")
-    cache[cmd_file_in_tree] = node
+    logging.debug(f"Build Node: {'  ' * depth}{absolute_path.name}")
+    cmd_path = _to_cmd_path(absolute_path)
+    cmd_file = parse_cmd_file(cmd_path) if cmd_path.exists() else None
+    node = CmdGraphNode(absolute_path, cmd_file)
+    cache[absolute_path] = node
+
+    if cmd_file is None:
+        return node
 
     input_files = parse_savedcmd(cmd_file.savedcmd)
     for input_file in input_files:
         # Input paths in .cmd files are inconsistent: some are relative to the output tree root,
         # others are relative to the .cmd file's directory.
         child_path = (
-            cmd_file_in_tree.parent / input_file
-            if (output_tree / cmd_file_in_tree.parent / input_file).exists()
+            root_output_in_tree.parent / input_file
+            if (output_tree / root_output_in_tree.parent / input_file).exists()
             else Path(input_file)
         )
         child_node = build_cmd_graph(child_path, output_tree, cache, depth + 1)
