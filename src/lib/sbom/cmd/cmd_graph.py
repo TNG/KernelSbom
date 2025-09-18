@@ -7,7 +7,9 @@ import logging
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
-from .savedcmd_parser import parse_savedcmd
+
+from .deps_parser import parse_deps
+from .savedcmd_parser import parse_commands
 from .cmd_file_parser import CmdFile, parse_cmd_file
 
 
@@ -40,29 +42,32 @@ def build_cmd_graph(
     if cache is None:
         cache = {}
 
-    absolute_path = Path(os.path.realpath(output_tree / root_output_in_tree))
-    if absolute_path in cache:
-        logging.debug(f"Reuse Node: {absolute_path}")
-        return cache[absolute_path]
+    root_output_absolute = Path(os.path.realpath(output_tree / root_output_in_tree))
+    if root_output_in_tree in cache:
+        logging.debug(f"Reuse Node: {root_output_in_tree}")
+        return cache[root_output_absolute]
 
-    logging.debug(f"Build Node: {'  ' * depth}{absolute_path.name}")
-    cmd_path = _to_cmd_path(absolute_path)
+    logging.debug(f"Build Node: {'  ' * depth}{root_output_in_tree}")
+    cmd_path = _to_cmd_path(root_output_absolute)
     cmd_file = parse_cmd_file(cmd_path) if cmd_path.exists() else None
-    node = CmdGraphNode(absolute_path, cmd_file)
-    cache[absolute_path] = node
+    node = CmdGraphNode(root_output_absolute, cmd_file)
+    cache[root_output_absolute] = node
 
     if cmd_file is None:
         return node
 
-    input_files = parse_savedcmd(cmd_file.savedcmd)
+    input_files = parse_commands(cmd_file.savedcmd)
+    if cmd_file.deps:
+        input_files += parse_deps(cmd_file.deps, output_tree)
     for input_file in input_files:
-        # Input paths in .cmd files are inconsistent: some are relative to the output tree root,
-        # others are relative to the .cmd file's directory.
-        child_path = (
-            root_output_in_tree.parent / input_file
-            if (output_tree / root_output_in_tree.parent / input_file).exists()
-            else Path(input_file)
-        )
+        # Input paths in .cmd files are inconsistent: some are relative to the .cmd file's directory,
+        # others are relative to the output tree root.
+        if (output_tree / root_output_in_tree.parent / input_file).exists():
+            child_path = root_output_in_tree.parent / input_file
+        elif (output_tree / input_file).exists():
+            child_path = input_file
+        else:
+            raise ValueError(f"Cannot resolve path: {input_file}")
         child_node = build_cmd_graph(child_path, output_tree, cache, depth + 1)
         node.children.append(child_node)
 
