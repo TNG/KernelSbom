@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
 
-CMD_FILENAME_PATTERN = r"^\..*\.cmd$"
 SAVEDCMD_PATTERN = r"^savedcmd_.*?:=\s*(?P<full_command>.+)$"
 SOURCE_PATTERN = r"^source.*?:=\s*(?P<full_command>.+)$"
 

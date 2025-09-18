@@ -3,14 +3,11 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 
-import re
 import logging
 from pathlib import Path
 from dataclasses import dataclass, field
 from .savedcmd_parser import parse_savedcmd
 from .cmd_file_parser import CmdFile, parse_cmd_file
-
-LD_PATTERN = re.compile(r"(^|\s)ld\b")
 
 
 @dataclass
