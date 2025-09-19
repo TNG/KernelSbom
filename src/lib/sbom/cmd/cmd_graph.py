@@ -25,7 +25,11 @@ def _to_cmd_path(path: Path) -> Path:
 
 
 def build_cmd_graph(
-    root_output_in_tree: Path, output_tree: Path, cache: dict[Path, CmdGraphNode] | None = None, depth: int = 0
+    root_output_in_tree: Path,
+    output_tree: Path,
+    cache: dict[Path, CmdGraphNode] | None = None,
+    depth: int = 0,
+    log_graph_depth_limit: int = 4,
 ) -> CmdGraphNode:
     """
     Recursively builds a command dependency graph starting from `root_output_in_tree`. <br>
@@ -35,6 +39,8 @@ def build_cmd_graph(
         root_output_in_tree (Path): Path to the root output file relative to output_tree.
         output_tree (Path): absolute Path to the base directory of the output_tree.
         cache (dict, optional): Tracks processed nodes to prevent cycles.
+        depth (int): Internal parameter to track the current recursion depth.
+        log_graph_depth_limit (int): Maximum recursion depth up to which info-level log messages are shown.
 
     Returns:
         CmdGraphNode: Root of the command dependency graph.
@@ -44,10 +50,11 @@ def build_cmd_graph(
 
     root_output_absolute = Path(os.path.realpath(output_tree / root_output_in_tree))
     if root_output_in_tree in cache:
-        logging.debug(f"Reuse Node: {root_output_in_tree}")
+        logging.debug(f"Reuse Node: {'  ' * depth}{root_output_in_tree}")
         return cache[root_output_absolute]
 
-    logging.debug(f"Build Node: {'  ' * depth}{root_output_in_tree}")
+    if depth <= log_graph_depth_limit:
+        logging.info(f"Build Node: {'  ' * depth}{root_output_in_tree}")
     cmd_path = _to_cmd_path(root_output_absolute)
     cmd_file = parse_cmd_file(cmd_path) if cmd_path.exists() else None
     node = CmdGraphNode(root_output_absolute, cmd_file)

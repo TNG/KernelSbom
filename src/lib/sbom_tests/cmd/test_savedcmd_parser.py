@@ -89,18 +89,30 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = [Path("../arch/x86/include/asm/orc_types.h")]
         self.assertEqual(parse_commands(cmd), expected)
 
-    # vdso2c command tests
+    # custom cli tool tests
 
     def test_vdso2c(self):
         cmd = "arch/x86/entry/vdso/vdso2c arch/x86/entry/vdso/vdso64.so.dbg arch/x86/entry/vdso/vdso64.so arch/x86/entry/vdso/vdso-image-64.c"
-        expected = [Path("arch/x86/entry/vdso/vdso64.so.dbg"), Path("arch/x86/entry/vdso/vdso64.so")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "arch/x86/entry/vdso/vdso64.so.dbg arch/x86/entry/vdso/vdso64.so"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_genheaders(self):
+        cmd = "security/selinux/genheaders security/selinux/flask.h security/selinux/av_permissions.h"
+        expected = "security/selinux/include/classmap.h security/selinux/include/initial_sid_to_string.h"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # ld command tests
 
     def test_ld(self):
         cmd = 'ld -o arch/x86/entry/vdso/vdso64.so.dbg -shared --hash-style=both --build-id=sha1 --no-undefined  --eh-frame-hdr -Bsymbolic -z noexecstack -m elf_x86_64 -soname linux-vdso.so.1 -z max-page-size=4096 -T arch/x86/entry/vdso/vdso.lds arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o; if readelf -rW arch/x86/entry/vdso/vdso64.so.dbg | grep -v _NONE | grep -q " R_\w*_"; then (echo >&2 "arch/x86/entry/vdso/vdso64.so.dbg: dynamic relocations are not supported"; rm -f arch/x86/entry/vdso/vdso64.so.dbg; /bin/false); fi'  # type: ignore
         expected = "arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    # sed command tests
+
+    def test_sed(self):
+        cmd = "sed -n 's/.*define *BLIST_\\([A-Z0-9_]*\\) *.*/BLIST_FLAG_NAME(\\1),/p' ../include/scsi/scsi_devinfo.h > drivers/scsi/scsi_devinfo_tbl.c"
+        expected = "../include/scsi/scsi_devinfo.h"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
 

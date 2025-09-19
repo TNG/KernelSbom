@@ -147,65 +147,14 @@ def _parse_ar_piped_command(command: str) -> list[Path]:
 
 
 def _parse_gcc_command(command: str) -> list[Path]:
-    command_parts = _tokenize_single_command(
-        command.strip(),
-        flag_options=[
-            "-nostdinc",
-            "-fno-common",
-            "-fno-PIE",
-            "-O2",
-            "-Os",
-            "-m64",
-            "-c",
-            "-Werror",
-            "-Wno-sign-compare",
-            "-Wall",
-            "-Wextra",
-            "-Wundef",
-            "-Werror=implicit-function-declaration",
-            "-Werror=implicit-int",
-            "-Werror=return-type",
-            "-Werror=strict-prototypes",
-            "-Wno-format-security",
-            "-Wno-trigraphs",
-            "-Wno-frame-address",
-            "-Wno-address-of-packed-member",
-            "-Wmissing-declarations",
-            "-Wmissing-prototypes",
-            "-Wframe-larger-than=2048",
-            "-Wno-main",
-            "-Wvla-larger-than=1",
-            "-Wno-pointer-sign",
-            "-Wcast-function-type",
-            "-Wno-array-bounds",
-            "-Wno-stringop-overflow",
-            "-Wno-alloc-size-larger-than",
-            "-Wimplicit-fallthrough=5",
-            "-Werror=date-time",
-            "-Werror=incompatible-pointer-types",
-            "-Werror=designated-init",
-            "-Wenum-conversion",
-            "-Wunused",
-            "-Wno-unused-but-set-variable",
-            "-Wno-unused-const-variable",
-            "-Wno-packed-not-aligned",
-            "-Wno-format-overflow",
-            "-Wno-format-truncation",
-            "-Wno-stringop-truncation",
-            "-Wno-override-init",
-            "-Wno-missing-field-initializers",
-            "-Wno-type-limits",
-            "-Wno-shift-negative-value",
-            "-Wno-maybe-uninitialized",
-            "-Wno-unused-parameter",
-        ],
-        concatenated_value_options=["-I", "-D", "-U", "-Wl,", "-Wp,", "-f", "-m"],
-    )
-    if not any(p.name == "-c" for p in command_parts if isinstance(p, Option)):
+    parts = shlex.split(command)
+    if "-c" not in parts:
         raise NotImplementedError(f"Unsupported gcc command: missing '-c' compile flag.\nCommand: {command}")
-    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
-    # expect positionals to be ["gcc", input]
-    return [Path(positionals[1])]
+    # expect last positional argument ending in `.c` or `.S` to be the input file
+    for part in reversed(parts):
+        if not part.startswith("-") and Path(part).suffix in [".c", ".S"]:
+            return [Path(part)]
+    raise ValueError(f"Could not find input source file in command: {command}")
 
 
 def _parse_syscallhdr_command(command: str) -> list[Path]:
@@ -240,14 +189,28 @@ def _parse_vdso2c_command(command: str) -> list[Path]:
     return [Path(positionals[1]), Path(positionals[2])]
 
 
+def _parse_genheaders_command(_: str) -> list[Path]:
+    # At the time of writing `security/selinux/genheaders.c` includes `classmap.h` and `initial_sid_to_string.h`.
+    # Since parsing .c files is out of scope for this tool the two header files are hardcoded.
+    return [Path("security/selinux/include/classmap.h"), Path("security/selinux/include/initial_sid_to_string.h")]
+
+
 def _parse_ld_command(command: str) -> list[Path]:
     command_parts = _tokenize_single_command(
         command=command.strip(),
         flag_options=["-shared", "--no-undefined", "--eh-frame-hdr", "-Bsymbolic"],
     )
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
-    # expect positionals to be ['ld', input1, input2, ...]
+    # expect positionals to be ["ld", input1, input2, ...]
     return [Path(p) for p in positionals[1:]]
+
+
+def _parse_sed_command(command: str) -> list[Path]:
+    command_parts = shlex.split(command)
+    # expect command parts to be ["sed", *, input, ">", output]
+    if command_parts[-2] == ">":
+        return [Path(command_parts[-3])]
+    raise NotImplementedError("Unrecognized sed command format: {command}")
 
 
 # Command parser registry
@@ -256,6 +219,7 @@ SINGLE_COMMAND_PARSERS = [
     (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
     (re.compile(r"^rm\b"), _parse_noop),
     (re.compile(r"^mkdir\b"), _parse_noop),
+    (re.compile(r"^echo[^|]*$"), _parse_noop),
     (re.compile(r"^(/bin/)?true\b"), _parse_noop),
     (re.compile(r"^(/bin/)?false\b"), _parse_noop),
     (re.compile(r"^ar\b"), _parse_ar_command),
@@ -266,8 +230,9 @@ SINGLE_COMMAND_PARSERS = [
     (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
+    (re.compile(r"(.*/)?genheaders\b"), _parse_genheaders_command),
     (re.compile(r"^ld\b"), _parse_ld_command),
-    (re.compile(r"^echo[^|]*$"), _parse_noop),
+    (re.compile(r"^sed\b"), _parse_sed_command),
 ]
 
 
