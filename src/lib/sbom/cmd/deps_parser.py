@@ -16,7 +16,7 @@ def parse_deps(deps: list[str], output_tree: Path) -> list[Path]:
 
     Supports:
     - $(wildcard ...) paths relative to output_tree (only returned if the file exists)
-    - Header files ending in .h (returned as-is)
+    - Source files ending in .h, .c, or .S (returned as-is)
 
     Args:
         deps: List of dependency strings as found in `.cmd` files.

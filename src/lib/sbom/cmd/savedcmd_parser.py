@@ -39,7 +39,7 @@ def _tokenize_single_command(
         concatenated_value_options: Options with values concatenated (e.g., '-I/usr/include').
 
     Returns:
-        List of Option and Positional objects in order.
+        List of `Option` and `Positional` objects in command order.
     """
 
     #  Wrap all $$(...) blocks in double quotes to prevent shlex from splitting them.
@@ -264,11 +264,11 @@ def _unwrap_outer_parentheses(s: str) -> str:
             count += 1
         elif char == ")":
             count -= 1
-            # If count is 0 before the end, outer parens don't match
+            # If count is 0 before the end, outer parentheses don't match
             if count == 0 and i != len(s) - 1:
                 return s
 
-    # If we got here, outer parens do match, unwrap once
+    # outer parentheses do match, unwrap once
     return _unwrap_outer_parentheses(s[1:-1])
 
 

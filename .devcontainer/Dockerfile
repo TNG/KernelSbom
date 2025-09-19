@@ -8,6 +8,12 @@ RUN apt-get update && \
         build-essential linux-headers-generic bc \
         flex bison python3 python3-pip python3-venv git libelf-dev libssl-dev
 WORKDIR /workspace
+
+# Create non root user
+RUN useradd -m -s /bin/bash ubuntu && \
+    chown ubuntu:ubuntu /workspace
+USER ubuntu
+
 RUN git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 RUN cd linux && \
     make defconfig O=kernel-build && \

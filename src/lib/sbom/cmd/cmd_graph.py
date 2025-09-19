@@ -27,6 +27,7 @@ def _to_cmd_path(path: Path) -> Path:
 def build_cmd_graph(
     root_output_in_tree: Path,
     output_tree: Path,
+    src_tree: Path,
     cache: dict[Path, CmdGraphNode] | None = None,
     depth: int = 0,
     log_graph_depth_limit: int = 4,
@@ -38,9 +39,10 @@ def build_cmd_graph(
     Args:
         root_output_in_tree (Path): Path to the root output file relative to output_tree.
         output_tree (Path): absolute Path to the base directory of the output_tree.
+        src_tree (Path): absolute Path to the `linux` source directory.
         cache (dict, optional): Tracks processed nodes to prevent cycles.
         depth (int): Internal parameter to track the current recursion depth.
-        log_graph_depth_limit (int): Maximum recursion depth up to which info-level log messages are shown.
+        log_graph_depth_limit (int): Maximum recursion depth up to which info-level messages are logged.
 
     Returns:
         CmdGraphNode: Root of the command dependency graph.
@@ -73,9 +75,13 @@ def build_cmd_graph(
             child_path = root_output_in_tree.parent / input_file
         elif (output_tree / input_file).exists():
             child_path = input_file
+        elif (src_tree / input_file).exists():
+            # Input paths relative to the source tree. While .cmd files typically don't reference such paths directly, this case handles .cmd files
+            # where inputs are omitted entirely despite depending on source tree files (e.g., `genheaders` command in `security/selinux/.flask.h.cmd`).
+            child_path = Path(os.path.relpath(src_tree / input_file, output_tree))
         else:
             raise ValueError(f"Cannot resolve path: {input_file}")
-        child_node = build_cmd_graph(child_path, output_tree, cache, depth + 1)
+        child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1)
         node.children.append(child_node)
 
     return node
