@@ -10,8 +10,7 @@
             "args": [
                 "--src-tree", "../linux",
                 "--output-tree", "../linux/kernel-build",
-                // "--root-output-in-tree", "vmlinux",
-                "--root-output-in-tree", "usr/built-in.a",
+                "--root-output-in-tree", "vmlinux",
                 "--output", "sbom.spdx.json",
                 "--debug"
             ]
