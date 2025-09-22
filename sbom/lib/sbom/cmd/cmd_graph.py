@@ -7,6 +7,7 @@ import logging
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
+import pickle
 
 from .deps_parser import parse_deps
 from .savedcmd_parser import parse_commands
@@ -85,3 +86,13 @@ def build_cmd_graph(
         node.children.append(child_node)
 
     return node
+
+
+def save_cmd_graph(node: CmdGraphNode, path: Path) -> None:
+    with open(path, "wb") as f:
+        pickle.dump(node, f)
+
+
+def load_cmd_graph(path: Path) -> CmdGraphNode:
+    with open(path, "rb") as f:
+        return pickle.load(f)
