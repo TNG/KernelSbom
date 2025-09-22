@@ -18,7 +18,7 @@ The script [`cmd_graph_based_kernel_build.py`](./cmd_graph_based_kernel_build.py
 This script reconstructs a minimal Linux source tree in `linux-cmd/` by copying only the files referenced in the cmd graph from the original `linux` source tree. If the kernel builds successfully, this confirms that no required file is missing from the cmd graph.
 
 ```bash
-python analysis/cmd_graph_based_kernel_build.py
+python sbom_analysis/cmd_graph_based_kernel_build.py
 cd linux-cmd
 make defconfig O=kernel-build
 make -j$(nproc) O=kernel-build
@@ -29,7 +29,7 @@ make -j$(nproc) O=kernel-build
 The script [`cmd_graph_visualization.py`](./cmd_graph_visualization.py) saves the cmd graph as a [web/cmd_graph.json](./web/cmd_graph.json) file such that it can be visualized with [force-graph](https://github.com/vasturiano/force-graph) in the [web/index.html](web/index.html).
 
 ```bash
-python analysis/cmd_graph_visualization.py
-cd analysis/web
+python sbom_analysis/cmd_graph_visualization.py
+cd sbom_analysis/web
 python -m http.server 8000
 ```

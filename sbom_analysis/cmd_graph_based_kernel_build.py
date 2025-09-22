@@ -72,7 +72,7 @@ def _copy_additional_build_files(src_tree: Path, cmd_src_tree: Path, output_tree
 
 if __name__ == "__main__":
     # Paths to the original source and build directories
-    cmd_graph_path = Path("analysis/cmd_graph.pickle")
+    cmd_graph_path = Path("sbom_analysis/cmd_graph.pickle")
     src_tree = Path("../linux").resolve()
     output_tree = Path("../linux/kernel-build").resolve()
     root_output_in_tree = Path("vmlinux")

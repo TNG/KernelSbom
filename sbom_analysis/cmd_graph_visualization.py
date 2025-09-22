@@ -71,12 +71,12 @@ def _cmd_graph_to_force_graph(
 
 
 if __name__ == "__main__":
-    cmd_graph_path = Path("analysis/cmd_graph.pickle")
+    cmd_graph_path = Path("sbom_analysis/cmd_graph.pickle")
     src_tree = Path("../linux").resolve()
     output_tree = Path("../linux/kernel-build").resolve()
     root_output_in_tree = Path("vmlinux")
 
-    cmd_graph_json_gz_path = Path("analysis/web/cmd_graph.json.gz")
+    cmd_graph_json_gz_path = Path("sbom_analysis/web/cmd_graph.json.gz")
     max_visualization_depth = None
 
     # Configure logging
