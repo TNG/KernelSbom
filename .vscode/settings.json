@@ -12,5 +12,14 @@
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
     "ruff.lineLength": 120,
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "search.useIgnoreFiles": false,
+    "files.exclude": {
+        "**/__pycache__": true
+    },
+    "search.exclude": {
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/.git": true
+    }
 }

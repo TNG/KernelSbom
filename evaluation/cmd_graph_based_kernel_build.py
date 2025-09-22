@@ -48,18 +48,24 @@ def _copy_cmd_graph_sources(
         _copy_cmd_graph_sources(child_node, output_tree, src_tree, cmd_src_tree, depth + 1)
 
 
-def _copy_additional_build_files(output_tree: Path, src_tree: Path, cmd_output_tree: Path, cmd_src_tree: Path) -> None:
-    # Copy .config file
-    logging.info("Copy .config")
-    cmd_output_tree.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(output_tree / ".config", cmd_output_tree / ".config")
+def _copy_additional_build_files(src_tree: Path, cmd_src_tree: Path) -> None:
+    patterns = [
+        "scripts/**/*",
+        "Makefile",
+        "Kconfig",
+        "Kconfig.*",
+        "arch/x86/configs/x86_64_defconfig",
+    ]
 
-    # Copy Makefiles
-    logging.info("Copy Makefiles")
-    for makefile in src_tree.rglob("Makefile"):
-        dest = cmd_src_tree / makefile.relative_to(src_tree)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(makefile, dest)
+    for pattern in patterns:
+        logging.info(f"Copy {pattern}")
+        for file_path in src_tree.rglob(pattern):
+            if not file_path.is_file():
+                continue
+            print(file_path)
+            dest_path = cmd_src_tree / file_path.relative_to(src_tree)
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(file_path, dest_path)
 
 
 def _build_linux_kernel(cmd_src_tree: Path, cmd_output_tree: Path) -> None:
@@ -87,8 +93,8 @@ if __name__ == "__main__":
     # Create a new source tree containing only the files referenced in the command graph
     cmd_src_tree = Path("./linux-cmd").resolve()
     # _copy_cmd_graph_sources(cmd_graph, output_tree, src_tree, cmd_src_tree)
+    _copy_additional_build_files(src_tree, cmd_src_tree)
 
     # Copy additional required build files and rebuild the Linux kernel from the reduced source tree
     cmd_output_tree = Path("./linux-cmd/kernel-build").resolve()
-    _copy_additional_build_files(output_tree, src_tree, cmd_output_tree, cmd_src_tree)
     _build_linux_kernel(cmd_src_tree, cmd_output_tree)
