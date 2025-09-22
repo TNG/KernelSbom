@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
+cmd_graph.pickle
+cmd_graph.json.gz

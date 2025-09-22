@@ -1,0 +1,68 @@
+<!--
+SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+
+SPDX-License-Identifier: GPL-2.0-only
+-->
+
+<head>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+
+    <script src="//cdn.jsdelivr.net/npm/force-graph"></script>
+    <script src="https://unpkg.com/pako@2.1.0/dist/pako.min.js"></script>
+</head>
+
+<body>
+    <div id="graph"></div>
+
+    <script>
+        window.devicePixelRatio = 1; // use standard resolution in retina displays
+        console.log("Start");
+        fetch('./cmd_graph.json.gz')
+            .then(res => res.arrayBuffer())
+            .then(buffer => {
+                const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+                return JSON.parse(decompressed);
+            }).then(data => {
+                console.log("Loaded", data)
+                const colorScale = depth => {
+                    switch (depth) {
+                        case 0: return '#ff0000';   // Red
+                        case 1: return '#ff7f00';   // Orange
+                        case 2: return '#ffbf80';   // Light Orange
+                        case 3: return '#000000';   // Black
+                        case 4: return '#888888';   // Gray
+                        default: return '#cccccc';  // Light gray for any deeper levels
+                    }
+                };
+
+                const size = depth => 5 + 10 * Math.exp(-0.5 * depth);
+
+                ForceGraph()(document.getElementById('graph'))
+                    .graphData(data)
+                    .d3AlphaDecay(0)
+                    .d3VelocityDecay(0.08)
+                    .linkColor(() => 'rgba(0,0,0,0.05)')
+                    .zoom(0.2)
+                    .enablePointerInteraction(true)
+                    .nodeLabel(node => node.id)
+                    .nodeCanvasObject((node, ctx, globalScale) => {
+                        const radius = size(node.depth || 0);
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
+                        ctx.fillStyle = colorScale(node.depth || 0);
+                        ctx.fill();
+                    })
+                    .nodePointerAreaPaint((node, color, ctx) => {
+                        const radius = size(node.depth || 0);
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
+                        ctx.fill();
+                    });
+            });
+    </script>
+</body>
