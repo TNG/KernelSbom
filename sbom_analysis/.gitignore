@@ -4,3 +4,5 @@
 
 cmd_graph.pickle
 cmd_graph.json.gz
+cmd_graph_sources.json
+removed_sources.json

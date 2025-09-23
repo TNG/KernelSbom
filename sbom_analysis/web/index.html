@@ -30,14 +30,21 @@ SPDX-License-Identifier: GPL-2.0-only
                 return JSON.parse(decompressed);
             }).then(data => {
                 console.log("Loaded", data)
+                const formatNodeLabel = node => {
+                    return `${node.depth}: ${node.id}`;
+                };
+
                 const colorScale = depth => {
                     switch (depth) {
                         case 0: return '#ff0000';   // Red
                         case 1: return '#ff7f00';   // Orange
-                        case 2: return '#ffbf80';   // Light Orange
-                        case 3: return '#000000';   // Black
-                        case 4: return '#888888';   // Gray
-                        default: return '#cccccc';  // Light gray for any deeper levels
+                        case 2: return '#ffbf00';   // Golden Yellow
+                        case 3: return '#66cc33';   // Green
+                        case 4: return '#33cccc';   // Teal
+                        case 5: return '#3399ff';   // Blue
+                        case 6: return '#9966cc';   // Purple
+                        case 7: return '#d9d9d9';   // Light Gray
+                        default: return '#f0f0f0';  // Very Light Gray (fallback)
                     }
                 };
 
@@ -50,12 +57,16 @@ SPDX-License-Identifier: GPL-2.0-only
                     .linkColor(() => 'rgba(0,0,0,0.05)')
                     .zoom(0.2)
                     .enablePointerInteraction(true)
-                    .nodeLabel(node => node.id)
+                    .nodeLabel(node => formatNodeLabel(node))
                     .nodeCanvasObject((node, ctx, globalScale) => {
                         const radius = size(node.depth || 0);
                         ctx.beginPath();
                         ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
-                        ctx.fillStyle = colorScale(node.depth || 0);
+                        if (node.id.endsWith("built-in.a")) {
+                            ctx.fillStyle = '#000000';
+                        } else {
+                            ctx.fillStyle = colorScale(node.depth || 0);
+                        }
                         ctx.fill();
                     })
                     .nodePointerAreaPaint((node, color, ctx) => {

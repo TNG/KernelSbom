@@ -20,9 +20,9 @@ This will:
 - Clone the Linux kernel repository during the image build.
 - Compile the kernel out-of-tree into `linux/kernel-build`.
 - Start a container with this repository mounted as volume.
-- Run the [sbom.py](./sbom.py) script inside the container:
+- Run the [sbom.py](sbom/sbom.py) script inside the container:
   ```bash
-  python3 src/sbom.py \
+  python3 sbom/sbom.py \
     --src-tree ../linux \
     --output-tree ../linux/kernel-build \
     --root-output-in-tree vmlinux \
@@ -32,7 +32,13 @@ Once complete, you should see the generated `sbom.spdx.json` file in your reposi
 
 ## Directory Structure
 
-The main contribution lies in the `sbom` directory. 
+- `sbom/`
+  - [sbom.py](sbom/sbom.py) — The main script responsible for generating the SBOM.
+  - `sbom/lib/sbom` — Library modules used by the main script.
+  - `sbom/lib/sbom_tests` — Unit tests for the library modules.
+- [sbom_analysis/](sbom_analysis/README.md) — Additional scripts for analyzing the outputs produced by the main script.
+
+The main contribution is the content of the `sbom` directory which eventually should be moved into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/) kernel source tree.
 
 ## Development & Debugging
 
