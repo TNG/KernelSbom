@@ -13,7 +13,7 @@ from pathlib import Path
 import gzip
 import re
 
-LIB_DIR = "../sbom/lib"
+LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
@@ -71,13 +71,13 @@ def _cmd_graph_to_force_graph(
 
 
 if __name__ == "__main__":
-    cmd_graph_path = Path("sbom_analysis/cmd_graph.pickle")
-    src_tree = Path("../linux").resolve()
-    output_tree = Path("../linux/kernel-build").resolve()
+    script_path = Path(__file__).parent
+    cmd_graph_path = script_path / "cmd_graph.pickle"
+    src_tree = (script_path / "../../linux").resolve()
+    output_tree = (script_path / "../../linux/kernel-build").resolve()
     root_output_in_tree = Path("vmlinux")
-
-    cmd_graph_json_gz_path = Path("sbom_analysis/web/cmd_graph.json.gz")
-    max_visualization_depth = None
+    cmd_graph_json_gz_path = script_path / "web/cmd_graph.json.gz"
+    max_visualization_depth: int | None = None
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")

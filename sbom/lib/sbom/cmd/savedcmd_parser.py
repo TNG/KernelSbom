@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import shlex
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 
 @dataclass
@@ -214,7 +214,7 @@ def _parse_sed_command(command: str) -> list[Path]:
 
 
 # Command parser registry
-SINGLE_COMMAND_PARSERS = [
+SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"^objcopy\b"), _parse_objcopy_command),
     (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
     (re.compile(r"^rm\b"), _parse_noop),
@@ -235,12 +235,11 @@ SINGLE_COMMAND_PARSERS = [
     (re.compile(r"^sed\b"), _parse_sed_command),
 ]
 
-
-# If Block
+# If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
 IF_BLOCK_PATTERN = re.compile(
     r"""
-    ^if(.*?);\s*         # Match 'if <condition>;'
-    then(.*?);\s*        # Match 'then <body>;'
+    ^if(.*?);\s*         # Match 'if <condition>;' (non-greedy)
+    then(.*?);\s*        # Match 'then <body>;' (non-greedy)
     fi\b                 # Match 'fi'
     """,
     re.VERBOSE,

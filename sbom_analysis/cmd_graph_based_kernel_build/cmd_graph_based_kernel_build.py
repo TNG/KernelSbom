@@ -12,7 +12,7 @@ import shutil
 import sys
 from pathlib import Path
 
-LIB_DIR = "../sbom/lib"
+LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
@@ -54,17 +54,18 @@ def _remove_files(base_path: Path, patterns_to_remove: list[re.Pattern[str]], ig
 
 
 if __name__ == "__main__":
+    script_path = Path(__file__).parent
     # Paths to the original source and build directories
-    cmd_graph_path = Path("sbom_analysis/cmd_graph.pickle")
-    src_tree = Path("../linux").resolve()
-    output_tree = Path("../linux/kernel-build").resolve()
+    cmd_graph_path = script_path / "cmd_graph.pickle"
+    src_tree = (script_path / "../../linux").resolve()
+    output_tree = (script_path / "../../linux/kernel-build").resolve()
     root_output_in_tree = Path("vmlinux")
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Copy the original source tree
-    cmd_src_tree = Path("./linux-cmd").resolve()
+    cmd_src_tree = (script_path / "../../linux-cmd").resolve()
     if cmd_src_tree.exists():
         shutil.rmtree(cmd_src_tree)
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     ]
     logging.info("Extract source files from cmd graph")
     cmd_graph_sources = [s.relative_to(src_tree) for s in _get_files_in_cmd_graph(cmd_graph, source_patterns)]
-    with open("sbom_analysis/cmd_graph_sources.json", "wt") as f:
+    with open(script_path / "cmd_graph_sources.json", "wt") as f:
         json.dump([str(s) for s in cmd_graph_sources], f)
 
     additional_sources: list[Path] = [
@@ -116,5 +117,5 @@ if __name__ == "__main__":
         patterns_to_remove=source_patterns,
         ignore=set(cmd_graph_sources + additional_sources),
     )
-    with open("sbom_analysis/removed_sources.json", "wt") as f:
+    with open(script_path / "removed_sources.json", "wt") as f:
         json.dump([str(s) for s in removed_sources], f)

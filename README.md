@@ -33,10 +33,12 @@ Once complete, you should see the generated `sbom.spdx.json` file in your reposi
 ## Directory Structure
 
 - `sbom/`
-  - [sbom.py](sbom/sbom.py) — The main script responsible for generating the SBOM.
-  - `sbom/lib/sbom` — Library modules used by the main script.
-  - `sbom/lib/sbom_tests` — Unit tests for the library modules.
-- [sbom_analysis/](sbom_analysis/README.md) — Additional scripts for analyzing the outputs produced by the main script.
+  - [sbom.py](sbom/sbom.py) - The main script responsible for generating the SBOM.
+  - `sbom/lib/sbom` - Library modules used by the main script.
+  - `sbom/lib/sbom_tests` - Unit tests for the library modules.
+- `sbom_analysis` - Additional scripts for analyzing the outputs produced by the main script.
+  - [sbom_analysis/cmd_graph_based_kernel_build](sbom_analysis/cmd_graph_based_kernel_build/README.md) - Validation of cmd graph completeness by rebuilding the linux kernel only with files referenced in the cmd graph.
+  - [sbom_analysis/cmd_graph_visualization](sbom_analysis/cmd_graph_visualization/README.md) - Interactive visualization of the cmd graph
 
 The main contribution is the content of the `sbom` directory which eventually should be moved into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/) kernel source tree.
 

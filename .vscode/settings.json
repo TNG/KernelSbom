@@ -5,7 +5,7 @@
     "python.testing.unittestArgs": [
         "-v",
         "-s",
-        "./src/lib",
+        "./sbom/lib",
         "-p",
         "test_*.py"
     ],
