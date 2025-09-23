@@ -101,6 +101,13 @@ if __name__ == "__main__":
             *_get_files_in_directory(src_tree / "certs", source_patterns),
             *_get_files_in_directory(src_tree / "fs/efivarfs", source_patterns),
             *_get_files_in_directory(src_tree / "security/selinux", source_patterns),
+            *_get_files_in_directory(src_tree / "lib/crc", source_patterns),
+            *_get_files_in_directory(src_tree / "drivers/tty/vt", source_patterns),
+            *_get_files_in_directory(src_tree / "drivers/thermal/intel", source_patterns),
+            *_get_files_in_directory(src_tree / "drivers/firmware/efi/libstub", source_patterns),
+            *_get_files_in_directory(src_tree / "net/netfilter", source_patterns),
+            *_get_files_in_directory(src_tree / "net/ipv4/netfilter", source_patterns),
+            *_get_files_in_directory(src_tree / "net/ipv6/netfilter", source_patterns),
         ]
     ]
     logging.info("Remove source files not in cmd graph")
