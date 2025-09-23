@@ -35,7 +35,7 @@ def _copy_cmd_graph_sources(
 ) -> None:
     if _is_path_within(cmd_graph.absolute_path, output_tree):
         if depth <= log_graph_depth_limit:
-            logging.info(f"Copy Node: {depth * '  '}{cmd_graph.absolute_path.relative_to(output_tree)}")
+            logging.info(f"Copy Childs: {depth * '  '}{cmd_graph.absolute_path.relative_to(output_tree)}")
     else:
         relative_path = cmd_graph.absolute_path.relative_to(src_tree)
         if depth <= log_graph_depth_limit:
