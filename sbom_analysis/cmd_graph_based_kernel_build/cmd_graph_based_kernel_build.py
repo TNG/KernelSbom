@@ -172,6 +172,14 @@ if __name__ == "__main__":
             src_tree / "net/netfilter/xt_LOG.c",
             src_tree / "net/netfilter/xt_MASQUERADE.c",
             src_tree / "net/netfilter/xt_addrtype.c",
+            src_tree / "include/uapi/linux/netfilter/xt_LOG.h",
+            src_tree / "include/net/netfilter/ipv4/nf_reject.h",
+            src_tree / "include/net/netfilter/nf_reject.h",
+            src_tree / "include/net/netfilter/ipv6/nf_reject.h",
+            src_tree / "include/uapi/linux/netfilter/xt_mark.h",
+            src_tree / "include/uapi/linux/netfilter/xt_addrtype.h",
+            src_tree / "include/linux/export-internal.h",
+            src_tree / "include/linux/pe.h",
         ]
     ]
     logging.info("Remove source files not in cmd graph")
