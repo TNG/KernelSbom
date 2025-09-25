@@ -41,7 +41,7 @@ def build_cmd_graph(
         root_output_in_tree (Path): Path to the root output file relative to output_tree.
         output_tree (Path): absolute Path to the base directory of the output_tree.
         src_tree (Path): absolute Path to the `linux` source directory.
-        cache (dict, optional): Tracks processed nodes to prevent cycles.
+        cache (dict | None): Tracks processed nodes to prevent cycles.
         depth (int): Internal parameter to track the current recursion depth.
         log_graph_depth_limit (int): Maximum recursion depth up to which info-level messages are logged.
 
