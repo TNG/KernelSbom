@@ -24,19 +24,16 @@ _SUBCOMMAND_PATTERN = re.compile(r"\$\$\(([^()]*)\)")
 """Pattern to match $$(...) blocks"""
 
 
-def _tokenize_single_command(
-    command: str, flag_options: list[str] | None = None, concatenated_value_options: list[str] | None = None
-) -> list[Union[Option, Positional]]:
+def _tokenize_single_command(command: str, flag_options: list[str] | None = None) -> list[Union[Option, Positional]]:
     """
     Parse a shell command into a list of Options and Positionals.
     - Positional: the command and any positional arguments.
-    - Options: handles flags and options with values provided as space-separated, equals-sign, or concatenated forms
-        (e.g., '--opt val', '--opt=val', '--optValue', '--flag').
+    - Options: handles flags and options with values provided as space-separated, or equals-sign
+        (e.g., '--opt val', '--opt=val', '--flag').
 
     Args:
         command: Command line string.
         flag_options: Options that are flags without values (e.g., '--verbose').
-        concatenated_value_options: Options with values concatenated (e.g., '-I/usr/include').
 
     Returns:
         List of `Option` and `Positional` objects in command order.
@@ -62,16 +59,6 @@ def _tokenize_single_command(
             parsed.append(Option(name=token))
             i += 1
             continue
-
-        # Option with concatenated value
-        if concatenated_value_options:
-            matched_option = next(
-                (o for o in concatenated_value_options if token.startswith(o) and len(token) > len(o)), None
-            )
-            if matched_option:
-                parsed.append(Option(name=matched_option, value=token.removeprefix(matched_option)))
-                i += 1
-                continue
 
         # Option with equals sign (--opt=val)
         if "=" in token:
@@ -139,7 +126,7 @@ def _parse_ar_command(command: str) -> list[Path]:
     return [Path(p) for p in positionals[3:]]
 
 
-def _parse_ar_piped_command(command: str) -> list[Path]:
+def _parse_ar_piped_xargs_command(command: str) -> list[Path]:
     printf_command, _ = command.split("|", 1)
     positionals = _tokenize_single_command_positionals_only(printf_command.strip())
     # expect positionals to be ['printf', '{prefix_path}%s ', input1, input2, ...]
@@ -198,7 +185,20 @@ def _parse_genheaders_command(_: str) -> list[Path]:
 def _parse_ld_command(command: str) -> list[Path]:
     command_parts = _tokenize_single_command(
         command=command.strip(),
-        flag_options=["-shared", "--no-undefined", "--eh-frame-hdr", "-Bsymbolic"],
+        flag_options=[
+            "-shared",
+            "--no-undefined",
+            "--eh-frame-hdr",
+            "-Bsymbolic",
+            "-r",
+            "--no-ld-generated-unwind-info",
+            "--no-dynamic-linker",
+            "-pie",
+            "--no-dynamic-linker--whole-archive",
+            "--no-whole-archive",
+            "--start-group",
+            "--end-group",
+        ],
     )
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["ld", input1, input2, ...]
@@ -213,6 +213,59 @@ def _parse_sed_command(command: str) -> list[Path]:
     raise NotImplementedError("Unrecognized sed command format: {command}")
 
 
+def _parse_strip_command(command: str) -> list[Path]:
+    command_parts = _tokenize_single_command(command, flag_options=["--strip-debug"])
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be ["strip", input1, input2, ...]
+    return [Path(p) for p in positionals[1:]]
+
+
+def _parse_nm_piped_sed_command(command: str) -> list[Path]:
+    nm_command, _ = command.split("|", 1)
+    positionals = _tokenize_single_command_positionals_only(nm_command)
+    # expect positionals to be ["nm", input]
+    return [Path(positionals[1])]
+
+
+def _parse_mkpiggy_command(command: str) -> list[Path]:
+    mkpiggy_command, _ = command.split(">", 1)
+    positionals = _tokenize_single_command_positionals_only(mkpiggy_command)
+    # expect positionals to be ["mkpiggy", input]
+    return [Path(positionals[1])]
+
+
+def _parse_cat_piped_gzip_command(command: str) -> list[Path]:
+    cat_command, _ = command.split("|", 1)
+    positionals = _tokenize_single_command_positionals_only(cat_command)
+    # expect positionals to be ["cat", input1, input2, ...]
+    return [Path(p) for p in positionals[1:]]
+
+
+def _parse_relocs_command(command: str) -> list[Path]:
+    if ">" not in command:
+        # Only consider relocs commands that redirect output to a file.
+        # If there's no redirection, we assume it produces no output file and therefore has no input we care about.
+        return []
+    relocs_command, _ = command.split(">", 1)
+    positionals = _tokenize_single_command_positionals_only(relocs_command)
+    # expect positionals to be ["relocs", input]
+    return [Path(p) for p in positionals[1:]]
+
+
+def _parse_mkcpustr_command(command: str) -> list[Path]:
+    # At the time of writing `arch/x86/boot/cpustr.h` includes `cpufeatures.h`, `vmxfeatures.h`, and `capflags.c`.
+    # Since parsing .c files is out of scope for this tool the three input files are hardcoded.
+    return [
+        Path(p) for p in "../include/asm/cpufeatures.h ../include/asm/vmxfeatures.h ../kernel/cpu/capflags.c".split(" ")
+    ]
+
+
+def _parse_mk_elfconfig_command(command: str) -> list[Path]:
+    positionals = _tokenize_single_command_positionals_only(command)
+    # expect positionals to be ["mk_elfconfig", "<", input, ">", output]
+    return [Path(positionals[2])]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"^objcopy\b"), _parse_objcopy_command),
@@ -223,7 +276,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(/bin/)?true\b"), _parse_noop),
     (re.compile(r"^(/bin/)?false\b"), _parse_noop),
     (re.compile(r"^ar\b"), _parse_ar_command),
-    (re.compile(r"^printf\b.*\| xargs ar\b"), _parse_ar_piped_command),
+    (re.compile(r"^printf\b.*?\| xargs ar\b"), _parse_ar_piped_xargs_command),
     (re.compile(r"^gcc\b"), _parse_gcc_command),
     (re.compile(r"sh (.*/)?syscallhdr\.sh\b"), _parse_syscallhdr_command),
     (re.compile(r"sh (.*/)?syscalltbl\.sh\b"), _parse_syscalltbl_command),
@@ -232,8 +285,15 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
     (re.compile(r"(.*/)?genheaders\b"), _parse_genheaders_command),
     (re.compile(r"^ld\b"), _parse_ld_command),
-    (re.compile(r"^sed\b"), _parse_sed_command),
+    (re.compile(r"^sed.*?>"), _parse_sed_command),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
+    (re.compile(r"^strip\b"), _parse_strip_command),
+    (re.compile(r"^nm\b.*?\|\s*sed"), _parse_nm_piped_sed_command),
+    (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
+    (re.compile(r"^cat\b.*?\|\s*gzip"), _parse_cat_piped_gzip_command),
+    (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
+    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_mkcpustr_command),
+    (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.

@@ -18,7 +18,7 @@ from .cmd_file_parser import CmdFile, parse_cmd_file
 @dataclass
 class CmdGraphNode:
     absolute_path: Path
-    cmd_file: CmdFile | None
+    cmd_file: CmdFile | None = None
     children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
 
@@ -53,8 +53,9 @@ def build_cmd_graph(
         cache = {}
 
     root_output_absolute = Path(os.path.realpath(output_tree / root_output_in_tree))
-    if root_output_in_tree in cache:
-        logging.debug(f"Reuse Node: {'  ' * depth}{root_output_in_tree}")
+    if root_output_absolute in cache.keys():
+        if depth <= log_graph_depth_limit:
+            logging.info(f"Reuse Node: {'  ' * depth}{root_output_in_tree}")
         return cache[root_output_absolute]
 
     if depth <= log_graph_depth_limit:
@@ -81,9 +82,19 @@ def build_cmd_graph(
             # Input paths relative to the source tree. While .cmd files typically don't reference such paths directly, this case handles .cmd files
             # where inputs are omitted entirely despite depending on source tree files (e.g., `genheaders` command in `security/selinux/.flask.h.cmd`).
             child_path = Path(os.path.relpath(src_tree / input_file, output_tree))
+        elif (src_tree / root_output_in_tree.parent / input_file).exists():  # tools/objtool/libsubcmd/subcmd-util.h
+            # Input paths relative to the source file in the source tree. Like the previous case this case does not occur directly in cmd files but may occur
+            # when inputs are omitted entirely despite depending on source tree files (e.g., `mkcpustr` command in `arch/x86/boot/.cpustr.h.cmd`).
+            child_path = Path(os.path.relpath(src_tree / root_output_in_tree.parent / input_file))
         else:
+            # There are some special cases for which no good solution was found yet. For now those cases are simply excluded from the cmd graph.
+            if root_output_in_tree.parent == Path("tools/objtool/libsubcmd"):
+                # The cmd files like `tools/objtool/libsubcmd/.sigchain.o.cmd`, `.parse-options.o.cmd`, etc. all specify header files like 'subcmd-util.h' as dependency.
+                # However, these header files lie at a different location, e.g., `tools/lib/subcmd/subcmd-util.h`.
+                # Since the .cmd files provide no information about where these files lie, the unresolved children are simply ignored.
+                continue
             raise ValueError(f"Cannot resolve path: {input_file}")
-        child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1)
+        child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1, log_graph_depth_limit)
         node.children.append(child_node)
 
     return node
