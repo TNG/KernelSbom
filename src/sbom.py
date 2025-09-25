@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 from lib.sbom import spdx
 from lib.sbom.cmd.cmd_graph import build_cmd_graph
+import time
 
 
 @dataclass
@@ -81,9 +82,13 @@ def main():
 
     # Build cmd graph
     logging.info(f"Building cmd graph for {args.root_output_in_tree}")
+    start_time = time.time()
     cmd_graph = build_cmd_graph(  # noqa: F841 # type: ignore
-        root_output_in_tree=Path(args.root_output_in_tree), output_tree=Path(os.path.realpath(args.output_tree))
+        root_output_in_tree=Path(args.root_output_in_tree),
+        output_tree=Path(os.path.realpath(args.output_tree)),
+        src_tree=Path(os.path.realpath(args.src_tree)),
     )
+    logging.info(f"Build cmd graph in {time.time() - start_time} seconds")
 
     # Fill SPDX Document
     # TODO
