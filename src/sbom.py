@@ -14,7 +14,7 @@ import logging
 import os
 from pathlib import Path
 from lib.sbom import spdx
-from lib.sbom.cmd.cmd_graph import build_cmd_graph
+from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph
 import time
 
 
@@ -54,7 +54,7 @@ def parse_args() -> Args:
     return Args(**vars(ns))
 
 
-def create_basic_spdx_document() -> spdx.JsonLdDocument:
+def create_spdx_document(cmd_graph: CmdGraphNode) -> spdx.JsonLdDocument:
     person = spdx.Person(
         name="Luis Augenstein",
         externalIdentifier=[
@@ -62,11 +62,55 @@ def create_basic_spdx_document() -> spdx.JsonLdDocument:
         ],
     )
     creation_info = spdx.CreationInfo(createdBy=[person.spdxId])
-    software_sbom = spdx.SoftwareSbom(software_sbomType=["build"])
+
+    software_package = spdx.SoftwarePackage(
+        name="amazing-widget",
+        software_packageVersion="1.0",
+        software_downloadLocation="http://dl.example.com/amazing-widget_1.0.0.tar",
+        builtTime="2024-03-06T00:00:00Z",
+        originatedBy=[person.spdxId],
+        verifiedUsing=[spdx.Hash(hashValue="f3f60ce8615d1cfb3f6d7d149699ab53170ce0b8f24f841fb616faa50151082d")],
+    )
+    software_file1 = spdx.SoftwareFile(
+        name="/usr/bin/amazing-widget",
+        builtTime="2024-03-05T00:00:00Z",
+        originatedBy=[person.spdxId],
+        software_primaryPurpose="executable",
+        software_additionalPurpose=["application"],
+        software_copyrightText="Copyright 2024, Joshua Watt",
+        verifiedUsing=[spdx.Hash(hashValue="ee4f96ed470ea288be281407dacb380fd355886dbd52c8c684dfec3a90e78f45")],
+    )
+    software_file2 = spdx.SoftwareFile(
+        name="/etc/amazing-widget.cfg",
+        builtTime="2024-03-05T00:00:00Z",
+        originatedBy=[person.spdxId],
+        software_primaryPurpose="configuration",
+        verifiedUsing=[spdx.Hash(hashValue="ee4f96ed470ea288be281407dacb380fd355886dbd52c8c684dfec3a90e78f45")],
+    )
+    relationship = spdx.RelationShipContains(
+        from_=software_package.spdxId, to=[software_file1.spdxId, software_file2.spdxId], completeness="complete"
+    )
+
+    software_sbom = spdx.SoftwareSbom(
+        software_sbomType=["build"],
+        rootElement=[software_package.spdxId],
+        element=[software_file1.spdxId, software_file2.spdxId],
+    )
     spdx_document = spdx.SpdxDocument(
         profileConformance=["core", "software", "licensing", "build"], rootElement=[software_sbom.spdxId]
     )
-    return spdx.JsonLdDocument(graph=[person, creation_info, spdx_document, software_sbom])
+    return spdx.JsonLdDocument(
+        graph=[
+            person,
+            creation_info,
+            software_package,
+            software_file1,
+            software_file2,
+            relationship,
+            software_sbom,
+            spdx_document,
+        ]
+    )
 
 
 def main():
@@ -76,9 +120,6 @@ def main():
 
     # Configure logging
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="[%(levelname)s] %(message)s")
-
-    # Create initial SPDX document
-    doc = create_basic_spdx_document()
 
     # Build cmd graph
     logging.info(f"Building cmd graph for {args.root_output_in_tree}")
@@ -91,7 +132,7 @@ def main():
     logging.info(f"Build cmd graph in {time.time() - start_time} seconds")
 
     # Fill SPDX Document
-    # TODO
+    doc = create_spdx_document(cmd_graph)
 
     # Save SPDX Document
     json_string = doc.to_json()
