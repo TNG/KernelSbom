@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-.venv
-__pycache__
-sbom.spdx.json
-linux-cmd
-linux
+cmd_graph.pickle
+cmd_graph.json.gz
+cmd_graph_sources.json
+removed_sources.json

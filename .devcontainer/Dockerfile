@@ -6,11 +6,12 @@ FROM ubuntu:22.04
 RUN apt-get update && \
     apt-get install -y \
         build-essential linux-headers-generic bc \
-        flex bison python3 python3-pip python3-venv git libelf-dev libssl-dev
+        flex bison python3 python3-pip python3-venv git libelf-dev libssl-dev sudo
 WORKDIR /workspace
 
 # Create non root user
 RUN useradd -m -s /bin/bash ubuntu && \
+    echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     chown ubuntu:ubuntu /workspace
 USER ubuntu
 

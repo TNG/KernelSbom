@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+ln -s ../linux linux
+
 python3 -m venv .venv
 source .venv/bin/activate
 pip install pre-commit reuse ruff
-pre-commit install
+./.venv/bin/pre-commit install
