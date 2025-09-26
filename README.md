@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 SPDX-License-Identifier: GPL-2.0-only
 -->
 
-# LinuxKernelSbomGenerator
+# KernelSbom
 
 A script to generate an SPDX-format Software Bill of Materials (SBOM) for the `vmlinux` kernel build.
 The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/) kernel source tree.
@@ -28,7 +28,8 @@ This will:
     --root-output-in-tree vmlinux \
     --output sbom.spdx.json
   ```
-Once complete, you should see the generated `sbom.spdx.json` file in your repository directory.
+- Starting from `vmlinux` the script builds the **cmd graph**, a directed acyclic graph (DAG) where nodes are filenames and edges represent build dependencies extracted from `.<filename>.cmd` files.
+- Based on the cmd graph, the final `sbom.spdx.json` file is created and saved in this repository’s root directory.
 
 ## Directory Structure
 
