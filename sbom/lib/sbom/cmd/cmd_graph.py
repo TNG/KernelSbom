@@ -35,8 +35,8 @@ def build_cmd_graph(
     log_graph_depth_limit: int = 4,
 ) -> CmdGraphNode:
     """
-    Recursively builds a command dependency graph starting from `root_output_in_tree`. <br>
-    Assumes that for the given file a corresponding `.<root_output_in_tree.name>.cmd` file exists.
+    Recursively builds a dependency graph starting from `root_output_in_tree` by
+    parsing its corresponding `.<root_output_in_tree.name>.cmd` file to discover and follow dependencies.
 
     Args:
         root_output_in_tree (Path): Path to the root output file relative to output_tree.
