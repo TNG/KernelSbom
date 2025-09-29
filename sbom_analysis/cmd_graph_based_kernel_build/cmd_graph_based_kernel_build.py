@@ -69,6 +69,7 @@ if __name__ == "__main__":
         shutil.rmtree(cmd_src_tree)
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
     shutil.copytree(src_tree, cmd_src_tree, ignore=shutil.ignore_patterns(output_tree.relative_to(src_tree)))
+    shutil.rmtree(cmd_src_tree / ".git")
 
     # Load cached command graph if available, otherwise build it from .cmd files
     if cmd_graph_path.exists():
