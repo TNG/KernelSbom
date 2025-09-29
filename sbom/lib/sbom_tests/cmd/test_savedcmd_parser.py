@@ -113,6 +113,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = [Path("vmlinux.a")]
         self.assertEqual(parse_commands(cmd), expected)
 
+    def test_ld_with_at_symbol(self):
+        cmd = "ld -m elf_x86_64 -z noexecstack   -r -o fs/efivarfs/efivarfs.o @fs/efivarfs/efivarfs.mod"
+        expected = [Path("vmlinux.a")]
+        self.assertEqual(parse_commands(cmd), expected)
+
     # sed command tests
 
     def test_sed(self):
@@ -167,6 +172,20 @@ class TestSavedCmdParser(unittest.TestCase):
     def test_mk_elfconfig(self):
         cmd = "scripts/mod/mk_elfconfig < scripts/mod/empty.o > scripts/mod/elfconfig.h"
         expected = [Path("scripts/mod/empty.o")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # flex command tests
+
+    def test_flex(self):
+        cmd = "flex -oscripts/kconfig/lexer.lex.c -L ../scripts/kconfig/lexer.l"
+        expected = [Path("../scripts/kconfig/lexer.l")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # bison command tests
+
+    def test_bison(self):
+        cmd = "bison -o scripts/kconfig/parser.tab.c --defines=scripts/kconfig/parser.tab.h -t -l ../scripts/kconfig/parser.y"
+        expected = [Path("../scripts/kconfig/parser.y")]
         self.assertEqual(parse_commands(cmd), expected)
 
 

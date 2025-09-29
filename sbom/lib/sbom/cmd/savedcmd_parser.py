@@ -135,8 +135,6 @@ def _parse_ar_piped_xargs_command(command: str) -> list[Path]:
 
 def _parse_gcc_command(command: str) -> list[Path]:
     parts = shlex.split(command)
-    if "-c" not in parts:
-        raise NotImplementedError(f"Unsupported gcc command: missing '-c' compile flag.\nCommand: {command}")
     # expect last positional argument ending in `.c` or `.S` to be the input file
     for part in reversed(parts):
         if not part.startswith("-") and Path(part).suffix in [".c", ".S"]:
@@ -261,6 +259,24 @@ def _parse_mk_elfconfig_command(command: str) -> list[Path]:
     return [Path(positionals[2])]
 
 
+def _parse_flex_command(command: str) -> list[Path]:
+    parts = shlex.split(command)
+    # expect last positional argument ending in `.l` to be the input file
+    for part in reversed(parts):
+        if not part.startswith("-") and Path(part).suffix in [".l"]:
+            return [Path(part)]
+    raise ValueError(f"Could not find input source file in command: {command}")
+
+
+def _parse_bison_command(command: str) -> list[Path]:
+    parts = shlex.split(command)
+    # expect last positional argument ending in `.y` to be the input file
+    for part in reversed(parts):
+        if not part.startswith("-") and Path(part).suffix in [".y"]:
+            return [Path(part)]
+    raise ValueError(f"Could not find input source file in command: {command}")
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"^objcopy\b"), _parse_objcopy_command),
@@ -289,6 +305,8 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^cat\b.*?\|\s*gzip"), _parse_cat_piped_gzip_command),
     (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
     (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
+    (re.compile(r"^flex\b"), _parse_flex_command),
+    (re.compile(r"^bison\b"), _parse_bison_command),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
