@@ -77,59 +77,59 @@ def _cmd_graph_to_force_graph(
 
 
 def get_missing_files(src_tree: Path) -> list[Path]:
-    return [
-        Path("/workspace/linux/include/linux/export-internal.h"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/efistub.h"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/mem.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/randomalloc.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/pci.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/printk.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/tpm.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/smbios.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/relocate.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/random.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/alignedmem.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/file.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/skip_spaces.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/efi-stub-helper.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/gop.c"),
-        Path("/workspace/linux/drivers/firmware/efi/libstub/secureboot.c"),
-        Path("/workspace/linux/drivers/thermal/intel/x86_pkg_temp_thermal.c"),
-        Path("/workspace/linux/net/ipv6/netfilter/nf_reject_ipv6.c"),
-        Path("/workspace/linux/include/net/netfilter/nf_reject.h"),
-        Path("/workspace/linux/include/net/netfilter/ipv6/nf_reject.h"),
-        Path("/workspace/linux/net/netfilter/xt_addrtype.c"),
-        Path("/workspace/linux/include/uapi/linux/netfilter/xt_addrtype.h"),
-        Path("/workspace/linux/net/netfilter/nf_log_syslog.c"),
-        Path("/workspace/linux/include/uapi/linux/netfilter/xt_LOG.h"),
-        Path("/workspace/linux/net/netfilter/xt_mark.c"),
-        Path("/workspace/linux/include/uapi/linux/netfilter/xt_mark.h"),
-        Path("/workspace/linux/net/netfilter/xt_MASQUERADE.c"),
-        Path("/workspace/linux/net/netfilter/xt_LOG.c"),
-        Path("/workspace/linux/net/ipv4/netfilter/nf_reject_ipv4.c"),
-        Path("/workspace/linux/include/net/netfilter/ipv4/nf_reject.h"),
-        Path("/workspace/linux/arch/x86/boot/boot.h"),
-        Path("/workspace/linux/arch/x86/boot/bitops.h"),
-        Path("/workspace/linux/arch/x86/boot/ctype.h"),
-        Path("/workspace/linux/arch/x86/boot/cpuflags.h"),
-        Path("/workspace/linux/arch/x86/boot/io.h"),
-        Path("/workspace/linux/arch/x86/boot/video-mode.c"),
-        Path("/workspace/linux/include/linux/pe.h"),
-        Path("/workspace/linux/arch/x86/realmode/rm/video-mode.c"),
-        Path("/workspace/linux/arch/x86/realmode/rm/realmode.h"),
-        Path("/workspace/linux/arch/x86/realmode/rm/wakeup_asm.S"),
-        Path("/workspace/linux/arch/x86/realmode/rm/stack.S"),
-        Path("/workspace/linux/arch/x86/realmode/rm/header.S"),
-        Path("/workspace/linux/arch/x86/realmode/rm/trampoline_64.S"),
-        Path("/workspace/linux/arch/x86/realmode/rm/trampoline_common.S"),
-        Path("/workspace/linux/arch/x86/realmode/rm/wakemain.c"),
-        Path("/workspace/linux/arch/x86/realmode/rm/reboot.S"),
-        Path("/workspace/linux/arch/x86/tools/relocs_32.c"),
-        Path("/workspace/linux/arch/x86/tools/relocs.h"),
-        Path("/workspace/linux/arch/x86/tools/relocs.c"),
-        Path("/workspace/linux/arch/x86/tools/relocs_64.c"),
-        Path("/workspace/linux/arch/x86/tools/relocs_common.c"),
-    ]
+    # return [
+    #     Path("/workspace/linux/include/linux/export-internal.h"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/efistub.h"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/mem.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/randomalloc.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/pci.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/printk.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/tpm.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/smbios.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/relocate.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/random.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/alignedmem.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/file.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/skip_spaces.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/efi-stub-helper.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/gop.c"),
+    #     Path("/workspace/linux/drivers/firmware/efi/libstub/secureboot.c"),
+    #     Path("/workspace/linux/drivers/thermal/intel/x86_pkg_temp_thermal.c"),
+    #     Path("/workspace/linux/net/ipv6/netfilter/nf_reject_ipv6.c"),
+    #     Path("/workspace/linux/include/net/netfilter/nf_reject.h"),
+    #     Path("/workspace/linux/include/net/netfilter/ipv6/nf_reject.h"),
+    #     Path("/workspace/linux/net/netfilter/xt_addrtype.c"),
+    #     Path("/workspace/linux/include/uapi/linux/netfilter/xt_addrtype.h"),
+    #     Path("/workspace/linux/net/netfilter/nf_log_syslog.c"),
+    #     Path("/workspace/linux/include/uapi/linux/netfilter/xt_LOG.h"),
+    #     Path("/workspace/linux/net/netfilter/xt_mark.c"),
+    #     Path("/workspace/linux/include/uapi/linux/netfilter/xt_mark.h"),
+    #     Path("/workspace/linux/net/netfilter/xt_MASQUERADE.c"),
+    #     Path("/workspace/linux/net/netfilter/xt_LOG.c"),
+    #     Path("/workspace/linux/net/ipv4/netfilter/nf_reject_ipv4.c"),
+    #     Path("/workspace/linux/include/net/netfilter/ipv4/nf_reject.h"),
+    #     Path("/workspace/linux/arch/x86/boot/boot.h"),
+    #     Path("/workspace/linux/arch/x86/boot/bitops.h"),
+    #     Path("/workspace/linux/arch/x86/boot/ctype.h"),
+    #     Path("/workspace/linux/arch/x86/boot/cpuflags.h"),
+    #     Path("/workspace/linux/arch/x86/boot/io.h"),
+    #     Path("/workspace/linux/arch/x86/boot/video-mode.c"),
+    #     Path("/workspace/linux/include/linux/pe.h"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/video-mode.c"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/realmode.h"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/wakeup_asm.S"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/stack.S"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/header.S"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/trampoline_64.S"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/trampoline_common.S"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/wakemain.c"),
+    #     Path("/workspace/linux/arch/x86/realmode/rm/reboot.S"),
+    #     Path("/workspace/linux/arch/x86/tools/relocs_32.c"),
+    #     Path("/workspace/linux/arch/x86/tools/relocs.h"),
+    #     Path("/workspace/linux/arch/x86/tools/relocs.c"),
+    #     Path("/workspace/linux/arch/x86/tools/relocs_64.c"),
+    #     Path("/workspace/linux/arch/x86/tools/relocs_common.c"),
+    # ]
     # Below is the full list of missing files. At the time of writing not all of these files can be processed due to missing command parsers in savedcmd_parser.py.
     # Comment out the list above to get a full graph of the missing files.
     return [
@@ -273,15 +273,15 @@ if __name__ == "__main__":
             cache=cmd_graph_node_cache,
             log_graph_depth_limit=0,
         )
-        missing_files_in_new_graph = [
+        found_files_in_new_graph = [
             p for p in missing_files if p in cmd_graph_node_cache.keys() and p not in cmd_graph_node_cache_keys
         ]
-        logging.info(f"Found {len(missing_files_in_new_graph)} missing files: {missing_files_in_new_graph}")
-        if len(missing_files_in_new_graph) == 0:
+        logging.info(f"Found {len(found_files_in_new_graph)} additional files: {found_files_in_new_graph}")
+        if len(found_files_in_new_graph) == 0:
             continue
 
         cmd_graphs.append(new_graph)
-        missing_files = [f for f in missing_files if f not in missing_files_in_new_graph]
+        missing_files = [f for f in missing_files if f not in found_files_in_new_graph]
         if len(missing_files) == 0:
             logging.info("Found all missing files")
             break

@@ -86,14 +86,22 @@ def build_cmd_graph(
             # Input paths relative to the source file in the source tree. Like the previous case this case does not occur directly in cmd files but may occur
             # when inputs are omitted entirely despite depending on source tree files (e.g., `mkcpustr` command in `arch/x86/boot/.cpustr.h.cmd`).
             child_path = Path(os.path.relpath(src_tree / root_output_in_tree.parent / input_file))
+        elif root_output_in_tree.parent == Path("tools/objtool/libsubcmd"):
+            # The cmd files like `tools/objtool/libsubcmd/.sigchain.o.cmd`, `.parse-options.o.cmd`, etc. all specify header files like 'subcmd-util.h' as dependency.
+            # However, these header files lie at a different location, e.g., `tools/lib/subcmd/subcmd-util.h`.
+            # Since the .cmd files provide no information about where these files lie, the unresolved children are simply ignored.
+            child_path = Path(os.path.relpath(src_tree / "tools/lib/subcmd" / input_file, output_tree))
+        elif str(root_output_in_tree).startswith("tools/objtool"):
+            child_path = Path(os.path.relpath(src_tree / "tools/objtool" / input_file, output_tree))
+        elif root_output_in_tree.parent == Path("tools/objtool/arch/x86"):
+            # tools/objtool/arch/x86/.special.o.cmd has arch/x86/special.c as input
+            child_path = Path(os.path.relpath(src_tree / "tools/objtool" / input_file, output_tree))
+        # elif root_output_in_tree.parent == Path("tools/objtool"):
+        #     child_path = Path(os.path.relpath(src_tree / "tools/objtool" / input_file, output_tree))
         else:
-            # There are some special cases for which no good solution was found yet. For now those cases are simply excluded from the cmd graph.
-            if root_output_in_tree.parent == Path("tools/objtool/libsubcmd"):
-                # The cmd files like `tools/objtool/libsubcmd/.sigchain.o.cmd`, `.parse-options.o.cmd`, etc. all specify header files like 'subcmd-util.h' as dependency.
-                # However, these header files lie at a different location, e.g., `tools/lib/subcmd/subcmd-util.h`.
-                # Since the .cmd files provide no information about where these files lie, the unresolved children are simply ignored.
-                continue
-            raise ValueError(f"Cannot resolve path: {input_file}")
+            raise ValueError(f"Cannot resolve input: {input_file} of file for {_to_cmd_path(root_output_in_tree)}")
+        if not (output_tree / child_path).exists():
+            raise ValueError(f"root_output_in_tree {child_path} should be relative to output_tree {output_tree}")
         child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1, log_graph_depth_limit)
         node.children.append(child_node)
 
