@@ -28,3 +28,11 @@ jobs:
 
       - name: Tests
         run: python3 -m unittest discover -v -s sbom/lib -p "test_*.py"
+
+      - name: Cmd Graph Based Kernel Build
+        run: |
+          # Generate linux-cmd directory and validate that the kernel can be compiled using only source files referenced in the cmd graph.
+          python3 sbom_analysis/cmd_graph_based_kernel_build/cmd_graph_based_kernel_build.py
+          cd linux-cmd
+          make defconfig O=kernel-build
+          make -j$(nproc) O=kernel-build
