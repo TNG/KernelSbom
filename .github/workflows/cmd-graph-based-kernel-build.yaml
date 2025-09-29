@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
+name: CMD Graph Based Kernel Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/tng/kernel-sbom
+      options: --user 0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Post Create Setup
+        run: |
+          ln -s /workspace/linux linux
+     
+      # Build kernel with the current host config
+      - name: Kernel Build
+        run: |
+            rm -rf linux/kernel-build
+            ./.github/scripts/cmd-graph-based-kernel-build/build_kernel.sh ./linux
+
+      # Generate linux-cmd directory and validate that the kernel can be compiled using only source files referenced in the cmd graph.
+      - name: Cmd Graph Based Kernel Build
+        run: python3 sbom_analysis/cmd_graph_based_kernel_build/cmd_graph_based_kernel_build.py
+
+      # Build kernel with the current host config using only source files referenced in the cmd graph
+      - name: Cmd Graph Based Kernel Build
+        run: ./.github/scripts/cmd-graph-based-kernel-build/build_kernel.sh ./linux-cmd
