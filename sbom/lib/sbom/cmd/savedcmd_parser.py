@@ -177,9 +177,11 @@ def _parse_vdso2c_command(command: str) -> list[Path]:
 
 
 def _parse_genheaders_command(_: str) -> list[Path]:
-    # At the time of writing `security/selinux/genheaders.c` includes `classmap.h` and `initial_sid_to_string.h`.
-    # Since parsing .c files is out of scope for this tool the two header files are hardcoded.
-    return [Path("security/selinux/include/classmap.h"), Path("security/selinux/include/initial_sid_to_string.h")]
+    return [Path("security/selinux/genheaders")]
+
+
+def _parse_mkcpustr_command(_: str) -> list[Path]:
+    return [Path("arch/x86/boot/mkcpustr")]
 
 
 def _parse_ld_command(command: str) -> list[Path]:
@@ -195,6 +197,7 @@ def _parse_ld_command(command: str) -> list[Path]:
             "--no-dynamic-linker",
             "-pie",
             "--no-dynamic-linker--whole-archive",
+            "--whole-archive",
             "--no-whole-archive",
             "--start-group",
             "--end-group",
@@ -252,14 +255,6 @@ def _parse_relocs_command(command: str) -> list[Path]:
     return [Path(p) for p in positionals[1:]]
 
 
-def _parse_mkcpustr_command(command: str) -> list[Path]:
-    # At the time of writing `arch/x86/boot/cpustr.h` includes `cpufeatures.h`, `vmxfeatures.h`, and `capflags.c`.
-    # Since parsing .c files is out of scope for this tool the three input files are hardcoded.
-    return [
-        Path(p) for p in "../include/asm/cpufeatures.h ../include/asm/vmxfeatures.h ../kernel/cpu/capflags.c".split(" ")
-    ]
-
-
 def _parse_mk_elfconfig_command(command: str) -> list[Path]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["mk_elfconfig", "<", input, ">", output]
@@ -284,6 +279,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
     (re.compile(r"(.*/)?genheaders\b"), _parse_genheaders_command),
+    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_mkcpustr_command),
     (re.compile(r"^ld\b"), _parse_ld_command),
     (re.compile(r"^sed.*?>"), _parse_sed_command),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
@@ -292,7 +288,6 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
     (re.compile(r"^cat\b.*?\|\s*gzip"), _parse_cat_piped_gzip_command),
     (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
-    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_mkcpustr_command),
     (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
 ]
 

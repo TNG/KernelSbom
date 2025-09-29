@@ -98,8 +98,8 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_genheaders(self):
         cmd = "security/selinux/genheaders security/selinux/flask.h security/selinux/av_permissions.h"
-        expected = "security/selinux/include/classmap.h security/selinux/include/initial_sid_to_string.h"
-        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+        expected = [Path("security/selinux/genheaders")]
+        self.assertEqual(parse_commands(cmd), expected)
 
     # ld command tests
 
@@ -159,8 +159,8 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_mkcpustr(self):
         cmd = "arch/x86/boot/mkcpustr > arch/x86/boot/cpustr.h"
-        expected = "../include/asm/cpufeatures.h ../include/asm/vmxfeatures.h ../kernel/cpu/capflags.c"
-        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+        expected = [Path("arch/x86/boot/mkcpustr")]
+        self.assertEqual(parse_commands(cmd), expected)
 
     # mk_elfconfig command tests
 
