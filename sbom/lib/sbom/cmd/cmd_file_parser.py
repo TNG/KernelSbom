@@ -47,7 +47,7 @@ def parse_cmd_file(cmd_file_path: Path) -> CmdFile:
     line1 = re.compile(SOURCE_PATTERN).match(lines[1])
     if line1 is None:
         logging.warning(
-            "No 'source_' command found in second line of {cmd_file_path}. Skip parsing after first line for this file."
+            f"No 'source_' command found in second line of {cmd_file_path}. Skip parsing after first line for this file."
         )
         return CmdFile(cmd_file_path, savedcmd)
     source = line1.group("full_command")

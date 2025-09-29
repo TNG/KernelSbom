@@ -16,7 +16,7 @@ LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-from sbom.cmd.cmd_graph import build_cmd_graph, CmdGraphNode, load_cmd_graph, save_cmd_graph  # noqa: E402
+from sbom.cmd.cmd_graph import CmdGraphNode, build_or_load_cmd_graph  # noqa: E402
 
 
 def _get_files_in_cmd_graph(cmd_graph: CmdGraphNode, patterns: list[re.Pattern[str]]) -> list[Path]:
@@ -72,13 +72,7 @@ if __name__ == "__main__":
     shutil.rmtree(cmd_src_tree / ".git")
 
     # Load cached command graph if available, otherwise build it from .cmd files
-    if cmd_graph_path.exists():
-        logging.info("Load cmd graph")
-        cmd_graph = load_cmd_graph(cmd_graph_path)
-    else:
-        logging.info("Build cmd graph")
-        cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
-        save_cmd_graph(cmd_graph, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_output_in_tree, output_tree, src_tree, cmd_graph_path)
 
     # remove source files not in cmd_graph
     source_patterns = [

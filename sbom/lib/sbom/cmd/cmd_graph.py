@@ -22,10 +22,6 @@ class CmdGraphNode:
     children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
 
-def _to_cmd_path(path: Path) -> Path:
-    return path.parent / f".{path.name}.cmd"
-
-
 def build_cmd_graph(
     root_output_in_tree: Path,
     output_tree: Path,
@@ -71,6 +67,7 @@ def build_cmd_graph(
     input_files = parse_commands(cmd_file.savedcmd)
     if cmd_file.deps:
         input_files += parse_deps(cmd_file.deps, output_tree)
+    input_files = _expand_resolve_files(input_files, output_tree)
 
     if len(input_files) == 0:
         return node
@@ -90,6 +87,39 @@ def build_cmd_graph(
         node.children.append(child_node)
 
     return node
+
+
+def iter_files_in_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[Path]:
+    yield cmd_graph.absolute_path
+    for child_node in cmd_graph.children:
+        yield from iter_files_in_cmd_graph(child_node)
+
+
+def save_cmd_graph(node: CmdGraphNode, path: Path) -> None:
+    with open(path, "wb") as f:
+        pickle.dump(node, f)
+
+
+def load_cmd_graph(path: Path) -> CmdGraphNode:
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+def build_or_load_cmd_graph(
+    root_output_in_tree: Path, output_tree: Path, src_tree: Path, cmd_graph_path: Path
+) -> CmdGraphNode:
+    if cmd_graph_path.exists():
+        logging.info("Load cmd graph")
+        cmd_graph = load_cmd_graph(cmd_graph_path)
+    else:
+        logging.info("Build cmd graph")
+        cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
+        save_cmd_graph(cmd_graph, cmd_graph_path)
+    return cmd_graph
+
+
+def _to_cmd_path(path: Path) -> Path:
+    return path.parent / f".{path.name}.cmd"
 
 
 def _get_working_directory(output_tree: Path, src_tree: Path, root_output_in_tree: Path, input_file: Path) -> Path:
@@ -126,17 +156,14 @@ def _get_working_directory(output_tree: Path, src_tree: Path, root_output_in_tre
     raise ValueError(f"Cannot resolve input: {input_file} of file for {_to_cmd_path(root_output_in_tree)}")
 
 
-def save_cmd_graph(node: CmdGraphNode, path: Path) -> None:
-    with open(path, "wb") as f:
-        pickle.dump(node, f)
-
-
-def load_cmd_graph(path: Path) -> CmdGraphNode:
-    with open(path, "rb") as f:
-        return pickle.load(f)
-
-
-def iter_files_in_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[Path]:
-    yield cmd_graph.absolute_path
-    for child_node in cmd_graph.children:
-        yield from iter_files_in_cmd_graph(child_node)
+def _expand_resolve_files(input_files: list[Path], output_tree: Path) -> list[Path]:
+    expanded_input_files: list[Path] = []
+    for input_file in input_files:
+        input_file_str = str(input_file)
+        if not input_file_str.startswith("@"):
+            expanded_input_files.append(input_file)
+            continue
+        with open(output_tree / input_file_str[1:], "r") as f:
+            resolve_file_content = [Path(line.strip()) for line in f.readlines() if line.strip()]
+        expanded_input_files += _expand_resolve_files(resolve_file_content, output_tree)
+    return expanded_input_files

@@ -35,9 +35,6 @@ SPDX-License-Identifier: GPL-2.0-only
                 };
 
                 const colorScale = node => {
-                    if (node.root_node_index == 0) {
-                        return '#f0f0f0';
-                    }
                     if (node.id.endsWith("built-in.a")) {
                         return '#000000'
                     }
@@ -54,7 +51,7 @@ SPDX-License-Identifier: GPL-2.0-only
                     }
                 };
 
-                const size = depth => 5 + 10 * Math.exp(-0.5 * depth);
+                const size = (node) => (node.root_node_index == 0 && node.depth == 0) ? 50 : (5 + 10 * Math.exp(-0.5 * node.depth));
 
                 ForceGraph()(document.getElementById('graph'))
                     .graphData(data)
@@ -65,14 +62,14 @@ SPDX-License-Identifier: GPL-2.0-only
                     .enablePointerInteraction(true)
                     .nodeLabel(node => formatNodeLabel(node))
                     .nodeCanvasObject((node, ctx, globalScale) => {
-                        const radius = size(node.depth);
+                        const radius = size(node);
                         ctx.beginPath();
                         ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
                         ctx.fillStyle = colorScale(node);
                         ctx.fill();
                     })
                     .nodePointerAreaPaint((node, color, ctx) => {
-                        const radius = size(node.depth);
+                        const radius = size(node);
                         ctx.fillStyle = color;
                         ctx.beginPath();
                         ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);

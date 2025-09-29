@@ -17,7 +17,7 @@ LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-from sbom.cmd.cmd_graph import build_cmd_graph, CmdGraphNode, load_cmd_graph, save_cmd_graph  # noqa: E402
+from sbom.cmd.cmd_graph import build_cmd_graph, CmdGraphNode, build_or_load_cmd_graph  # noqa: E402
 
 ForceGraphNodeId = str
 
@@ -77,59 +77,6 @@ def _cmd_graph_to_force_graph(
 
 
 def get_missing_files(src_tree: Path) -> list[Path]:
-    # return [
-    #     Path("/workspace/linux/include/linux/export-internal.h"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/efistub.h"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/mem.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/randomalloc.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/pci.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/printk.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/tpm.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/smbios.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/relocate.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/random.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/alignedmem.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/file.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/skip_spaces.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/efi-stub-helper.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/gop.c"),
-    #     Path("/workspace/linux/drivers/firmware/efi/libstub/secureboot.c"),
-    #     Path("/workspace/linux/drivers/thermal/intel/x86_pkg_temp_thermal.c"),
-    #     Path("/workspace/linux/net/ipv6/netfilter/nf_reject_ipv6.c"),
-    #     Path("/workspace/linux/include/net/netfilter/nf_reject.h"),
-    #     Path("/workspace/linux/include/net/netfilter/ipv6/nf_reject.h"),
-    #     Path("/workspace/linux/net/netfilter/xt_addrtype.c"),
-    #     Path("/workspace/linux/include/uapi/linux/netfilter/xt_addrtype.h"),
-    #     Path("/workspace/linux/net/netfilter/nf_log_syslog.c"),
-    #     Path("/workspace/linux/include/uapi/linux/netfilter/xt_LOG.h"),
-    #     Path("/workspace/linux/net/netfilter/xt_mark.c"),
-    #     Path("/workspace/linux/include/uapi/linux/netfilter/xt_mark.h"),
-    #     Path("/workspace/linux/net/netfilter/xt_MASQUERADE.c"),
-    #     Path("/workspace/linux/net/netfilter/xt_LOG.c"),
-    #     Path("/workspace/linux/net/ipv4/netfilter/nf_reject_ipv4.c"),
-    #     Path("/workspace/linux/include/net/netfilter/ipv4/nf_reject.h"),
-    #     Path("/workspace/linux/arch/x86/boot/boot.h"),
-    #     Path("/workspace/linux/arch/x86/boot/bitops.h"),
-    #     Path("/workspace/linux/arch/x86/boot/ctype.h"),
-    #     Path("/workspace/linux/arch/x86/boot/cpuflags.h"),
-    #     Path("/workspace/linux/arch/x86/boot/io.h"),
-    #     Path("/workspace/linux/arch/x86/boot/video-mode.c"),
-    #     Path("/workspace/linux/include/linux/pe.h"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/video-mode.c"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/realmode.h"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/wakeup_asm.S"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/stack.S"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/header.S"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/trampoline_64.S"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/trampoline_common.S"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/wakemain.c"),
-    #     Path("/workspace/linux/arch/x86/realmode/rm/reboot.S"),
-    #     Path("/workspace/linux/arch/x86/tools/relocs_32.c"),
-    #     Path("/workspace/linux/arch/x86/tools/relocs.h"),
-    #     Path("/workspace/linux/arch/x86/tools/relocs.c"),
-    #     Path("/workspace/linux/arch/x86/tools/relocs_64.c"),
-    #     Path("/workspace/linux/arch/x86/tools/relocs_common.c"),
-    # ]
     # Below is the full list of missing files. At the time of writing not all of these files can be processed due to missing command parsers in savedcmd_parser.py.
     # Comment out the list above to get a full graph of the missing files.
     return [
@@ -247,14 +194,8 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Load cached command graph if available, otherwise build it from .cmd files
-    cmd_graph_node_cache: dict[Path, CmdGraphNode] = {}
-    if cmd_graph_path.exists():
-        logging.info("Loading cmd graph")
-        cmd_graph = load_cmd_graph(cmd_graph_path)
-        cmd_graph_node_cache = cmd_graph_to_node_dict(cmd_graph)
-    else:
-        cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree, cmd_graph_node_cache)
-        save_cmd_graph(cmd_graph, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_output_in_tree, output_tree, src_tree, cmd_graph_path)
+    cmd_graph_node_cache = cmd_graph_to_node_dict(cmd_graph)
 
     # Extend cmd graph with missing files
     cmd_graphs: list[CmdGraphNode] = [CmdGraphNode(absolute_path=cmd_graph.absolute_path)]
