@@ -10,6 +10,9 @@ on:
       - main
     paths:
       - '.devcontainer/Dockerfile'
+  # pull_request:
+  #   branches:
+  #     - main
   workflow_dispatch:
   
 
