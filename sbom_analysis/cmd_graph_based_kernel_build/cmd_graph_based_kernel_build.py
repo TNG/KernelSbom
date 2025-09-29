@@ -30,14 +30,6 @@ def _get_files_in_cmd_graph(cmd_graph: CmdGraphNode, patterns: list[re.Pattern[s
     return cmd_graph_files
 
 
-def _get_files_in_directory(dir: Path, patterns: list[re.Pattern[str]]) -> list[Path]:
-    return [
-        file_path
-        for file_path in dir.rglob("**/*")
-        if file_path.is_file() and any(p.match(str(file_path)) for p in patterns)
-    ]
-
-
 def _remove_files(base_path: Path, patterns_to_remove: list[re.Pattern[str]], ignore: set[Path]) -> list[Path]:
     removed_files: list[Path] = []
     for file_path in base_path.rglob("*"):
@@ -67,18 +59,29 @@ def _build_kernel(cwd: Path) -> Path | None:
     """
     Builds the kernel using the default config. If an error occurs it returns the missing file that caused the build error.
     """
-    returncode, output = run_command_live(["make", "defconfig", "O=kernel_build"], cwd)
-    if returncode != 0:
-        match = re.search(r"No rule to make target '([^']+)'", "".join(output))
+
+    def parse_error(output: str) -> Path:
+        match = re.search(r"No rule to make target '([^']+)'", output)
         if match:
             missing_file = match.group(1)
             return Path(missing_file)
-        raise RuntimeError("Failed to create defconfig")
+        match = re.search(r"fatal error: ([^']+): No such file or directory", output)
+        if match:
+            missing_file = match.group(1)
+            return Path(missing_file)
+        match = re.search(r"cannot open ([^']+): No such file", output)
+        if match:
+            missing_file = match.group(1)
+            return Path(missing_file)
+        raise RuntimeError("Failed to build kernel")
 
-    returncode, _ = run_command_live(["make", "O=kernel_build"], cwd)
+    returncode, outputs = run_command_live(["make", "defconfig", "O=kernel_build"], cwd)
+    if returncode != 0:
+        return parse_error("".join(outputs))
 
-    returncode, output = run_command_live(["make", "O=kernel_build"], cwd)
-    print(output)
+    returncode, outputs = run_command_live(["make", "O=kernel_build"], cwd)
+    if returncode != 0:
+        return parse_error("".join(outputs))
 
 
 if __name__ == "__main__":
@@ -204,10 +207,21 @@ if __name__ == "__main__":
     #         src_tree / "include/linux/pe.h",
     #     ]
     # ]
-    missing_sources_in_cmd_graph: list[Path] = []
+    missing_sources_in_cmd_graph: list[Path] = [
+        # The missing files that had to be added manually because parsing the error messages was too hard:
+        Path(s)
+        for s in [
+            "tools/include/linux/types.h",
+            "include/asm-generic/fprobe.h",
+            "include/asm-generic/dma-mapping.h",
+            "include/asm-generic/module.lds.h",
+            "include/asm-generic/xor.h",
+            "scripts/mod/empty.c",
+        ]
+    ]
     if (script_path / "missing_sources_in_cmd_graph.json").exists():
         with open(script_path / "missing_sources_in_cmd_graph.json", "r") as f:
-            missing_sources_in_cmd_graph = json.load(f)
+            missing_sources_in_cmd_graph += [Path(p) for p in json.load(f)]
 
     logging.info("Remove source files not in cmd graph")
     _remove_files(
@@ -222,10 +236,38 @@ if __name__ == "__main__":
         if missing_source is None:
             logging.info("Successfully built kernel")
             break
+        found_sources: list[Path] = []
+        while len(found_sources) == 0:
+            logging.info(f"Searching src_tree for {missing_source}")
+            if missing_source == Path("modpost.h"):
+                print(missing_source)
+            found_sources = [
+                Path(os.path.relpath(s, src_tree))
+                for s in src_tree.rglob(str(missing_source))
+                if "kernel_build" not in str(s)
+            ]
+            if len(missing_source.parts) == 0:
+                raise RuntimeError("No source found")
+            missing_source = Path(*missing_source.parts[1:])
+        if len(found_sources) == 1:
+            found_source = found_sources[0]
+            logging.info(f"Found missing source: {found_source}.")
+        else:
+            logging.info("Found multiple missing sources")
+            if missing_sources_in_cmd_graph[-1] not in found_sources:
+                found_source = found_sources[0]
+            else:
+                previously_selected_index = found_sources.index(missing_sources_in_cmd_graph.pop())
+                if previously_selected_index + 1 == len(found_sources):
+                    raise RuntimeError(f"None of the found sources {found_sources} fixes the build error.")
+                found_source = found_sources[previously_selected_index + 1]
 
-        logging.info(f"Found missing source: {missing_source}.")
-        shutil.copy2(src_tree / missing_source, cmd_src_tree / missing_source)
-        missing_sources_in_cmd_graph.append(src_tree / missing_source)
+        shutil.copy2(src_tree / found_source, cmd_src_tree / found_source)
+        missing_sources_in_cmd_graph.append(found_source)
 
         with open(script_path / "missing_sources_in_cmd_graph.json", "wt") as f:
-            json.dump([str(missing_file) for missing_file in missing_sources_in_cmd_graph], f)
+            json.dump(
+                [str(source_file) for source_file in missing_sources_in_cmd_graph],
+                f,
+                indent=2,
+            )
