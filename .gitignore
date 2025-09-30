@@ -7,3 +7,4 @@ __pycache__
 sbom.spdx.json
 linux_cmd
 linux
+linux.*
