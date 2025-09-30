@@ -13,6 +13,6 @@ services:
     command: >
       python3 src/sbom.py
         --src-tree ../linux
-        --output-tree ../linux/kernel-build
+        --output-tree ../linux/kernel_build
         --root-output-in-tree vmlinux
         --output sbom.spdx.json

@@ -74,7 +74,7 @@ if __name__ == "__main__":
     script_path = Path(__file__).parent
     cmd_graph_path = script_path / "cmd_graph.pickle"
     src_tree = (script_path / "../../linux").resolve()
-    output_tree = (script_path / "../../linux/kernel-build").resolve()
+    output_tree = (script_path / "../../linux/kernel_build").resolve()
     root_output_in_tree = Path("vmlinux")
     cmd_graph_json_gz_path = script_path / "web/cmd_graph.json.gz"
     max_visualization_depth: int | None = None

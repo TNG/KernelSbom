@@ -47,7 +47,6 @@ def _remove_files(base_path: Path, patterns_to_remove: list[re.Pattern[str]], ig
         ):
             continue
 
-        logging.info(f"Delete {file_path}")
         file_path.unlink()
         removed_files.append(file_path)
     return removed_files
@@ -58,14 +57,14 @@ if __name__ == "__main__":
     # Paths to the original source and build directories
     cmd_graph_path = script_path / "cmd_graph.pickle"
     src_tree = (script_path / "../../linux").resolve()
-    output_tree = (script_path / "../../linux/kernel-build").resolve()
+    output_tree = (script_path / "../../linux/kernel_build").resolve()
     root_output_in_tree = Path("vmlinux")
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Copy the original source tree
-    cmd_src_tree = (script_path / "../../linux-cmd").resolve()
+    cmd_src_tree = (script_path / "../../linux_cmd").resolve()
     if cmd_src_tree.exists():
         shutil.rmtree(cmd_src_tree)
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
@@ -76,6 +75,7 @@ if __name__ == "__main__":
         logging.info("Load cmd graph")
         cmd_graph = load_cmd_graph(cmd_graph_path)
     else:
+        logging.info("Build cmd graph")
         cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
         save_cmd_graph(cmd_graph, cmd_graph_path)
 

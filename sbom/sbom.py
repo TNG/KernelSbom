@@ -37,8 +37,8 @@ def parse_args() -> Args:
     )
     parser.add_argument(
         "--output-tree",
-        default="../linux/kernel-build",
-        help="Path to the build output tree directory (default: ../linux/kernel-build)",
+        default="../linux/kernel_build",
+        help="Path to the build output tree directory (default: ../linux/kernel_build)",
     )
     parser.add_argument(
         "--root-output-in-tree",

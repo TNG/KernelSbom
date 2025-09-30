@@ -18,13 +18,13 @@ docker compose up
 This will:
 - Build a Docker image based on the included [Dockerfile](./Dockerfile).
 - Clone the Linux kernel repository during the image build.
-- Compile the kernel out-of-tree into `linux/kernel-build`.
+- Compile the kernel out-of-tree into `linux/kernel_build`.
 - Start a container with this repository mounted as volume.
 - Run the [sbom.py](sbom/sbom.py) script inside the container:
   ```bash
   python3 sbom/sbom.py \
     --src-tree ../linux \
-    --output-tree ../linux/kernel-build \
+    --output-tree ../linux/kernel_build \
     --root-output-in-tree vmlinux \
     --output sbom.spdx.json
   ```

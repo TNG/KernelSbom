@@ -17,5 +17,5 @@ USER ubuntu
 
 RUN git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 RUN cd linux && \
-    make defconfig O=kernel-build && \
-    make -j$(nproc) O=kernel-build
+    make defconfig O=kernel_build && \
+    make -j$(nproc) O=kernel_build
