@@ -3,7 +3,7 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace/LinuxKernelSbomGenerator,type=bind",
 	"workspaceFolder": "/workspace/LinuxKernelSbomGenerator",
 	"build": {
-		"context": "..",
+		"context": ".",
 		"dockerfile": "./Dockerfile"
 	},
 	"customizations": {
