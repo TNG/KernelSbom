@@ -115,7 +115,7 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_ld_with_at_symbol(self):
         cmd = "ld -m elf_x86_64 -z noexecstack   -r -o fs/efivarfs/efivarfs.o @fs/efivarfs/efivarfs.mod"
-        expected = [Path("vmlinux.a")]
+        expected = [Path("@fs/efivarfs/efivarfs.mod")]
         self.assertEqual(parse_commands(cmd), expected)
 
     # sed command tests
