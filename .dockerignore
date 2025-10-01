@@ -5,3 +5,11 @@
 Dockerfile
 docker-compose.yaml
 sbom.spdx.json
+
+# from .gitignore
+.venv
+__pycache__
+sbom.spdx.json
+linux-cmd
+linux
+linux.*
