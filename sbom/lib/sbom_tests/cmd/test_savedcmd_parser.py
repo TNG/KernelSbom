@@ -5,7 +5,7 @@
 from pathlib import Path
 import unittest
 
-from lib.sbom.cmd.savedcmd_parser import parse_commands
+from sbom.cmd.savedcmd_parser import parse_commands
 
 
 class TestSavedCmdParser(unittest.TestCase):

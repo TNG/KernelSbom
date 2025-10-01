@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: REUSE Compliance Check
+        uses: fsfe/reuse-action@v4
+      
+      - name: RUFF
+        uses: astral-sh/ruff-action@v3
+      
+      - name: Tests
+        run: python3 -m unittest discover -v -s sbom/lib -p "test_*.py"
