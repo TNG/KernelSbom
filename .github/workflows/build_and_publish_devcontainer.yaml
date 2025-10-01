@@ -4,9 +4,7 @@
 name: Build and Publish Devcontainer Images
 
 on:
-    pull_request:
-        branches:
-            - main
+    push:
     workflow_dispatch:
         inputs:
             config:
@@ -37,11 +35,11 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build and Push image for ${{ inputs.config }}
+            - name: Build and Push image for defconfig
               run: |
                   docker build \
-                    --build-arg CONFIG=${{ inputs.config }} \
+                    --build-arg CONFIG=defconfig \
                     -f .devcontainer/Dockerfile \
-                    -t ghcr.io/tng/kernel-sbom-devcontainer:${{ inputs.config }} .
+                    -t ghcr.io/tng/kernel-sbom-devcontainer:defconfig .
 
-                  docker push ghcr.io/tng/kernel-sbom-devcontainer:${{ inputs.config }}
+                  docker push ghcr.io/tng/kernel-sbom-devcontainer:defconfig
