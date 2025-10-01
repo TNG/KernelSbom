@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+#
+# SPDX-License-Identifier: GPL-2.0-only
+name: Build and Publish Devcontainer Images
+
+on:
+    pull_request:
+        branches:
+            - main
+    workflow_dispatch:
+        inputs:
+            config:
+                description: 'Name of the config to use for the make command to build the linux kernel'
+                type: choice
+                default: defconfig
+                options:
+                    - defconfig
+                    - allyesconfig
+                    - allmodconfig
+                    - allnoconfig
+                    - randconfig
+                    - localmodconfig
+                    - tinyconfig
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Build and Push image for ${{ inputs.config }}
+              run: |
+                  docker build \
+                    --build-arg CONFIG=${{ inputs.config }} \
+                    -f .devcontainer/Dockerfile \
+                    -t ghcr.io/tng/kernel-sbom-devcontainer:${{ inputs.config }} .
+
+                  docker push ghcr.io/tng/kernel-sbom-devcontainer:${{ inputs.config }}
