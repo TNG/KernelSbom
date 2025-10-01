@@ -174,14 +174,6 @@ def _parse_vdso2c_command(command: str) -> list[Path]:
     return [Path(positionals[1]), Path(positionals[2])]
 
 
-def _parse_genheaders_command(_: str) -> list[Path]:
-    return [Path("security/selinux/genheaders")]
-
-
-def _parse_mkcpustr_command(_: str) -> list[Path]:
-    return [Path("arch/x86/boot/mkcpustr")]
-
-
 def _parse_ld_command(command: str) -> list[Path]:
     command_parts = _tokenize_single_command(
         command=command.strip(),
@@ -294,8 +286,8 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
-    (re.compile(r"(.*/)?genheaders\b"), _parse_genheaders_command),
-    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_mkcpustr_command),
+    (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
+    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
     (re.compile(r"^ld\b"), _parse_ld_command),
     (re.compile(r"^sed.*?>"), _parse_sed_command),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),

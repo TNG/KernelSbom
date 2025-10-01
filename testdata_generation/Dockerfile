@@ -12,12 +12,6 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /workspace
 
-RUN set -x \
-    && useradd -m -s /bin/bash ubuntu \
-    && echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
-    && chown ubuntu:ubuntu /workspace
-USER ubuntu
-
 ARG GIT_TAG=v6.17
 RUN git clone --depth 1 --branch "$GIT_TAG" https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 

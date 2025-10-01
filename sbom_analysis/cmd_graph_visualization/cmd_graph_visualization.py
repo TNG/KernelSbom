@@ -212,7 +212,7 @@ if __name__ == "__main__":
             output_tree=output_tree,
             src_tree=src_tree,
             cache=cmd_graph_node_cache,
-            log_graph_depth_limit=0,
+            log_depth=0,
         )
         found_files_in_new_graph = [
             p for p in missing_files if p in cmd_graph_node_cache.keys() and p not in cmd_graph_node_cache_keys
