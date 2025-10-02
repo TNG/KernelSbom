@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 FROM ubuntu:22.04
+
 RUN set -x \
     && apt-get -y update \
     && apt-get install -y --no-install-recommends \
-        build-essential linux-headers-generic bc \
-        flex bison python3 python3-pip python3-venv git libelf-dev libssl-dev gawk sudo \
+        build-essential linux-headers-generic bc zstd ca-certificates \
+        flex bison python3 git libelf-dev libssl-dev gawk sudo \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /workspace
 
@@ -17,7 +18,9 @@ RUN set -x \
     && chown ubuntu:ubuntu /workspace
 USER ubuntu
 
-RUN git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+ARG GIT_TAG=v6.17
+RUN git clone --depth 1 --branch "$GIT_TAG" https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+
 ARG CONFIG=defconfig
 RUN set -x \
     && cd linux \
