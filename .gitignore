@@ -5,6 +5,7 @@
 .venv
 __pycache__
 sbom.spdx.json
+sbom.used_files.txt
 linux_cmd
 linux
 linux.*

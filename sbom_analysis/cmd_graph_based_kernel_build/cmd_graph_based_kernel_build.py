@@ -55,7 +55,7 @@ def _remove_files(base_path: Path, patterns_to_remove: list[re.Pattern[str]], ig
 if __name__ == "__main__":
     script_path = Path(__file__).parent
     # Paths to the original source and build directories
-    cmd_graph_path = script_path / "cmd_graph.pickle"
+    cmd_graph_path = script_path / "../cmd_graph.pickle"
     src_tree = (script_path / "../../linux").resolve()
     output_tree = (script_path / "../../linux/kernel_build").resolve()
     root_output_in_tree = Path("vmlinux")
