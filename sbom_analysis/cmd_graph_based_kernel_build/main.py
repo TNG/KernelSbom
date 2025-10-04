@@ -9,9 +9,9 @@ import logging
 import os
 import re
 import shutil
-import subprocess
 import sys
 from pathlib import Path
+from build_kernel import build_kernel
 
 LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -33,56 +33,6 @@ def _remove_files(base_path: Path, patterns_to_remove: list[re.Pattern[str]], ig
         file_path.unlink()
         removed_files.append(file_path)
     return removed_files
-
-
-def _run_command(cmd: list[str], cwd: Path) -> tuple[int, list[str]]:
-    result = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    output = result.stdout.splitlines()
-    return result.returncode, output
-
-
-def _find_make_error(strace_outputs: list[str]) -> str:
-    make_error_patterns = [
-        r"No rule to make target '([^'\s]+)'",
-        r"([^'\s]+): No such file or directory",
-        r"cannot open ([^'\s]+): No such file",
-    ]
-    error = next(
-        (line for line in reversed(strace_outputs) if any(re.search(pattern, line) for pattern in make_error_patterns)),
-        None,
-    )
-    return error
-
-
-def _get_potential_missing_files(strace_outputs: list[str], src_tree: Path, output_tree: Path) -> list[Path]:
-    """
-    parses the strace output and returns potentially missing files that could fix the make error.
-    """
-    make_error_patterns = [
-        r"No rule to make target '([^'\s]+)'",
-        r"([^'\s]+): No such file or directory",
-        r"cannot open ([^'\s]+): No such file",
-    ]
-
-    error_index = next(
-        (
-            i
-            for i, line in reversed(list(enumerate(strace_outputs)))
-            if any(re.search(pattern, line) for pattern in make_error_patterns)
-        ),
-        None,
-    )
-    if error_index is None:
-        raise RuntimeError("Build failed, but no missing file was found in strace output.")
-
-    strace_open_pattern = r'open(?:at)?\(.*?,\s+"([^"]+)"'
-    potential_missing_files: list[Path] = []
-    for p in re.findall(strace_open_pattern, "".join(strace_outputs[:error_index])):
-        path = Path(p) if Path(p).is_absolute() else (output_tree / p).resolve()
-        if path.is_file() and path.is_relative_to(src_tree) and not path.is_relative_to(output_tree) and path.exists():
-            potential_missing_files.append(path.relative_to(src_tree))
-
-    return potential_missing_files
 
 
 def _create_cmd_graph_based_kernel_directory(
@@ -216,92 +166,6 @@ def _create_cmd_graph_based_kernel_directory(
     # ]
 
 
-def find_candidates_for_fixing_make_error(make_error_path: Path, src_tree: Path) -> list[Path]:
-    """
-    This function searches for candidate files that potentially fix the make error
-
-    make_error_path is the path that is mentioned in the make error message.
-
-    Returns
-    candidate_files (list[Path])   list of potential files that are missing and caused make to fail. paths are provided relative to src_tree
-    """
-    candidate_files: list[Path] = []
-    _make_error_path = Path(*make_error_path.parts)
-    while len(candidate_files) == 0:
-        logging.info(f"Searching src_tree for {_make_error_path}")
-        candidate_files = [
-            Path(os.path.relpath(found_source, src_tree))
-            for found_source in src_tree.rglob(str(_make_error_path))
-            if not found_source.is_relative_to(cmd_output_tree)
-        ]
-        _make_error_path = Path(*_make_error_path.parts[1:])
-        if len(_make_error_path.parts) == 0:
-            break
-
-    if len(candidate_files) > 0:
-        return candidate_files
-
-    suffix_replacements = [
-        (".s", ".c"),
-        (".o", ".c"),
-        (".o", ".S"),
-        (".lds", ".lds.S"),
-    ]
-    for suffix, replacement_suffix in suffix_replacements:
-        if not make_error_path.name.endswith(suffix):
-            continue
-        replaced_path = make_error_path.parent / make_error_path.name.replace(suffix, replacement_suffix)
-        candidate_files += find_candidates_for_fixing_make_error(replaced_path, src_tree)
-    return candidate_files
-
-
-def _attempt_kernel_build(
-    missing_sources_in_cmd_graph: list[Path],
-    cmd_src_tree: Path,
-    cmd_output_tree: Path,
-    missing_sources_in_cmd_graph_path: Path,
-) -> None:
-    previous_make_error: str | None = None
-    potential_missing_file: Path | None = None
-    while True:
-        logging.info("Attempting to build kernel")
-        returncode, strace_outputs = _run_command(
-            f"strace -f -e trace=openat -s 200 make O={cmd_output_tree.relative_to(cmd_src_tree)}".split(" "),
-            cmd_src_tree,
-        )
-        if returncode == 0:
-            logging.info("Successfully built kernel")
-            return
-
-        make_error = _find_make_error(strace_outputs)
-        if make_error is None:
-            raise RuntimeError("Build failed, but no missing file was found in strace output.")
-        logging.info(f"Build failed with: {make_error}")
-
-        is_new_error = make_error != previous_make_error
-        if is_new_error:
-            if potential_missing_file:
-                # potential missing file from last iteration indeed fixed the previous error
-                missing_sources_in_cmd_graph.append(potential_missing_file)
-                with open(missing_sources_in_cmd_graph_path, "wt") as f:
-                    json.dump([str(source_file) for source_file in missing_sources_in_cmd_graph], f, indent=2)
-            # Create new list of potential missing files
-            potential_missing_files = reversed(_get_potential_missing_files(strace_outputs, src_tree, output_tree))
-            previous_make_error = make_error
-        elif potential_missing_file:
-            # delete previously copied file which did not fix the error
-            (cmd_src_tree / potential_missing_file).unlink()
-
-        # get new candidate if there are remaining
-        potential_missing_file = next(potential_missing_files)
-        if potential_missing_file is None:
-            raise RuntimeError("Found no file in the source tree that could fix the build error.")
-
-        # copy new candidate
-        logging.info(f"Detected {potential_missing_file} in make error output")
-        shutil.copy2(src_tree / potential_missing_file, cmd_src_tree / potential_missing_file)
-
-
 if __name__ == "__main__":
     script_path = Path(__file__).parent
     # Paths to the original source and build directories
@@ -319,17 +183,18 @@ if __name__ == "__main__":
         # The missing files that had to be added manually because parsing the error messages was too hard:
         Path(s)
         for s in [
-            # "tools/include/linux/types.h",
             # "include/asm-generic/fprobe.h",
             # "include/asm-generic/dma-mapping.h",
             # "include/asm-generic/module.lds.h",
             # "include/asm-generic/xor.h",
             # "scripts/mod/empty.c",
-            # "tools/include/linux/string.h",
-            # "tools/include/linux/kernel.h",
             # "tools/lib/string.c",
             # "tools/lib/rbtree.c",
             # "include/linux/nsfs.h",
+            "tools/include/linux/types.h",
+            "tools/include/linux/kernel.h",
+            "arch/x86/include/uapi/asm/stat.h",
+            # "tools/include/linux/string.h",
         ]
     ]
     if (script_path / "missing_sources_in_cmd_graph.json").exists():
@@ -346,9 +211,11 @@ if __name__ == "__main__":
             cmd_graph_path,
             missing_sources_in_cmd_graph,
         )
-    _attempt_kernel_build(
+    build_kernel(
         missing_sources_in_cmd_graph,
         cmd_src_tree,
         cmd_output_tree,
+        src_tree,
+        output_tree,
         missing_sources_in_cmd_graph_path=script_path / "missing_sources_in_cmd_graph.json",
     )
