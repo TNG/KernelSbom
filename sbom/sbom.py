@@ -14,7 +14,7 @@ import logging
 import os
 from pathlib import Path
 import lib.sbom.spdx as spdx
-from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph
+from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph, iter_files_in_cmd_graph
 import time
 
 
@@ -23,7 +23,8 @@ class Args:
     src_tree: str
     output_tree: str
     root_output_in_tree: str
-    output: str
+    spdx: str
+    used_files: str
     debug: bool
 
 
@@ -46,7 +47,14 @@ def parse_args() -> Args:
         help="Root build output path relative to --output-tree the SBOM will be based on (default: vmlinux)",
     )
     parser.add_argument(
-        "--output", default="sbom.spdx.json", help="Path where to create the SPDX document (default: sbom.spdx.json)"
+        "--spdx",
+        default="sbom.spdx.json",
+        help="Path to create the SPDX document, or 'none' to disable (default: sbom.spdx.json)",
+    )
+    parser.add_argument(
+        "--used-files",
+        default="sbom.used_files.txt",
+        help="Path to create the a flat list of all source files used for the kernel build, or 'none' to disable (default: sbom.used_files.txt)",
     )
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
 
@@ -117,6 +125,9 @@ def main():
     """Main program"""
     # Parse cli arguments
     args = parse_args()
+    src_tree = Path(os.path.realpath(args.src_tree))
+    output_tree = Path(os.path.realpath(args.output_tree))
+    root_output_in_tree = Path(args.root_output_in_tree)
 
     # Configure logging
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="[%(levelname)s] %(message)s")
@@ -124,21 +135,34 @@ def main():
     # Build cmd graph
     logging.info(f"Building cmd graph for {args.root_output_in_tree}")
     start_time = time.time()
-    cmd_graph = build_cmd_graph(
-        root_output_in_tree=Path(args.root_output_in_tree),
-        output_tree=Path(os.path.realpath(args.output_tree)),
-        src_tree=Path(os.path.realpath(args.src_tree)),
-    )
+    cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
     logging.info(f"Build cmd graph in {time.time() - start_time} seconds")
 
+    # Save used files
+    if args.used_files != "none":
+        logging.info("Extracting source files from cmd graph")
+        used_files = [
+            file_path.relative_to(src_tree)
+            for file_path in iter_files_in_cmd_graph(cmd_graph)
+            if file_path.is_relative_to(src_tree) and not file_path.is_relative_to(output_tree)
+        ]
+        logging.info(f"Found {len(used_files)} source files in cmd graph.")
+        with open(args.used_files, "w", encoding="utf-8") as f:
+            f.write("\n".join(str(file_path) for file_path in used_files))
+        logging.info(f"Saved {args.used_files} successfully")
+
+    if args.spdx == "none":
+        return
+
     # Fill SPDX Document
-    doc = create_spdx_document(cmd_graph)
+    logging.info("Generating SPDX Document based on cmd graph")
+    spdx_doc = create_spdx_document(cmd_graph)
 
     # Save SPDX Document
-    json_string = doc.to_json()
-    with open(args.output, "w", encoding="utf-8") as f:
-        f.write(json_string)
-    logging.info(f"Saved {args.output} successfully")
+    spdx_json = spdx_doc.to_json()
+    with open(args.spdx, "w", encoding="utf-8") as f:
+        f.write(spdx_json)
+    logging.info(f"Saved {args.spdx} successfully")
 
 
 # Call main method

@@ -233,6 +233,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"(.*/)?genheaders\b"), _parse_genheaders_command),
     (re.compile(r"^ld\b"), _parse_ld_command),
     (re.compile(r"^sed\b"), _parse_sed_command),
+    (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
