@@ -6,8 +6,9 @@ import re
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
+import logging
 
-SAVEDCMD_PATTERN = r"^savedcmd_.*?:=\s*(?P<full_command>.+)$"
+SAVEDCMD_PATTERN = r"^(saved)?cmd_.*?:=\s*(?P<full_command>.+)$"
 SOURCE_PATTERN = r"^source.*?:=\s*(?P<full_command>.+)$"
 
 
@@ -45,7 +46,10 @@ def parse_cmd_file(cmd_file_path: Path) -> CmdFile:
     # source
     line1 = re.compile(SOURCE_PATTERN).match(lines[1])
     if line1 is None:
-        raise ValueError(f"No 'source_' command found in second line of {cmd_file_path}")
+        logging.warning(
+            f"No 'source_' command found in second line of {cmd_file_path}. Skip parsing after first line for this file."
+        )
+        return CmdFile(cmd_file_path, savedcmd)
     source = line1.group("full_command")
 
     # deps

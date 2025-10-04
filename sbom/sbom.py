@@ -133,7 +133,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Build cmd graph
-    logging.info(f"Building cmd graph for {args.root_output_in_tree}")
+    logging.info(f"Building Cmd Graph for {args.root_output_in_tree}")
     start_time = time.time()
     cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
     logging.info(f"Build cmd graph in {time.time() - start_time} seconds")
