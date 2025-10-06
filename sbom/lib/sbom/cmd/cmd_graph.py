@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from dataclasses import dataclass, field
 import pickle
+from typing import Iterator
 
 from .deps_parser import parse_deps
 from .savedcmd_parser import parse_commands
@@ -96,3 +97,9 @@ def save_cmd_graph(node: CmdGraphNode, path: Path) -> None:
 def load_cmd_graph(path: Path) -> CmdGraphNode:
     with open(path, "rb") as f:
         return pickle.load(f)
+
+
+def iter_files_in_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[Path]:
+    yield cmd_graph.absolute_path
+    for child_node in cmd_graph.children:
+        yield from iter_files_in_cmd_graph(child_node)

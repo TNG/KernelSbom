@@ -72,7 +72,7 @@ def _cmd_graph_to_force_graph(
 
 if __name__ == "__main__":
     script_path = Path(__file__).parent
-    cmd_graph_path = script_path / "cmd_graph.pickle"
+    cmd_graph_path = script_path / "../cmd_graph.pickle"
     src_tree = (script_path / "../../linux").resolve()
     output_tree = (script_path / "../../linux/kernel_build").resolve()
     root_output_in_tree = Path("vmlinux")
