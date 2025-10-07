@@ -1,7 +1,6 @@
 <!--
-SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
-
 SPDX-License-Identifier: GPL-2.0-only
+SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 -->
 
 ## CMD Graph Based Kernel Builds

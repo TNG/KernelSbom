@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: Maximilian Huber <maximilian.huber@tngtech.com>
-#
 # SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: Maximilian Huber <maximilian.huber@tngtech.com>
 
 set -euo pipefail
 
