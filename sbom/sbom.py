@@ -13,7 +13,7 @@ import logging
 import os
 from pathlib import Path
 import lib.sbom.spdx as spdx
-from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph, iter_files_in_cmd_graph
+from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph, iter_cmd_graph
 import time
 
 
@@ -135,16 +135,12 @@ def main():
     logging.info(f"Building cmd graph for {args.root_output_in_tree}")
     start_time = time.time()
     cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
-    logging.info(f"Build cmd graph in {time.time() - start_time} seconds")
+    logging.info(f"Built cmd graph in {time.time() - start_time} seconds")
 
     # Save used files
     if args.used_files != "none":
         logging.info("Extracting source files from cmd graph")
-        used_files = [
-            file_path.relative_to(src_tree)
-            for file_path in iter_files_in_cmd_graph(cmd_graph)
-            if file_path.is_relative_to(src_tree) and not file_path.is_relative_to(output_tree)
-        ]
+        used_files = [node.absolute_path.relative_to(src_tree) for node in iter_cmd_graph(cmd_graph) if node.is_source]
         logging.info(f"Found {len(used_files)} source files in cmd graph.")
         with open(args.used_files, "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+import logging
 from pathlib import Path
 import re
 import shlex
@@ -23,19 +24,16 @@ _SUBCOMMAND_PATTERN = re.compile(r"\$\$\(([^()]*)\)")
 """Pattern to match $$(...) blocks"""
 
 
-def _tokenize_single_command(
-    command: str, flag_options: list[str] | None = None, concatenated_value_options: list[str] | None = None
-) -> list[Union[Option, Positional]]:
+def _tokenize_single_command(command: str, flag_options: list[str] | None = None) -> list[Union[Option, Positional]]:
     """
     Parse a shell command into a list of Options and Positionals.
     - Positional: the command and any positional arguments.
-    - Options: handles flags and options with values provided as space-separated, equals-sign, or concatenated forms
-        (e.g., '--opt val', '--opt=val', '--optValue', '--flag').
+    - Options: handles flags and options with values provided as space-separated, or equals-sign
+        (e.g., '--opt val', '--opt=val', '--flag').
 
     Args:
         command: Command line string.
         flag_options: Options that are flags without values (e.g., '--verbose').
-        concatenated_value_options: Options with values concatenated (e.g., '-I/usr/include').
 
     Returns:
         List of `Option` and `Positional` objects in command order.
@@ -61,16 +59,6 @@ def _tokenize_single_command(
             parsed.append(Option(name=token))
             i += 1
             continue
-
-        # Option with concatenated value
-        if concatenated_value_options:
-            matched_option = next(
-                (o for o in concatenated_value_options if token.startswith(o) and len(token) > len(o)), None
-            )
-            if matched_option:
-                parsed.append(Option(name=matched_option, value=token.removeprefix(matched_option)))
-                i += 1
-                continue
 
         # Option with equals sign (--opt=val)
         if "=" in token:
@@ -147,8 +135,6 @@ def _parse_ar_piped_command(command: str) -> list[Path]:
 
 def _parse_gcc_command(command: str) -> list[Path]:
     parts = shlex.split(command)
-    if "-c" not in parts:
-        raise NotImplementedError(f"Unsupported gcc command: missing '-c' compile flag.\nCommand: {command}")
     # expect last positional argument ending in `.c` or `.S` to be the input file
     for part in reversed(parts):
         if not part.startswith("-") and Path(part).suffix in [".c", ".S"]:
@@ -318,7 +304,8 @@ def parse_commands(commands: str) -> list[Path]:
             (parser for pattern, parser in SINGLE_COMMAND_PARSERS if pattern.match(single_command)), None
         )
         if matched_parser is None:
-            raise NotImplementedError(f"No parser matched command: {single_command}")
+            logging.warning(f"Skipped parsing command because no matching parser was found for: {single_command}")
+            continue
         inputs = matched_parser(single_command)
         input_files.extend(inputs)
     return input_files
