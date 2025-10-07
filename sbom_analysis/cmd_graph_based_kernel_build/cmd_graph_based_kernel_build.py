@@ -51,18 +51,26 @@ def _remove_files(base_path: Path, patterns_to_remove: list[re.Pattern[str]], ig
 
 
 if __name__ == "__main__":
+    """
+    cmd_graph_based_kernel_build.py <src_tree> <output_tree>
+    """
     script_path = Path(__file__).parent
-    # Paths to the original source and build directories
-    cmd_graph_path = script_path / "../cmd_graph.pickle"
-    src_tree = (script_path / "../../../linux").resolve()
-    output_tree = (script_path / "../../../linux/kernel_build").resolve()
+    src_tree = (
+        Path(sys.argv[1]).resolve()
+        if len(sys.argv) >= 2 and sys.argv[1]
+        else (script_path / "../../../linux").resolve()
+    )
+    output_tree = (
+        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
+    )
     root_output_in_tree = Path("vmlinux")
+    cmd_graph_path = script_path / "../cmd_graph.pickle"
+    cmd_src_tree = src_tree.parent / f"{src_tree.name}_cmd"
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Copy the original source tree
-    cmd_src_tree = (script_path / "../../linux_cmd").resolve()
     if cmd_src_tree.exists():
         shutil.rmtree(cmd_src_tree)
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")

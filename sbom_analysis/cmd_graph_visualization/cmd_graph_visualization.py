@@ -69,11 +69,20 @@ def _cmd_graph_to_force_graph(
 
 
 if __name__ == "__main__":
+    """
+    cmd_graph_visualization.py <src_tree> <output_tree>
+    """
     script_path = Path(__file__).parent
-    cmd_graph_path = script_path / "../cmd_graph.pickle"
-    src_tree = (script_path / "../../../linux").resolve()
-    output_tree = (script_path / "../../../linux/kernel_build").resolve()
+    src_tree = (
+        Path(sys.argv[1]).resolve()
+        if len(sys.argv) >= 2 and sys.argv[1]
+        else (script_path / "../../../linux").resolve()
+    )
+    output_tree = (
+        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
+    )
     root_output_in_tree = Path("vmlinux")
+    cmd_graph_path = script_path / "../cmd_graph.pickle"
     cmd_graph_json_gz_path = script_path / "web/cmd_graph.json.gz"
     max_visualization_depth: int | None = None
 
