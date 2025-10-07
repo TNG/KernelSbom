@@ -1,7 +1,6 @@
 <!--
-SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
-
 SPDX-License-Identifier: GPL-2.0-only
+SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 -->
 
 # KernelSbom
@@ -60,5 +59,5 @@ The main contribution is the content of the `sbom` directory which eventually sh
 
 when commiting `reuse lint` is executed as a pre-commit hook to check if all files have compliant License headers. If any file is missing a license header add it via 
 ```
-reuse annotate --license="GPL-2.0-only" --copyright="TNG Technology Consulting GmbH" <filename>
+reuse annotate --license="GPL-2.0-only" --copyright="TNG Technology Consulting GmbH" --template default <filename>
 ```

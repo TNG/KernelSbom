@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
-#
 # SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from dataclasses import asdict, dataclass
 import json
