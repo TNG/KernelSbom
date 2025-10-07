@@ -61,3 +61,4 @@ when commiting `reuse lint` is executed as a pre-commit hook to check if all fil
 ```
 reuse annotate --license="GPL-2.0-only" --copyright="TNG Technology Consulting GmbH" --template default <filename>
 ```
+>**Note:** if the annotated file contains a shebang `reuse annotate` will add an empty line after the shebang. This empty line needs to be removed manually.

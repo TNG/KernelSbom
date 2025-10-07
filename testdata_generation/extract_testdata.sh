@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: Maximilian Huber <maximilian.huber@tngtech.com>
 
