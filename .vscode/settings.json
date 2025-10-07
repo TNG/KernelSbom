@@ -13,7 +13,6 @@
     "python.testing.unittestEnabled": true,
     "ruff.lineLength": 120,
     "editor.formatOnSave": true,
-    "search.useIgnoreFiles": false,
     "files.exclude": {
         "**/__pycache__": true
     },
