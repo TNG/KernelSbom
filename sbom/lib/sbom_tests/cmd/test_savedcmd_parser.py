@@ -15,6 +15,16 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = [Path("vmlinux.unstripped")]
         self.assertEqual(parse_commands(cmd), expected)
 
+    def test_objcopy_llvm(self):
+        cmd = "llvm-objcopy --remove-section='.rel*' --remove-section=!'.rel*.dyn' vmlinux.unstripped vmlinux"
+        expected = [Path("vmlinux.unstripped")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    def test_objcopy_no_output(self):
+        cmd = "objcopy -w -W '__*' rust/compiler_builtins.o"
+        expected = [Path("rust/compiler_builtins.o")]
+        self.assertEqual(parse_commands(cmd), expected)
+
     # link-vmlinux.sh command tests
 
     def test_link_vmlinux(self):

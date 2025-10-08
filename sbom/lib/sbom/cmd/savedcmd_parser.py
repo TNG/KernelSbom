@@ -55,7 +55,7 @@ def _tokenize_single_command(command: str, flag_options: list[str] | None = None
             continue
 
         # Option without value (--flag)
-        if flag_options and token in flag_options:
+        if token.startswith("-") and tokens[i + 1].startswith("-") or (flag_options and token in flag_options):
             parsed.append(Option(name=token))
             i += 1
             continue
@@ -89,7 +89,7 @@ def _tokenize_single_command_positionals_only(command: str) -> list[str]:
 
 
 def _parse_objcopy_command(command: str) -> list[Path]:
-    command_parts = _tokenize_single_command(command, flag_options=["-S"])
+    command_parts = _tokenize_single_command(command, flag_options=["-S", "-w"])
     positionals = [part.value for part in command_parts if isinstance(part, Positional)]
     # expect positionals to be ['objcopy', input_file] or ['objcopy', input_file, output_file]
     if not (len(positionals) == 2 or len(positionals) == 3):
@@ -200,7 +200,7 @@ def _parse_sed_command(command: str) -> list[Path]:
 
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
-    (re.compile(r"^objcopy\b"), _parse_objcopy_command),
+    (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
     (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
     (re.compile(r"^rm\b"), _parse_noop),
     (re.compile(r"^mkdir\b"), _parse_noop),
