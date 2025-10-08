@@ -110,6 +110,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = [Path("../arch/x86/include/asm/orc_types.h")]
         self.assertEqual(parse_commands(cmd), expected)
 
+    def test_xen_hypercalls(self):
+        cmd = "sh '../scripts/xen-hypercalls.sh' arch/x86/include/generated/asm/xen-hypercalls.h ../include/xen/interface/xen-mca.h ../include/xen/interface/xen.h ../include/xen/interface/xenpmu.h"
+        expected = "../include/xen/interface/xen-mca.h ../include/xen/interface/xen.h ../include/xen/interface/xenpmu.h"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
     # custom cli tool tests
 
     def test_vdso2c(self):
@@ -142,6 +147,34 @@ class TestSavedCmdParser(unittest.TestCase):
         cmd = """llvm-nm -p --defined-only rust/core.o | awk '$$2~/(T|R|D|B)/ && $$3!~/__(pfx|cfi|odr_asan)/ { printf "EXPORT_SYMBOL_RUST_GPL(%s);\n",$$3 }' > rust/exports_core_generated.h"""
         expected = "rust/core.o"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    # pnmtologo tests
+
+    def test_pnmtologo(self):
+        cmd = "drivers/video/logo/pnmtologo -t clut224 -n logo_linux_clut224 -o drivers/video/logo/logo_linux_clut224.c ../drivers/video/logo/logo_linux_clut224.ppm"
+        expected = "../drivers/video/logo/logo_linux_clut224.ppm"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    # perl tests
+
+    def test_perl(self):
+        cmd = "perl ../lib/crypto/x86/poly1305-x86_64-cryptogams.pl > lib/crypto/x86/poly1305-x86_64-cryptogams.S"
+        expected = "../lib/crypto/x86/poly1305-x86_64-cryptogams.pl"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    # polgen tests
+
+    def test_polgen(self):
+        cmd = "scripts/ipe/polgen/polgen security/ipe/boot_policy.c"
+        expected = []
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # manual file creation tests
+
+    def test_manual_file_creation(self):
+        cmd = """{ symbase=__dtbo_overlay_bad_unresolved; echo '$(pound)include <asm-generic/vmlinux.lds.h>'; echo '.section .rodata,"a"'; echo '.balign STRUCT_ALIGNMENT'; echo ".global $${symbase}_begin"; echo "$${symbase}_begin:"; echo '.incbin "drivers/of/unittest-data/overlay_bad_unresolved.dtbo" '; echo ".global $${symbase}_end"; echo "$${symbase}_end:"; echo '.balign STRUCT_ALIGNMENT'; } > drivers/of/unittest-data/overlay_bad_unresolved.dtbo.S"""
+        expected = []
+        self.assertEqual(parse_commands(cmd), expected)
 
 
 if __name__ == "__main__":

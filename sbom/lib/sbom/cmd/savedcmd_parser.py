@@ -177,6 +177,12 @@ def _parse_orc_hash_command(command: str) -> list[Path]:
     return [Path(positionals[3])]
 
 
+def _parse_xen_hypercalls_command(command: str) -> list[Path]:
+    positionals = _tokenize_single_command_positionals_only(command)
+    # expect positionals to be ["sh", path/to/xen-hypercalls.sh, output, input1, input2, ...]
+    return [Path(p) for p in positionals[3:]]
+
+
 def _parse_vdso2c_command(command: str) -> list[Path]:
     positionals = _tokenize_single_command_positionals_only(command.strip())
     # expect positionals to be ['vdso2c', raw_input, stripped_input, output]
@@ -218,6 +224,18 @@ def _parse_nm_piped_command(command: str) -> list[Path]:
     return [Path(p) for p in positionals[1:]]
 
 
+def _parse_pnm_to_logo_command(command: str) -> list[Path]:
+    command_parts = shlex.split(command)
+    # expect command parts to be ["pnmtologo", <options>, input]
+    return [Path(command_parts[-1])]
+
+
+def _parse_perl_command(command: str) -> list[Path]:
+    positionals = _tokenize_single_command_positionals_only(command.strip())
+    # expect positionals to be ["perl", input]
+    return [Path(positionals[1])]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
@@ -235,12 +253,17 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"sh (.*/)?syscalltbl\.sh\b"), _parse_syscalltbl_command),
     (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
+    (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
     (re.compile(r"(.*/)?genheaders\b"), _parse_genheaders_command),
     (re.compile(r"^ld\b"), _parse_ld_command),
     (re.compile(r"^sed\b"), _parse_sed_command),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
     (re.compile(r"^(llvm-)?nm\b.*?\|"), _parse_nm_piped_command),
+    (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
+    (re.compile(r"^perl\b"), _parse_perl_command),
+    (re.compile(r"^(.*/)polgen\b"), _parse_noop),
+    (re.compile(r"^\{\s*symbase=[^;]+;\s*(echo\s+.*?;\s*)+\}\s*>\s*\S+"), _parse_noop),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
@@ -279,17 +302,24 @@ def _unwrap_outer_parentheses(s: str) -> str:
     return _unwrap_outer_parentheses(s[1:-1])
 
 
-def _find_first_unquoted_semicolon_position(commands: str) -> int | None:
+def _find_first_top_level_semicolon_position(commands: str) -> int | None:
     in_single_quote = False
     in_double_quote = False
+    in_curly_braces = 0
     for i, char in enumerate(commands):
+        # Toggle single quote state (unless inside double quotes)
+        if char == "{":
+            in_curly_braces += 1
+        if char == "}":
+            in_curly_braces -= 1
+
         if char == "'" and not in_double_quote:
             # Toggle single quote state (unless inside double quotes)
             in_single_quote = not in_single_quote
         elif char == '"' and not in_single_quote:
             # Toggle double quote state (unless inside single quotes)
             in_double_quote = not in_double_quote
-        elif char == ";" and not in_single_quote and not in_double_quote:
+        elif char == ";" and not in_single_quote and not in_double_quote and in_curly_braces == 0:
             # Found an unquoted semicolon
             return i
 
@@ -310,7 +340,7 @@ def _split_commands(commands: str) -> list[str | IfBlock]:
             continue
 
         # command until next semicolon
-        found_semicolon_pos = _find_first_unquoted_semicolon_position(remaining_commands)
+        found_semicolon_pos = _find_first_top_level_semicolon_position(remaining_commands)
         if found_semicolon_pos is not None:
             single_commands.append(remaining_commands[:found_semicolon_pos].strip())
             remaining_commands = remaining_commands[found_semicolon_pos + 1 :].strip()
