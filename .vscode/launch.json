@@ -9,7 +9,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--src-tree", "../linux",
-                "--output-tree", "../linux/kernel-build",
+                "--output-tree", "../linux/kernel_build",
                 "--root-output-in-tree", "vmlinux",
                 "--debug"
             ]
