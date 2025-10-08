@@ -20,11 +20,6 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = [Path("vmlinux.unstripped")]
         self.assertEqual(parse_commands(cmd), expected)
 
-    def test_objcopy_no_output(self):
-        cmd = "objcopy -w -W '__*' rust/compiler_builtins.o"
-        expected = [Path("rust/compiler_builtins.o")]
-        self.assertEqual(parse_commands(cmd), expected)
-
     # link-vmlinux.sh command tests
 
     def test_link_vmlinux(self):
@@ -58,6 +53,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "i386.o init.o mmconfig_64.o direct.o mmconfig-shared.o fixup.o acpi.o legacy.o irq.o common.o early.o bus_numa.o amd_bus.o"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
+    def test_ar_llvm(self):
+        cmd = "llvm-ar mPiT $$(llvm-ar t vmlinux.a | sed -n 1p) vmlinux.a $$(llvm-ar t vmlinux.a | grep -F -f ../scripts/head-object-list.txt)"
+        expected = []
+        self.assertEqual(parse_commands(cmd), expected)
+
     # gcc command tests
 
     def test_gcc(self):
@@ -72,6 +72,18 @@ class TestSavedCmdParser(unittest.TestCase):
             " -D__KBUILD_MODNAME=kmod_i386 -c -o arch/x86/pci/i386.o ../arch/x86/pci/i386.c  "
         )
         expected = [Path("../arch/x86/pci/i386.c")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    def test_clang(self):
+        cmd = """clang -Wp,-MMD,arch/x86/entry/.entry_64_compat.o.d -nostdinc -I../arch/x86/include -I./arch/x86/include/generated -I../include -I./include -I../arch/x86/include/uapi -I./arch/x86/include/generated/uapi -I../include/uapi -I./include/generated/uapi -include ../include/linux/compiler-version.h -include ../include/linux/kconfig.h -D__KERNEL__ --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option -Werror=ignored-optimization-argument -Werror=option-ignored -Werror=unused-command-line-argument -fmacro-prefix-map=../= -Werror -D__ASSEMBLY__ -fno-PIE -m64 -I../arch/x86/entry -Iarch/x86/entry    -DKBUILD_MODFILE='"arch/x86/entry/entry_64_compat"' -DKBUILD_MODNAME='"entry_64_compat"' -D__KBUILD_MODNAME=kmod_entry_64_compat -c -o arch/x86/entry/entry_64_compat.o ../arch/x86/entry/entry_64_compat.S"""
+        expected = [Path("../arch/x86/entry/entry_64_compat.S")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # test rustc
+
+    def test_rustc(self):
+        cmd = """OBJTREE=/workspace/linux/kernel_build rustc -Zbinary_dep_depinfo=y -Astable_features -Dnon_ascii_idents -Dunsafe_op_in_unsafe_fn -Wmissing_docs -Wrust_2018_idioms -Wclippy::all -Wclippy::as_ptr_cast_mut -Wclippy::as_underscore -Wclippy::cast_lossless -Wclippy::ignored_unit_patterns -Wclippy::mut_mut -Wclippy::needless_bitwise_bool -Aclippy::needless_lifetimes -Wclippy::no_mangle_with_rust_abi -Wclippy::ptr_as_ptr -Wclippy::ptr_cast_constness -Wclippy::ref_as_ptr -Wclippy::undocumented_unsafe_blocks -Wclippy::unnecessary_safety_comment -Wclippy::unnecessary_safety_doc -Wrustdoc::missing_crate_level_docs -Wrustdoc::unescaped_backticks -Cpanic=abort -Cembed-bitcode=n -Clto=n -Cforce-unwind-tables=n -Ccodegen-units=1 -Csymbol-mangling-version=v0 -Crelocation-model=static -Zfunction-sections=n -Wclippy::float_arithmetic --target=./scripts/target.json -Ctarget-feature=-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-avx,-avx2 -Zcf-protection=branch -Zno-jump-tables -Ctarget-cpu=x86-64 -Ztune-cpu=generic -Cno-redzone=y -Ccode-model=kernel -Zfunction-return=thunk-extern -Zpatchable-function-entry=16,16 -Copt-level=2 -Cdebug-assertions=n -Coverflow-checks=y -Dwarnings @./include/generated/rustc_cfg --edition=2021 --cfg no_fp_fmt_parse --emit=dep-info=rust/.core.o.d --emit=obj=rust/core.o --emit=metadata=rust/libcore.rmeta --crate-type rlib -L./rust --crate-name core /usr/lib/rust-1.84/lib/rustlib/src/rust/library/core/src/lib.rs --sysroot=/dev/null ;llvm-objcopy --redefine-sym __addsf3=__rust__addsf3 --redefine-sym __eqsf2=__rust__eqsf2 --redefine-sym __extendsfdf2=__rust__extendsfdf2 --redefine-sym __gesf2=__rust__gesf2 --redefine-sym __lesf2=__rust__lesf2 --redefine-sym __ltsf2=__rust__ltsf2 --redefine-sym __mulsf3=__rust__mulsf3 --redefine-sym __nesf2=__rust__nesf2 --redefine-sym __truncdfsf2=__rust__truncdfsf2 --redefine-sym __unordsf2=__rust__unordsf2 --redefine-sym __adddf3=__rust__adddf3 --redefine-sym __eqdf2=__rust__eqdf2 --redefine-sym __ledf2=__rust__ledf2 --redefine-sym __ltdf2=__rust__ltdf2 --redefine-sym __muldf3=__rust__muldf3 --redefine-sym __unorddf2=__rust__unorddf2 --redefine-sym __muloti4=__rust__muloti4 --redefine-sym __multi3=__rust__multi3 --redefine-sym __udivmodti4=__rust__udivmodti4 --redefine-sym __udivti3=__rust__udivti3 --redefine-sym __umodti3=__rust__umodti3 rust/core.o"""
+        expected = [Path("/usr/lib/rust-1.84/lib/rustlib/src/rust/library/core/src/lib.rs"), Path("rust/core.o")]
         self.assertEqual(parse_commands(cmd), expected)
 
     # .sh script command tests
@@ -122,6 +134,13 @@ class TestSavedCmdParser(unittest.TestCase):
     def test_sed(self):
         cmd = "sed -n 's/.*define *BLIST_\\([A-Z0-9_]*\\) *.*/BLIST_FLAG_NAME(\\1),/p' ../include/scsi/scsi_devinfo.h > drivers/scsi/scsi_devinfo_tbl.c"
         expected = "../include/scsi/scsi_devinfo.h"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    # nm command tests
+
+    def test_nm(self):
+        cmd = """llvm-nm -p --defined-only rust/core.o | awk '$$2~/(T|R|D|B)/ && $$3!~/__(pfx|cfi|odr_asan)/ { printf "EXPORT_SYMBOL_RUST_GPL(%s);\n",$$3 }' > rust/exports_core_generated.h"""
+        expected = "rust/core.o"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
 

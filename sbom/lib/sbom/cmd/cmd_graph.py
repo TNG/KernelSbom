@@ -23,14 +23,6 @@ class CmdGraphNode:
     cmd_file: CmdFile | None = None
     children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
-    @property
-    def is_source(self) -> bool:
-        """If no corresponding `.cmd` file exists for a given file, then that file is considered a source file that was not generated."""
-        is_config = bool(CONFIG_PATH_PATTERN.search(str(self.absolute_path)))
-        if is_config:
-            return False
-        return self.cmd_file is None
-
 
 def build_cmd_graph(
     root_output_in_tree: Path,
@@ -74,26 +66,32 @@ def build_cmd_graph(
     if cmd_file is None:
         return node
 
+    # search for input files
     input_files = parse_commands(cmd_file.savedcmd)
     if cmd_file.deps:
         input_files += parse_deps(cmd_file.deps, output_tree)
-
     input_files = _expand_resolve_files(input_files, output_tree)
-
     if len(input_files) == 0:
         return node
 
-    # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
-    # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
-    working_directory = _get_working_directory(output_tree, src_tree, root_output_in_tree, input_file=input_files[0])
+    # turn input files to valid child paths relative to output tree
+    absolute_inputs = [input for input in input_files if os.path.isabs(input)]
+    child_paths = [Path(os.path.relpath(input_file, output_tree)) for input_file in absolute_inputs]
+    relative_inputs = [input for input in input_files if not os.path.isabs(input)]
+    if len(relative_inputs) > 0:
+        # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
+        # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
+        working_directory = _get_working_directory(
+            output_tree, src_tree, root_output_in_tree, input_file=relative_inputs[0]
+        )
+        child_paths += [working_directory / input_file for input_file in relative_inputs]
 
-    for input_file in input_files:
-        if os.path.isabs(input_file):
-            child_path = Path(os.path.relpath(input_file, output_tree))
-        else:
-            child_path = working_directory / input_file
-        if not (output_tree / child_path).exists():
-            raise ValueError(f"root_output_in_tree {child_path} should be relative to output_tree {output_tree}")
+    # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
+    # remove generated output from the input_files to prevent nodes from being their own children.
+    child_paths = [child_path for child_path in child_paths if child_path != root_output_in_tree]
+
+    # create child nodes
+    for child_path in child_paths:
         child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
         node.children.append(child_node)
 

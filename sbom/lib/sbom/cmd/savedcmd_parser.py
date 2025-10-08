@@ -133,11 +133,20 @@ def _parse_ar_piped_command(command: str) -> list[Path]:
     return [Path(p) for p in positionals[2:]]
 
 
-def _parse_gcc_command(command: str) -> list[Path]:
+def _parse_gcc_or_clang_command(command: str) -> list[Path]:
     parts = shlex.split(command)
     # expect last positional argument ending in `.c` or `.S` to be the input file
     for part in reversed(parts):
         if not part.startswith("-") and Path(part).suffix in [".c", ".S"]:
+            return [Path(part)]
+    raise ValueError(f"Could not find input source file in command: {command}")
+
+
+def _parse_rustc_command(command: str) -> list[Path]:
+    parts = shlex.split(command)
+    # expect last positional argument ending in `.rs` to be the input file
+    for part in reversed(parts):
+        if not part.startswith("-") and Path(part).suffix == ".rs":
             return [Path(part)]
     raise ValueError(f"Could not find input source file in command: {command}")
 
@@ -198,6 +207,17 @@ def _parse_sed_command(command: str) -> list[Path]:
     raise NotImplementedError("Unrecognized sed command format: {command}")
 
 
+def _parse_nm_piped_command(command: str) -> list[Path]:
+    nm_command, _ = command.split("|", 1)
+    command_parts = _tokenize_single_command(
+        command=nm_command.strip(),
+        flag_options=["p", "--defined-only"],
+    )
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be ["nm", input1, input2, ...]
+    return [Path(p) for p in positionals[1:]]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
@@ -207,9 +227,10 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^echo[^|]*$"), _parse_noop),
     (re.compile(r"^(/bin/)?true\b"), _parse_noop),
     (re.compile(r"^(/bin/)?false\b"), _parse_noop),
-    (re.compile(r"^ar\b"), _parse_ar_command),
-    (re.compile(r"^printf\b.*\| xargs ar\b"), _parse_ar_piped_command),
-    (re.compile(r"^gcc\b"), _parse_gcc_command),
+    (re.compile(r"^(llvm-)?ar\b"), _parse_ar_command),
+    (re.compile(r"^printf\b.*\| xargs (llvm-)?ar\b"), _parse_ar_piped_command),
+    (re.compile(r"^(gcc|clang)\b"), _parse_gcc_or_clang_command),
+    (re.compile(r".*rustc\b"), _parse_rustc_command),
     (re.compile(r"sh (.*/)?syscallhdr\.sh\b"), _parse_syscallhdr_command),
     (re.compile(r"sh (.*/)?syscalltbl\.sh\b"), _parse_syscalltbl_command),
     (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
@@ -219,6 +240,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^ld\b"), _parse_ld_command),
     (re.compile(r"^sed\b"), _parse_sed_command),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
+    (re.compile(r"^(llvm-)?nm\b.*?\|"), _parse_nm_piped_command),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.

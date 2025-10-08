@@ -139,9 +139,20 @@ def main():
 
     # Save used files
     if args.used_files != "none":
-        logging.info("Extracting source files from cmd graph")
-        used_files = [node.absolute_path.relative_to(src_tree) for node in iter_cmd_graph(cmd_graph) if node.is_source]
-        logging.info(f"Found {len(used_files)} source files in cmd graph.")
+        if src_tree == output_tree:
+            logging.warning(
+                "Cannot distinguish source and output files because source and output tree are equal. Extracting all files from cmd graph"
+            )
+            used_files = [
+                os.path.relpath(node.absolute_path, src_tree)
+                for node in iter_cmd_graph(cmd_graph)
+                if node.absolute_path.is_relative_to(src_tree) and not node.absolute_path.is_relative_to(output_tree)
+            ]
+            logging.info(f"Found {len(used_files)} source files in cmd graph.")
+        else:
+            logging.info("Extracting source files from cmd graph")
+            used_files = [os.path.relpath(node.absolute_path, src_tree) for node in iter_cmd_graph(cmd_graph)]
+            logging.info(f"Found {len(used_files)} files in cmd graph.")
         with open(args.used_files, "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
         logging.info(f"Saved {args.used_files} successfully")
