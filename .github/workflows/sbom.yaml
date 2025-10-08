@@ -10,6 +10,7 @@ on:
         description: Name of the test archive to download from https://fileshare.tngtech.com/d/e69946da808b41f88047/
         required: false
         default: linux-tinyconfig.tar.gz
+  push:
 
 jobs:
   main:
@@ -21,7 +22,7 @@ jobs:
       - name: Download Linux Kernel Test Data
         run: |
           cd ..
-          test_archive="${{ inputs.test_archive }}"
+          test_archive="linux.v6.17.tinyconfig.tar.gz"
           echo "Downloading $test_archive"
           curl -L -o "$test_archive" "https://fileshare.tngtech.com/d/e69946da808b41f88047/files/?p=%2F$test_archive&dl=1"
           tar -xzf "$test_archive"
