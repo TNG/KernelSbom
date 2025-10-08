@@ -279,29 +279,47 @@ def _unwrap_outer_parentheses(s: str) -> str:
     return _unwrap_outer_parentheses(s[1:-1])
 
 
+def _find_first_unquoted_semicolon_position(commands: str) -> int | None:
+    in_single_quote = False
+    in_double_quote = False
+    for i, char in enumerate(commands):
+        if char == "'" and not in_double_quote:
+            # Toggle single quote state (unless inside double quotes)
+            in_single_quote = not in_single_quote
+        elif char == '"' and not in_single_quote:
+            # Toggle double quote state (unless inside single quotes)
+            in_double_quote = not in_double_quote
+        elif char == ";" and not in_single_quote and not in_double_quote:
+            # Found an unquoted semicolon
+            return i
+
+
 def _split_commands(commands: str) -> list[str | IfBlock]:
     single_commands: list[str | IfBlock] = []
-    remaining_command = _unwrap_outer_parentheses(commands)
-    while len(remaining_command) > 0:
-        remaining_command = remaining_command.strip()
+    remaining_commands = _unwrap_outer_parentheses(commands)
+    while len(remaining_commands) > 0:
+        remaining_commands = remaining_commands.strip()
 
         # if block
-        matched_if = IF_BLOCK_PATTERN.match(remaining_command)
+        matched_if = IF_BLOCK_PATTERN.match(remaining_commands)
         if matched_if:
             condition, then_statement = matched_if.groups()
             single_commands.append(IfBlock(condition.strip(), then_statement.strip()))
             full_matched = matched_if.group(0)
-            remaining_command = remaining_command.removeprefix(full_matched).lstrip("; \n")
+            remaining_commands = remaining_commands.removeprefix(full_matched).lstrip("; \n")
             continue
 
         # command until next semicolon
-        if ";" in remaining_command:
-            single_command, remaining_command = remaining_command.split(";", maxsplit=1)
-            single_commands.append(single_command)
+        found_semicolon_pos = _find_first_unquoted_semicolon_position(remaining_commands)
+        if found_semicolon_pos is not None:
+            single_commands.append(remaining_commands[:found_semicolon_pos].strip())
+            remaining_commands = remaining_commands[found_semicolon_pos + 1 :].strip()
             continue
 
-        single_commands.append(remaining_command)
+        # single last command
+        single_commands.append(remaining_commands)
         break
+
     return single_commands
 
 
