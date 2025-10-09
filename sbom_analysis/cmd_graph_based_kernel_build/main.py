@@ -44,7 +44,9 @@ def _create_cmd_graph_based_kernel_directory(
     missing_sources_in_cmd_graph: list[Path],
 ) -> None:
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
-    shutil.copytree(src_tree, cmd_src_tree, ignore=shutil.ignore_patterns(output_tree.relative_to(src_tree)))
+    shutil.copytree(
+        src_tree, cmd_src_tree, symlinks=True, ignore=shutil.ignore_patterns(output_tree.relative_to(src_tree))
+    )
     cmd_output_tree.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(output_tree / ".config", cmd_output_tree / ".config")
 
@@ -62,7 +64,7 @@ def _create_cmd_graph_based_kernel_directory(
     cmd_graph_sources = [
         node.absolute_path.relative_to(src_tree)
         for node in iter_cmd_graph(cmd_graph)
-        if node.absolute_path.relative_to(src_tree) and not node.absolute_path.relative_to(output_tree)
+        if node.absolute_path.is_relative_to(src_tree) and not node.absolute_path.is_relative_to(output_tree)
     ]
 
     logging.info("Remove source files not in cmd graph")
