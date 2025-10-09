@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 WILDCARD_PATTERN = re.compile(r"\$\(wildcard ([^)]+)\)")
-VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\. ]+$")
+VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
 
 
 def parse_deps(deps: list[str], output_tree: Path) -> list[Path]:
