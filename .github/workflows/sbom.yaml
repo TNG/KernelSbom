@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+
+name: Sbom
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_archive:
+        description: Name of the test archive to download from https://fileshare.tngtech.com/d/e69946da808b41f88047/
+        required: false
+        default: linux-tinyconfig.tar.gz
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux Kernel Test Data
+        run: |
+          cd ..
+          test_archive="${{ inputs.test_archive }}"
+          echo "Downloading $test_archive"
+          curl -L -o "$test_archive" "https://fileshare.tngtech.com/d/e69946da808b41f88047/files/?p=%2F$test_archive&dl=1"
+          tar -xzf "$test_archive"
+
+      - name: Run sbom.py
+        run: |
+          python3 sbom/sbom.py \
+            --src-tree ../linux \
+            --output-tree ../linux/kernel_build \
+            --root-output-in-tree vmlinux \
+            --spdx sbom.spdx.json \
+            --used-files sbom.used_files.txt
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-files
+          path: |
+            sbom.spdx.json
+            sbom.used_files.txt
+          retention-days: 30

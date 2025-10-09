@@ -9,12 +9,11 @@ A script to generate an SPDX-format Software Bill of Materials (SBOM) for the `v
 The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/) kernel source tree.
 
 ## Getting Started
-1. Provide a linux src and output tree, e.g., by downloading precompiled testdata from [KernelSbom-TestData](https://fileshare.tngtech.com/library/98e7e6f8-bffe-4a55-a8d2-817d4f3e51e8/KernelSbom-TestData/)
+1. Provide a linux src and output tree, e.g., by downloading precompiled testdata from [KernelSbom-TestData](https://fileshare.tngtech.com/d/e69946da808b41f88047/files)
     ```bash
     test_archive="linux-defconfig.tar.gz"
     curl -L -o "$test_archive" "https://fileshare.tngtech.com/d/e69946da808b41f88047/files/?p=%2F$test_archive&dl=1"
     tar -xzf "$test_archive"
-    rm "$test_archive"
     ```
     or cloning the [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) repo and building your own config
     ```bash
