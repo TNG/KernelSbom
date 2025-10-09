@@ -78,9 +78,7 @@ def build_cmd_graph(
     if len(relative_inputs) > 0:
         # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
         # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
-        working_directory = _get_working_directory(
-            output_tree, src_tree, root_output_in_tree, input_file=relative_inputs[0]
-        )
+        working_directory = _get_working_directory(relative_inputs[0], output_tree, src_tree, root_output_in_tree)
         child_paths += [working_directory / input_file for input_file in relative_inputs]
 
     # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
