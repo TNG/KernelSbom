@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-name: Sbom
+name: Sbom 
 
 on:
   workflow_dispatch:
@@ -9,16 +9,24 @@ on:
       test_archive:
         description: Name of the test archive to download from https://fileshare.tngtech.com/d/e69946da808b41f88047/
         required: false
-        default: linux-tinyconfig.tar.gz
+        default: linux.v6.17.tinyconfig.tar.gz
+  workflow_call:
+    inputs:
+      test_archive:
+        required: true
+        type: string
+
+run-name: ${{ inputs.test_archive }}
 
 jobs:
-  main:
+  sbom:
+    name: ${{ inputs.test_archive }}
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Linux Kernel Test Data
+      - name: Download ${{ inputs.test_archive }}
         run: |
           cd ..
           test_archive="${{ inputs.test_archive }}"
@@ -27,6 +35,7 @@ jobs:
           tar -xzf "$test_archive"
 
       - name: Run sbom.py
+        id: run_sbom
         run: |
           python3 sbom/sbom.py \
             --src-tree ../linux \
@@ -34,11 +43,15 @@ jobs:
             --root-output-in-tree vmlinux \
             --spdx sbom.spdx.json \
             --used-files sbom.used_files.txt
+          
+          test_archive="${{ inputs.test_archive }}"
+          output_dir="${test_archive%.tar.gz}"
+          echo "output_dir=$output_dir" >> $GITHUB_OUTPUT
       
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-files
+          name: sbom-outputs-${{ steps.run_sbom.outputs.output_dir }}
           path: |
             sbom.spdx.json
             sbom.used_files.txt

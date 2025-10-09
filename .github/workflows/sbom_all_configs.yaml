@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+
+name: Sbom all Configs
+
+on:
+  workflow_dispatch:
+
+run-name: Sbom all Configs
+
+jobs:
+  sbom-all-configs:
+    uses: ./.github/workflows/sbom.yaml
+    with:
+      test_archive: ${{ matrix.archive }}
+    strategy:
+      fail-fast: false 
+      matrix:
+        archive:
+          - linux.v6.17.tinyconfig.tar.gz
+          - linux.v6.17.defconfig.tar.gz
+          - linux.v6.17.allmodconfig.tar.gz
+          - linux.v6.17.localmodconfig.Ubuntu24.04.tar.gz
+          - linux.v6.17.defconfig.rust.tar.gz
+          - linux.v6.1.y.localmodconfig.Ubuntu25.04.tar.gz
+    
