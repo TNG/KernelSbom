@@ -26,36 +26,32 @@ SPDX-FileCopyrightText: (C) 2018 Vasco Asturiano
         function initializeGraph(data) {
             console.log("Loaded", data)
             const formatNodeLabel = node => {
-                return `depth=${node.depth}, root=${node.root_node_index}: ${node.id}`;
+                return `depth=${node.depth}, root=${node.root_node_index}: ${node.id}, missing_file=${node.is_missing_file}`;
             };
 
             const colorScale = node => {
-                if (node.id.endsWith("built-in.a")) {
+                if (node.is_missing_file == true) {
                     return '#000000'
+                }
+                if (node.id.endsWith("vmlinux")) {
+                    return '#00ff00';
                 }
                 switch (node.depth) {
                     case 0: return '#ff0000';   // Red
-                    case 1: return '#ff7f00';   // Orange
-                    case 2: return '#ffbf00';   // Golden Yellow
-                    case 3: return '#66cc33';   // Green
-                    case 4: return '#33cccc';   // Teal
-                    case 5: return '#3399ff';   // Blue
-                    case 6: return '#9966cc';   // Purple
-                    case 7: return '#d9d9d9';   // Light Gray
-                    default: return '#f0f0f0';  // Very Light Gray (fallback)
+                    default: return '#d9d9d9';  // Very Light Gray (fallback)
                 }
             };
 
             const size = (node) => (node.root_node_index == 0 && node.depth == 0) ? 50 : (5 + 10 * Math.exp(-0.5 * node.depth));
 
-            ForceGraph()(document.getElementById('graph'))
+            const graph = ForceGraph()(document.getElementById('graph'))
                 .graphData(data)
-                .d3AlphaDecay(0.05)
-                .d3VelocityDecay(0.08)
+                .d3AlphaDecay(0.01)
+                .d3VelocityDecay(0.2)
                 .linkColor(() => 'rgba(0,0,0,0.5)')
                 .linkWidth(1)
                 .linkDirectionalArrowLength(6)
-                .zoom(0.2)
+                .zoom(0.5)
                 .enablePointerInteraction(true)
                 .nodeLabel(node => formatNodeLabel(node))
                 .nodeCanvasObject((node, ctx, globalScale) => {
@@ -72,6 +68,8 @@ SPDX-FileCopyrightText: (C) 2018 Vasco Asturiano
                     ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
                     ctx.fill();
                 });
+
+            graph.d3Force('link').distance(200);
         }
 
         fetch('./cmd_graph.json')

@@ -16,7 +16,7 @@ LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-from sbom.cmd.cmd_graph import build_cmd_graph, CmdGraphNode, build_or_load_cmd_graph  # noqa: E402
+from sbom.cmd.cmd_graph import build_cmd_graph, CmdGraphNode, build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
 
 ForceGraphNodeId = str
 
@@ -26,6 +26,7 @@ class ForceGraphNode:
     id: ForceGraphNodeId
     depth: int
     root_node_index: int
+    is_missing_file: bool
 
 
 @dataclass
@@ -41,7 +42,10 @@ class ForceGraph:
 
 
 def _to_force_graph(
-    cmd_graphs: list[CmdGraphNode], max_depth: int | None = None, filter_patterns: list[re.Pattern[str]] = []
+    cmd_graphs: list[CmdGraphNode],
+    max_depth: int | None = None,
+    filter_patterns: list[re.Pattern[str]] = [],
+    missing_files: set[Path] = set(),
 ) -> ForceGraph:
     nodes: list[ForceGraphNode] = []
     links: list[ForceGraphLink] = []
@@ -54,7 +58,14 @@ def _to_force_graph(
         if node_id in visited:
             return
 
-        nodes.append(ForceGraphNode(id=node_id, depth=depth, root_node_index=root_node_index))
+        nodes.append(
+            ForceGraphNode(
+                id=node_id,
+                depth=depth,
+                root_node_index=root_node_index,
+                is_missing_file=node.absolute_path in missing_files,
+            )
+        )
         visited.add(node_id)
 
         if max_depth is not None and depth > max_depth:
@@ -96,7 +107,7 @@ def _to_sparse_cmd_graph(cmd_graph: CmdGraphNode, include: set[Path]) -> CmdGrap
         if sparse_child:
             sparse_children.append(sparse_child)
 
-    if len(sparse_children) == 0:
+    if len(sparse_children) == 0 and cmd_graph.absolute_path not in include:
         return None
 
     cmd_graph.children = sparse_children
@@ -107,13 +118,12 @@ def _extend_cmd_graph_with_missing_files(
     cmd_graph: CmdGraphNode,
     output_tree: Path,
     missing_files: set[Path],
-    cmd_patterns_to_check: list[str] = ["*.o.cmd", "*.a.cmd"],
-) -> tuple[list[CmdGraphNode], set[Path]]:
+    cmd_patterns_to_check: list[str] = ["*.elf.cmd", "*.a.cmd", "*.o.cmd"],
+) -> list[CmdGraphNode]:
     """
     Extends an existing cmd graph based on all cmd files in the output tree that are not already in the cmd_graph_node_cache.
     A new graph is spanned.
     """
-    found_files: set[Path] = set()
     cmd_graphs: list[CmdGraphNode] = [cmd_graph]
     cmd_graph_node_cache = _cmd_graph_to_node_dict(cmd_graph)
     for cmd_file_path in chain.from_iterable(output_tree.rglob(pattern) for pattern in cmd_patterns_to_check):
@@ -134,7 +144,6 @@ def _extend_cmd_graph_with_missing_files(
             found_files_in_node = {file for file in missing_files if file == node.absolute_path}
             if len(found_files_in_node) > 0 or node.absolute_path in root_files:
                 # found missing file or other root node in children of new_graph
-                found_files = found_files | found_files_in_node
                 logging.info(
                     f"Found parent: {node.absolute_path} of missing files {found_files_in_node}. Adding {new_graph.absolute_path} as new root"
                 )
@@ -143,7 +152,7 @@ def _extend_cmd_graph_with_missing_files(
             child_queue += node.children
         if cmd_graphs[-1] != new_graph:
             logging.info(f"No missing file found in children of {new_graph.absolute_path}")
-    return cmd_graphs, found_files
+    return cmd_graphs
 
 
 if __name__ == "__main__":
@@ -182,9 +191,15 @@ if __name__ == "__main__":
         missing_files: set[Path] = set(src_tree / path for path in json.load(f))
 
     logging.info("Extend Graph based on missing files")
-    cmd_graphs, found_files = _extend_cmd_graph_with_missing_files(cmd_graph, output_tree, missing_files)
+    cmd_graphs = _extend_cmd_graph_with_missing_files(cmd_graph, output_tree, missing_files)
 
     # list remaining missing files that could not be found
+    found_files = {
+        node.absolute_path
+        for graph in cmd_graphs
+        for node in iter_cmd_graph(graph)
+        if node.absolute_path in missing_files
+    }
     logging.info(f"Found {len(found_files)} of {len(missing_files)} missing files")
     if len(found_files) < len(missing_files):
         remaining_missing_files = [f for f in missing_files if f not in found_files]
@@ -193,8 +208,7 @@ if __name__ == "__main__":
         logging.info(f"Saved remaining missing files in {remaining_missing_files_path}")
 
     # Thin out cmd graph to only show missing files. "vmlinux" as first root should still remain
-    # missing_files.remove(src_tree / "arch/x86/include/uapi/asm/stat.h")
-    # missing_files.remove(src_tree / "include/linux/dma-mapping.h")
+    missing_files.remove(src_tree / "arch/x86/include/uapi/asm/stat.h")
 
     cmd_graphs = [
         root_node
@@ -211,6 +225,7 @@ if __name__ == "__main__":
             # re.compile(r"\.h$"),
             re.compile(r"^.*/include/config/"),
         ],
+        missing_files=missing_files,
     )
     logging.info(f"Found {len(force_graph.nodes)} nodes in {len(cmd_graphs)} roots")
 

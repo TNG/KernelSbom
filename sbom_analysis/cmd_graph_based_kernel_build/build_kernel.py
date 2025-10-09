@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+from typing import Iterator
 
 
 MAKE_ERROR_PATTERNS = [
@@ -68,6 +69,7 @@ def build_kernel(
 
     previous_make_error_message: str | None = None
     potential_missing_file: Path | None = None
+    potential_missing_files_iterator: Iterator[Path] = iter([])
     while True:
         logging.info("Build kernel")
         returncode, log_outputs = _run_command(
@@ -91,7 +93,7 @@ def build_kernel(
             # Create new list of potential missing files
             logging.info("Search potential missing files")
             potential_missing_files = _get_potential_missing_files(
-                make_error, src_tree, output_tree, ignore=missing_sources_in_cmd_graph
+                make_error, src_tree, output_tree, cmd_src_tree, ignore=missing_sources_in_cmd_graph
             )
 
             if len(potential_missing_files) == 0:
@@ -114,7 +116,7 @@ def build_kernel(
 
 def _run_command(cmd: list[str], cwd: Path, live_output: bool = False) -> tuple[int, list[str]]:
     process = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
-    output_lines = []
+    output_lines: list[str] = []
     if process.stdout is None:
         raise RuntimeError("Failed to capture output from subprocess")
     for line in process.stdout:
@@ -129,6 +131,7 @@ def _get_potential_missing_files(
     make_error: MakeError,
     src_tree: Path,
     output_tree: Path,
+    cmd_src_tree: Path,
     ignore: list[Path] = [],
 ) -> list[Path]:
     rule_based_candidates: list[Path] = []
@@ -155,25 +158,27 @@ def _get_potential_missing_files(
     # filter out non promising candidates
     potential_missing_files: list[Path] = []
     for path in rule_based_candidates + additional_candidates:
-        try:
-            if path.is_absolute() and path.exists():
-                ...
-            elif (src_tree / path).exists():
-                path = (src_tree / path).resolve()
-            elif (output_tree / path).exists():
-                path = (output_tree / path).resolve()
-            else:
-                continue
-        except OSError:
-            continue
+        if not path.is_absolute():
+            path = (src_tree / path).resolve()
 
         if (
-            path.is_file()
-            and path.is_relative_to(src_tree)
-            and not path.is_relative_to(output_tree)
-            and path.relative_to(src_tree) not in (ignore + potential_missing_files)
+            not path.is_file()
+            or not path.exists()
+            or not path.is_relative_to(src_tree)
+            or path.is_relative_to(output_tree)
         ):
-            potential_missing_files.append(path.relative_to(src_tree))
+            # skip files in that do not exist of are outside the src tree
+            continue
+
+        if (cmd_src_tree / path.relative_to(src_tree)).exists():
+            # skip files that are already in the cmd src tree
+            continue
+
+        if path.relative_to(src_tree) in (ignore + potential_missing_files):
+            # skip files that are in the ignore list
+            continue
+
+        potential_missing_files.append(path.relative_to(src_tree))
 
     if make_error.reference_file is None:
         return potential_missing_files
