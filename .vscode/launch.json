@@ -2,16 +2,41 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: sbom",
+            "name": "Sbom",
             "type": "debugpy",
             "request": "launch",
             "program": "sbom/sbom.py",
             "console": "integratedTerminal",
             "args": [
-                "--src-tree", "../linux",
-                "--output-tree", "../linux/kernel_build",
-                "--root-output-in-tree", "vmlinux",
+                "--src-tree",
+                "../linux",
+                "--output-tree",
+                "../linux/kernel_build",
+                "--root-output-in-tree",
+                "vmlinux",
                 "--debug"
+            ]
+        },
+        {
+            "name": "Cmd Graph Based Kernel Build",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "sbom_analysis/cmd_graph_based_kernel_build/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "../linux",
+                "../linux/kernel_build",
+            ]
+        },
+        {
+            "name": "Cmd Graph Visualization",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "sbom_analysis/cmd_graph_visualization/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "../linux",
+                "../linux/kernel_build",
             ]
         }
     ]
