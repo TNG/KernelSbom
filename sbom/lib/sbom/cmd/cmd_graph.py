@@ -7,14 +7,11 @@ import os
 from pathlib import Path
 from dataclasses import dataclass, field
 import pickle
-import re
 from typing import Iterator
 
 from .deps_parser import parse_deps
 from .savedcmd_parser import parse_commands
 from .cmd_file_parser import CmdFile, parse_cmd_file
-
-CONFIG_PATH_PATTERN = re.compile(r"include/config/[A-Z0-9_]+$")
 
 
 @dataclass
@@ -81,9 +78,7 @@ def build_cmd_graph(
     if len(relative_inputs) > 0:
         # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
         # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
-        working_directory = _get_working_directory(
-            output_tree, src_tree, root_output_in_tree, input_file=relative_inputs[0]
-        )
+        working_directory = _get_working_directory(relative_inputs[0], output_tree, src_tree, root_output_in_tree)
         child_paths += [working_directory / input_file for input_file in relative_inputs]
 
     # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
@@ -131,34 +126,23 @@ def _to_cmd_path(path: Path) -> Path:
     return path.parent / f".{path.name}.cmd"
 
 
-def _get_working_directory(output_tree: Path, src_tree: Path, root_output_in_tree: Path, input_file: Path) -> Path:
+def _get_working_directory(input_file: Path, output_tree: Path, src_tree: Path, root_output_in_tree: Path) -> Path:
     # Input paths in .cmd files are often relative paths but it is unclear to which original working directory these paths are relative to.
     # This function estimates the working directory based on the location of one input_file and various heuristics.
 
     relative_to_cmd_file = (output_tree / root_output_in_tree.parent / input_file).exists()
     relative_to_output_tree = (output_tree / input_file).exists()
-    relative_to_src_tree = (src_tree / input_file).exists()
-    relative_to_source_file = (src_tree / root_output_in_tree.parent / input_file).exists()
+    relative_to_tools_objtool = str(root_output_in_tree).startswith("tools/objtool/arch/x86")
+    relative_to_tools_lib_subcmd = str(root_output_in_tree).startswith("tools/objtool/libsubcmd")
 
     if relative_to_cmd_file:
         return root_output_in_tree.parent
     elif relative_to_output_tree:
         return Path(".")
-    elif relative_to_src_tree:
-        # Input path relative to the source tree. While .cmd files typically don't reference such paths directly, this case handles .cmd files
-        # where inputs are omitted entirely despite depending on source tree files (e.g., `genheaders` command in `security/selinux/.flask.h.cmd` where `security/selinux/genheaders.c` depends on header files that are not specified in the .cmd).
-        return Path(os.path.relpath(src_tree, output_tree))
-    elif relative_to_source_file:
-        # Input path relative to the source file in the source tree. Like the previous case this case does not occur directly in cmd files but may occur
-        # when inputs are omitted entirely despite depending on source tree files (e.g., `mkcpustr` command in `arch/x86/boot/.cpustr.h.cmd` hwere `arch/x86/boot/cpustr.h` depends on other .h and .c files that are not specified in the .cmd).
-        return Path(os.path.relpath(src_tree / root_output_in_tree.parent, output_tree))
-
-    relative_to_tools_objtool = str(root_output_in_tree).startswith("tools/objtool/arch/x86")
-    if relative_to_tools_objtool:
+    elif relative_to_tools_objtool:
         # Input path relative to `tools/objtool` (e.g., `tools/objtool/arch/x86/special.o` has input `arch/x86/special.c`)
         return Path(os.path.relpath(src_tree, output_tree)) / "tools/objtool"
-    relative_to_tools_lib_subcmd = str(root_output_in_tree).startswith("tools/objtool/libsubcmd")
-    if relative_to_tools_lib_subcmd:
+    elif relative_to_tools_lib_subcmd:
         # Input path relative to `tools/lib/subcmd` (e.g., `tools/objtool/libsubcmd/.sigchain.o` has input `subcmd-util.h` which lives in `tools/lib/subcmd/subcmd-util.h`)
         return Path(os.path.relpath(src_tree, output_tree)) / "tools/lib/subcmd"
 

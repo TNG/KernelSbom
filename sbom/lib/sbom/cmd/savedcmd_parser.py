@@ -55,7 +55,9 @@ def _tokenize_single_command(command: str, flag_options: list[str] | None = None
             continue
 
         # Option without value (--flag)
-        if token.startswith("-") and tokens[i + 1].startswith("-") or (flag_options and token in flag_options):
+        if (token.startswith("-") and i + 1 < len(tokens) and tokens[i + 1].startswith("-")) or (
+            flag_options and token in flag_options
+        ):
             parsed.append(Option(name=token))
             i += 1
             continue
@@ -126,7 +128,7 @@ def _parse_ar_command(command: str) -> list[Path]:
     return [Path(p) for p in positionals[3:]]
 
 
-def _parse_ar_piped_command(command: str) -> list[Path]:
+def _parse_ar_piped_xargs_command(command: str) -> list[Path]:
     printf_command, _ = command.split("|", 1)
     positionals = _tokenize_single_command_positionals_only(printf_command.strip())
     # expect positionals to be ['printf', '{prefix_path}%s ', input1, input2, ...]
@@ -189,16 +191,24 @@ def _parse_vdso2c_command(command: str) -> list[Path]:
     return [Path(positionals[1]), Path(positionals[2])]
 
 
-def _parse_genheaders_command(_: str) -> list[Path]:
-    # At the time of writing `security/selinux/genheaders.c` includes `classmap.h` and `initial_sid_to_string.h`.
-    # Since parsing .c files is out of scope for this tool the two header files are hardcoded.
-    return [Path("security/selinux/include/classmap.h"), Path("security/selinux/include/initial_sid_to_string.h")]
-
-
 def _parse_ld_command(command: str) -> list[Path]:
     command_parts = _tokenize_single_command(
         command=command.strip(),
-        flag_options=["-shared", "--no-undefined", "--eh-frame-hdr", "-Bsymbolic"],
+        flag_options=[
+            "-shared",
+            "--no-undefined",
+            "--eh-frame-hdr",
+            "-Bsymbolic",
+            "-r",
+            "--no-ld-generated-unwind-info",
+            "--no-dynamic-linker",
+            "-pie",
+            "--no-dynamic-linker--whole-archive",
+            "--whole-archive",
+            "--no-whole-archive",
+            "--start-group",
+            "--end-group",
+        ],
     )
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["ld", input1, input2, ...]
@@ -236,6 +246,62 @@ def _parse_perl_command(command: str) -> list[Path]:
     return [Path(positionals[1])]
 
 
+def _parse_strip_command(command: str) -> list[Path]:
+    command_parts = _tokenize_single_command(command, flag_options=["--strip-debug"])
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be ["strip", input1, input2, ...]
+    return [Path(p) for p in positionals[1:]]
+
+
+def _parse_mkpiggy_command(command: str) -> list[Path]:
+    mkpiggy_command, _ = command.split(">", 1)
+    positionals = _tokenize_single_command_positionals_only(mkpiggy_command)
+    # expect positionals to be ["mkpiggy", input]
+    return [Path(positionals[1])]
+
+
+def _parse_cat_piped_gzip_command(command: str) -> list[Path]:
+    cat_command, _ = command.split("|", 1)
+    positionals = _tokenize_single_command_positionals_only(cat_command)
+    # expect positionals to be ["cat", input1, input2, ...]
+    return [Path(p) for p in positionals[1:]]
+
+
+def _parse_relocs_command(command: str) -> list[Path]:
+    if ">" not in command:
+        # Only consider relocs commands that redirect output to a file.
+        # If there's no redirection, we assume it produces no output file and therefore has no input we care about.
+        return []
+    relocs_command, _ = command.split(">", 1)
+    positionals = _tokenize_single_command_positionals_only(relocs_command)
+    # expect positionals to be ["relocs", input]
+    return [Path(p) for p in positionals[1:]]
+
+
+def _parse_mk_elfconfig_command(command: str) -> list[Path]:
+    positionals = _tokenize_single_command_positionals_only(command)
+    # expect positionals to be ["mk_elfconfig", "<", input, ">", output]
+    return [Path(positionals[2])]
+
+
+def _parse_flex_command(command: str) -> list[Path]:
+    parts = shlex.split(command)
+    # expect last positional argument ending in `.l` to be the input file
+    for part in reversed(parts):
+        if not part.startswith("-") and Path(part).suffix in [".l"]:
+            return [Path(part)]
+    raise ValueError(f"Could not find input source file in command: {command}")
+
+
+def _parse_bison_command(command: str) -> list[Path]:
+    parts = shlex.split(command)
+    # expect last positional argument ending in `.y` to be the input file
+    for part in reversed(parts):
+        if not part.startswith("-") and Path(part).suffix in [".y"]:
+            return [Path(part)]
+    raise ValueError(f"Could not find input source file in command: {command}")
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
@@ -246,7 +312,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(/bin/)?true\b"), _parse_noop),
     (re.compile(r"^(/bin/)?false\b"), _parse_noop),
     (re.compile(r"^(llvm-)?ar\b"), _parse_ar_command),
-    (re.compile(r"^printf\b.*\| xargs (llvm-)?ar\b"), _parse_ar_piped_command),
+    (re.compile(r"^printf\b.*\| xargs (llvm-)?ar\b"), _parse_ar_piped_xargs_command),
     (re.compile(r"^(gcc|clang)\b"), _parse_gcc_or_clang_command),
     (re.compile(r".*rustc\b"), _parse_rustc_command),
     (re.compile(r"sh (.*/)?syscallhdr\.sh\b"), _parse_syscallhdr_command),
@@ -255,15 +321,23 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
     (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
-    (re.compile(r"(.*/)?genheaders\b"), _parse_genheaders_command),
+    (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
+    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
     (re.compile(r"^ld\b"), _parse_ld_command),
-    (re.compile(r"^sed\b"), _parse_sed_command),
+    (re.compile(r"^sed.*?>"), _parse_sed_command),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
     (re.compile(r"^(llvm-)?nm\b.*?\|"), _parse_nm_piped_command),
     (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
     (re.compile(r"^perl\b"), _parse_perl_command),
     (re.compile(r"^(.*/)polgen\b"), _parse_noop),
     (re.compile(r"^\{\s*symbase=[^;]+;\s*(echo\s+.*?;\s*)+\}\s*>\s*\S+"), _parse_noop),
+    (re.compile(r"^strip\b"), _parse_strip_command),
+    (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
+    (re.compile(r"^cat\b.*?\|\s*gzip"), _parse_cat_piped_gzip_command),
+    (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
+    (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
+    (re.compile(r"^flex\b"), _parse_flex_command),
+    (re.compile(r"^bison\b"), _parse_bison_command),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
@@ -365,8 +439,8 @@ def parse_commands(commands: str) -> list[Path]:
         if isinstance(single_command, IfBlock):
             inputs = parse_commands(single_command.then_statement)
             if inputs:
-                raise NotImplementedError(
-                    f"Input files in IfBlock 'then' statement are not supported: {single_command.then_statement}"
+                logging.warning(
+                    f"Skip command because input files in IfBlock 'then' statement are not supported: {single_command.then_statement}"
                 )
             continue
 
