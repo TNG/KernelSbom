@@ -150,7 +150,7 @@ def main():
             used_files = [
                 os.path.relpath(node.absolute_path, src_tree)
                 for node in iter_cmd_graph(cmd_graph)
-                if node.absolute_path.is_relative_to(src_tree) and not node.absolute_path.is_relative_to(output_tree)
+                if not node.absolute_path.is_relative_to(output_tree)
             ]
             logging.info(f"Found {len(used_files)} source files in cmd graph.")
         with open(args.used_files, "w", encoding="utf-8") as f:
