@@ -7,13 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       test_archive:
-        description: 'Name of the test archive to download from https://fileshare.tngtech.com/d/e69946da808b41f88047/'
+        description: Name of the test archive to download from https://fileshare.tngtech.com/d/e69946da808b41f88047/
         required: false
-        default: 'linux-defconfig.tar.gz'
+        default: linux.v6.17.tinyconfig.tar.gz
+      use_missing_sources_directory:
+        description: whether to use the pre-existing missing_sources_in_cmd_graph.<config>.json files from version control or to regenerate the missing source files from scratch during analysis.
+        type: boolean
+        default: true
       freeDiskSpace:
+        description: whether to free disk space before building the kernel
         type: boolean
         default: false
-        description: whether to free disk space before building the kernel
 
 jobs:
   main:
@@ -40,15 +44,13 @@ jobs:
           curl -L -o "$test_archive" "https://fileshare.tngtech.com/d/e69946da808b41f88047/files/?p=%2F$test_archive&dl=1"
           tar -xzf "$test_archive"
 
-      # Create the linux_cmd directory which contains only source files referenced in the cmd graph
-      - name: Create linux_cmd
-        run: python3 sbom_analysis/cmd_graph_based_kernel_build/cmd_graph_based_kernel_build.py
+      - name: Load missing sources
+        if: ${{ inputs.use_missing_sources_directory }}
+        run: |
+          cd sbom_analysis/cmd_graph_based_kernel_build
+          test_archive="${{ inputs.test_archive }}"
+          cp "missing_sources/missing_sources_in_cmd_graph.${test_archive%.tar.gz}.json" missing_sources_in_cmd_graph.json
 
       # Build kernel with the original .config using only source files referenced in the cmd graph
-      - name: Cmd Graph Based Kernel Build
-        run: |
-          cd linux_cmd
-          mkdir kernel_build
-          cp ../linux/kernel_build/.config kernel_build/.config
-          make olddefconfig O=kernel_build
-          make -j$(nproc) O=kernel_build
+      - name: Create linux_cmd
+        run: python3 sbom_analysis/cmd_graph_based_kernel_build/main.py

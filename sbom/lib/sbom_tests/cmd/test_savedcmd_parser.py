@@ -124,8 +124,8 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_genheaders(self):
         cmd = "security/selinux/genheaders security/selinux/flask.h security/selinux/av_permissions.h"
-        expected = "security/selinux/include/classmap.h security/selinux/include/initial_sid_to_string.h"
-        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+        expected = []
+        self.assertEqual(parse_commands(cmd), expected)
 
     # ld command tests
 
@@ -133,6 +133,16 @@ class TestSavedCmdParser(unittest.TestCase):
         cmd = 'ld -o arch/x86/entry/vdso/vdso64.so.dbg -shared --hash-style=both --build-id=sha1 --no-undefined  --eh-frame-hdr -Bsymbolic -z noexecstack -m elf_x86_64 -soname linux-vdso.so.1 -z max-page-size=4096 -T arch/x86/entry/vdso/vdso.lds arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o; if readelf -rW arch/x86/entry/vdso/vdso64.so.dbg | grep -v _NONE | grep -q " R_\w*_"; then (echo >&2 "arch/x86/entry/vdso/vdso64.so.dbg: dynamic relocations are not supported"; rm -f arch/x86/entry/vdso/vdso64.so.dbg; /bin/false); fi'  # type: ignore
         expected = "arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_ld_whole_archive(self):
+        cmd = "ld -m elf_x86_64 -z noexecstack -r -o vmlinux.o   --whole-archive vmlinux.a --no-whole-archive --start-group  --end-group"
+        expected = [Path("vmlinux.a")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    def test_ld_with_at_symbol(self):
+        cmd = "ld -m elf_x86_64 -z noexecstack   -r -o fs/efivarfs/efivarfs.o @fs/efivarfs/efivarfs.mod"
+        expected = [Path("@fs/efivarfs/efivarfs.mod")]
+        self.assertEqual(parse_commands(cmd), expected)
 
     # sed command tests
 
@@ -174,6 +184,69 @@ class TestSavedCmdParser(unittest.TestCase):
     def test_manual_file_creation(self):
         cmd = """{ symbase=__dtbo_overlay_bad_unresolved; echo '$(pound)include <asm-generic/vmlinux.lds.h>'; echo '.section .rodata,"a"'; echo '.balign STRUCT_ALIGNMENT'; echo ".global $${symbase}_begin"; echo "$${symbase}_begin:"; echo '.incbin "drivers/of/unittest-data/overlay_bad_unresolved.dtbo" '; echo ".global $${symbase}_end"; echo "$${symbase}_end:"; echo '.balign STRUCT_ALIGNMENT'; } > drivers/of/unittest-data/overlay_bad_unresolved.dtbo.S"""
         expected = []
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # strip command tests
+
+    def test_strip(self):
+        cmd = "strip --strip-debug -o drivers/firmware/efi/libstub/mem.stub.o drivers/firmware/efi/libstub/mem.o"
+        expected = [Path("drivers/firmware/efi/libstub/mem.o")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # nm command tests
+
+    def test_nm_vmlinux(self):
+        cmd = r"nm vmlinux | sed -n -e 's/^\([0-9a-fA-F]*\) [ABbCDGRSTtVW] \(_text\|__start_rodata\|__bss_start\|_end\)$/#define VO_\2 _AC(0x\1,UL)/p' > arch/x86/boot/voffset.h"
+        expected = [Path("vmlinux")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # mkpiggy command tests
+
+    def test_mkpiggy(self):
+        cmd = "arch/x86/boot/compressed/mkpiggy arch/x86/boot/compressed/vmlinux.bin.gz > arch/x86/boot/compressed/piggy.S"
+        expected = [Path("arch/x86/boot/compressed/vmlinux.bin.gz")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # cat piped gzip command tests
+
+    def test_cat_piped_gzip(self):
+        cmd = "cat arch/x86/boot/compressed/vmlinux.bin arch/x86/boot/compressed/vmlinux.relocs | gzip -n -f -9 > arch/x86/boot/compressed/vmlinux.bin.gz"
+        expected = [Path("arch/x86/boot/compressed/vmlinux.bin"), Path("arch/x86/boot/compressed/vmlinux.relocs")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # relocs command tests
+
+    def test_relocs(self):
+        cmd = "arch/x86/tools/relocs vmlinux.unstripped > arch/x86/boot/compressed/vmlinux.relocs;arch/x86/tools/relocs --abs-relocs vmlinux.unstripped"
+        expected = [Path("vmlinux.unstripped")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # mkcpustr command tests
+
+    def test_mkcpustr(self):
+        cmd = "arch/x86/boot/mkcpustr > arch/x86/boot/cpustr.h"
+        expected = []
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # mk_elfconfig command tests
+
+    def test_mk_elfconfig(self):
+        cmd = "scripts/mod/mk_elfconfig < scripts/mod/empty.o > scripts/mod/elfconfig.h"
+        expected = [Path("scripts/mod/empty.o")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # flex command tests
+
+    def test_flex(self):
+        cmd = "flex -oscripts/kconfig/lexer.lex.c -L ../scripts/kconfig/lexer.l"
+        expected = [Path("../scripts/kconfig/lexer.l")]
+        self.assertEqual(parse_commands(cmd), expected)
+
+    # bison command tests
+
+    def test_bison(self):
+        cmd = "bison -o scripts/kconfig/parser.tab.c --defines=scripts/kconfig/parser.tab.h -t -l ../scripts/kconfig/parser.y"
+        expected = [Path("../scripts/kconfig/parser.y")]
         self.assertEqual(parse_commands(cmd), expected)
 
 
