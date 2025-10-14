@@ -7,7 +7,7 @@ SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 The [`main.py`](./main.py) script visualizes cmd graphs using the [force-graph](https://github.com/vasturiano/force-graph) library.
 
-![force-graph](./vmlinux-no-headers-no-configs.png)
+![force-graph](./bzImage_tinyconfig_no_header_no_config.png)
 
 To view the interactive force graphs:
 

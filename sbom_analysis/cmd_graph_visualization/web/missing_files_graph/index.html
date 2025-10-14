@@ -1,0 +1,89 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+SPDX-License-Identifier: MIT
+SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+SPDX-FileCopyrightText: (C) 2018 Vasco Asturiano
+-->
+
+<head>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+
+    <script src="//cdn.jsdelivr.net/npm/force-graph"></script>
+    <script src="https://unpkg.com/pako@2.1.0/dist/pako.min.js"></script>
+</head>
+
+<body>
+    <div id="graph"></div>
+
+    <script>
+        window.devicePixelRatio = 1; // use standard resolution in retina displays
+
+        function initializeGraph(data) {
+            console.log("Loaded", data)
+            const formatNodeLabel = node => {
+                return `depth=${node.depth}, root=${node.root_node_index}: ${node.id}, missing_file=${node.is_missing_file}`;
+            };
+
+            const colorScale = node => {
+                if (node.is_missing_file == true) {
+                    return '#000000'
+                }
+                if (node.id.endsWith("vmlinux")) {
+                    return '#00ff00';
+                }
+                switch (node.depth) {
+                    case 0: return '#ff0000';   // Red
+                    default: return '#d9d9d9';  // Very Light Gray (fallback)
+                }
+            };
+
+            const size = (node) => (node.root_node_index == 0 && node.depth == 0) ? 50 : (5 + 10 * Math.exp(-0.5 * node.depth));
+
+            const graph = ForceGraph()(document.getElementById('graph'))
+                .graphData(data)
+                .d3AlphaDecay(0.01)
+                .d3VelocityDecay(0.2)
+                .linkColor(() => 'rgba(0,0,0,0.5)')
+                .linkWidth(1)
+                .linkDirectionalArrowLength(6)
+                .zoom(0.5)
+                .enablePointerInteraction(true)
+                .nodeLabel(node => formatNodeLabel(node))
+                .nodeCanvasObject((node, ctx, globalScale) => {
+                    const radius = size(node);
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = colorScale(node);
+                    ctx.fill();
+                })
+                .nodePointerAreaPaint((node, color, ctx) => {
+                    const radius = size(node);
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
+                    ctx.fill();
+                });
+
+            graph.d3Force('link').distance(200);
+        }
+
+        fetch('./cmd_graph.json')
+            .then(res => {
+                if (!res.ok) throw new Error('Uncompressed file not found');
+                return res.json();
+            })
+            .then(initializeGraph)
+            .catch(() => {
+                fetch('./cmd_graph.json.gz')
+                    .then(res => res.arrayBuffer())
+                    .then(buffer => {
+                        const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+                        initializeGraph(JSON.parse(decompressed));
+                    });
+            });
+    </script>
+</body>

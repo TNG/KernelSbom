@@ -43,7 +43,6 @@ class ForceGraph:
 
 def _to_force_graph(
     cmd_graphs: list[CmdGraphNode],
-    max_depth: int | None = None,
     filter_patterns: list[re.Pattern[str]] = [],
     missing_files: set[Path] = set(),
 ) -> ForceGraph:
@@ -67,9 +66,6 @@ def _to_force_graph(
             )
         )
         visited.add(node_id)
-
-        if max_depth is not None and depth > max_depth:
-            return
 
         for child in node.children:
             child_id = str(child.absolute_path)
@@ -155,35 +151,9 @@ def _extend_cmd_graph_with_missing_files(
     return cmd_graphs
 
 
-if __name__ == "__main__":
-    """
-    cmd_graph_visualization.py <src_tree> <output_tree>
-    """
-    script_path = Path(__file__).parent
-    src_tree = (
-        Path(sys.argv[1]).resolve()
-        if len(sys.argv) >= 2 and sys.argv[1]
-        else (script_path / "../../../linux").resolve()
-    )
-    output_tree = (
-        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
-    )
-    root_output_in_tree = Path("vmlinux")
-    cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
-
-    cmd_graph_json_gz_path = script_path / "web/cmd_graph.json.gz"
-    max_visualization_depth: int | None = None
-    visualize_missing_files = True
-    remaining_missing_files_path = script_path / "remaining_missing_files.json"
-    config = "linux.v6.17.tinyconfig"
-
-    # Configure logging
-    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-
-    # Load cached command graph if available, otherwise build it from .cmd files
-    cmd_graph = build_or_load_cmd_graph(root_output_in_tree, output_tree, src_tree, cmd_graph_path)
-
-    # Extend cmd graph with missing files
+def _to_missing_files_graph(
+    cmd_graph: CmdGraphNode, output_tree: Path, script_path: Path, config: str
+) -> tuple[list[CmdGraphNode], set[Path]]:
     with open(
         script_path / f"../cmd_graph_based_kernel_build/missing_sources/missing_sources_in_cmd_graph.{config}.json",
         "rt",
@@ -207,35 +177,66 @@ if __name__ == "__main__":
             json.dump([str(p) for p in remaining_missing_files], f, indent=2)
         logging.info(f"Saved remaining missing files in {remaining_missing_files_path}")
 
-    # Thin out cmd graph to only show missing files. "vmlinux" as first root should still remain
-    missing_files.remove(src_tree / "arch/x86/include/uapi/asm/stat.h")
-
+    # Thin out cmd graph to only show missing files. "bzImage" as first root should still remain
     cmd_graphs = [
-        root_node
+        sparse_root_node
         for root_node in cmd_graphs
         if (sparse_root_node := _to_sparse_cmd_graph(root_node, include=missing_files | {cmd_graphs[0].absolute_path}))
         is not None
     ]
+    return cmd_graphs, missing_files
+
+
+if __name__ == "__main__":
+    """
+    cmd_graph_visualization.py <src_tree> <output_tree>
+    """
+    script_path = Path(__file__).parent
+    src_tree = (
+        Path(sys.argv[1]).resolve()
+        if len(sys.argv) >= 2 and sys.argv[1]
+        else (script_path / "../../../linux").resolve()
+    )
+    output_tree = (
+        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
+    )
+    root_output_in_tree = Path("arch/x86/boot/bzImage")
+    cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
+
+    # missing file graph options
+    visualize_missing_files = False
+    remaining_missing_files_path = script_path / "remaining_missing_files.json"
+    config = "linux.v6.17.tinyconfig"
+
+    # Configure logging
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+
+    # Load cached command graph if available, otherwise build it from .cmd files
+    cmd_graph = build_or_load_cmd_graph(root_output_in_tree, output_tree, src_tree, cmd_graph_path)
+    cmd_graphs = [cmd_graph]
+
+    # Extend cmd graph with missing files
+    missing_files = None
+    if visualize_missing_files:
+        cmd_graphs, missing_files = _to_missing_files_graph(
+            cmd_graph, output_tree, remaining_missing_files_path, config
+        )
 
     # Create Force Graph representation
     force_graph = _to_force_graph(
         cmd_graphs,
-        max_depth=max_visualization_depth,
         filter_patterns=[
-            # re.compile(r"\.h$"),
+            re.compile(r"^(?!.*voffset\.h$).+\.h$"),
             re.compile(r"^.*/include/config/"),
         ],
-        missing_files=missing_files,
+        missing_files=missing_files if missing_files is not None else set(),
     )
     logging.info(f"Found {len(force_graph.nodes)} nodes in {len(cmd_graphs)} roots")
 
     # Save json data
     data_dict = asdict(force_graph)
     cmd_graph_json_path = (
-        script_path
-        / "web"
-        / ("vmlinux" if not visualize_missing_files else "vmlinux_with_missing_files")
-        / "cmd_graph.json"
+        script_path / "web" / ("cmd_graph" if not visualize_missing_files else "missing_file_graph") / "cmd_graph.json"
     )
     if len(data_dict) < 100000:
         with open(cmd_graph_json_path, "wt") as f:

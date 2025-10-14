@@ -42,8 +42,8 @@ def parse_args() -> Args:
     )
     parser.add_argument(
         "--root-output-in-tree",
-        default="vmlinux",
-        help="Root build output path relative to --output-tree the SBOM will be based on (default: vmlinux)",
+        default="arch/x86/boot/bzImage",
+        help="Root build output path relative to --output-tree the SBOM will be based on (default: arch/x86/boot/bzImage)",
     )
     parser.add_argument(
         "--spdx",
