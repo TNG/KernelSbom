@@ -90,6 +90,55 @@ def _tokenize_single_command_positionals_only(command: str) -> list[str]:
     return positionals
 
 
+def _parse_dd_command(command: str) -> list[Path]:
+    match = re.match(r"dd.*?if=(\S+)", command)
+    if match:
+        return [Path(match.group(1))]
+    return []
+
+
+def _parse_compound_cat_command(command: str) -> list[Path]:
+    if "|" in command or ">" in command:
+        logging.warning(f"Skip parsing command because the given pipe/redirect destination is not supported {command}")
+        return []
+    positionals = _tokenize_single_command_positionals_only(command)
+    # expect positionals to be ["cat", input1, input2, ...]
+    return [Path(p) for p in positionals[1:]]
+
+
+def _parse_compound_command(command: str) -> list[Path]:
+    compound_command_parsers: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
+        (re.compile(r"dd\b"), _parse_dd_command),
+        (re.compile(r"cat.*?|\s+sh\b.*?xz_wrap\.sh"), lambda c: _parse_compound_cat_command(c.split("|")[0])),
+        (re.compile(r"cat\b"), _parse_compound_cat_command),
+        (re.compile(r"echo\b"), _parse_noop),
+        (re.compile(r"\S+="), _parse_noop),
+        (re.compile(r"printf\b"), _parse_noop),
+    ]
+
+    match = re.match(r"\s*[\(\{](.*)[\)\}]\s*>", command)
+    if match is None:
+        logging.error(f"No inner commands found for compound command {command}")
+        return []
+    input_files: list[Path] = []
+    inner_commands = _split_commands(match.group(1))
+    for inner_command in inner_commands:
+        if isinstance(inner_command, IfBlock):
+            logging.warning(
+                f"Skip parsing inner command of compound command because IfBlock is not supported {inner_command}"
+            )
+            continue
+
+        parser = next((parser for pattern, parser in compound_command_parsers if pattern.match(inner_command)), None)
+        if parser is None:
+            logging.warning(
+                f"Skip parsing inner command of compound command because no parser was found for {inner_command}"
+            )
+            continue
+        input_files += parser(inner_command)
+    return input_files
+
+
 def _parse_objcopy_command(command: str) -> list[Path]:
     command_parts = _tokenize_single_command(command, flag_options=["-S", "-w"])
     positionals = [part.value for part in command_parts if isinstance(part, Positional)]
@@ -304,6 +353,8 @@ def _parse_bison_command(command: str) -> list[Path]:
 
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
+    (re.compile(r"\(.*?\)\s*>"), _parse_compound_command),
+    (re.compile(r"\{.*?\}\s*>"), _parse_compound_command),
     (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
     (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
     (re.compile(r"^rm\b"), _parse_noop),
@@ -330,7 +381,6 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
     (re.compile(r"^perl\b"), _parse_perl_command),
     (re.compile(r"^(.*/)polgen\b"), _parse_noop),
-    (re.compile(r"^\{\s*symbase=[^;]+;\s*(echo\s+.*?;\s*)+\}\s*>\s*\S+"), _parse_noop),
     (re.compile(r"^strip\b"), _parse_strip_command),
     (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
     (re.compile(r"^cat\b.*?\|\s*gzip"), _parse_cat_piped_gzip_command),
@@ -380,22 +430,34 @@ def _find_first_top_level_semicolon_position(commands: str) -> int | None:
     in_single_quote = False
     in_double_quote = False
     in_curly_braces = 0
+    in_braces = 0
     for i, char in enumerate(commands):
-        # Toggle single quote state (unless inside double quotes)
-        if char == "{":
-            in_curly_braces += 1
-        if char == "}":
-            in_curly_braces -= 1
-
         if char == "'" and not in_double_quote:
             # Toggle single quote state (unless inside double quotes)
             in_single_quote = not in_single_quote
         elif char == '"' and not in_single_quote:
             # Toggle double quote state (unless inside single quotes)
             in_double_quote = not in_double_quote
-        elif char == ";" and not in_single_quote and not in_double_quote and in_curly_braces == 0:
-            # Found an unquoted semicolon
+
+        if in_single_quote or in_double_quote:
+            continue
+
+        # Toggle braces state
+        if char == "{":
+            in_curly_braces += 1
+        if char == "}":
+            in_curly_braces -= 1
+
+        if char == "(":
+            in_braces += 1
+        if char == ")":
+            in_braces -= 1
+
+        elif char == ";" and in_curly_braces == 0 and in_braces == 0:
+            # Found top level semicolon
             return i
+
+    return None
 
 
 def _split_commands(commands: str) -> list[str | IfBlock]:

@@ -8,6 +8,22 @@ from sbom.cmd.savedcmd_parser import parse_commands
 
 
 class TestSavedCmdParser(unittest.TestCase):
+    # compound command tests
+    def test_dd_cat(self):
+        cmd = "(dd if=arch/x86/boot/setup.bin bs=4k conv=sync status=none; cat arch/x86/boot/vmlinux.bin) >arch/x86/boot/bzImage"
+        expected = "arch/x86/boot/setup.bin arch/x86/boot/vmlinux.bin"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_manual_file_creation(self):
+        cmd = """{ symbase=__dtbo_overlay_bad_unresolved; echo '$(pound)include <asm-generic/vmlinux.lds.h>'; echo '.section .rodata,"a"'; echo '.balign STRUCT_ALIGNMENT'; echo ".global $${symbase}_begin"; echo "$${symbase}_begin:"; echo '.incbin "drivers/of/unittest-data/overlay_bad_unresolved.dtbo" '; echo ".global $${symbase}_end"; echo "$${symbase}_end:"; echo '.balign STRUCT_ALIGNMENT'; } > drivers/of/unittest-data/overlay_bad_unresolved.dtbo.S"""
+        expected = []
+        self.assertEqual(parse_commands(cmd), expected)
+
+    def test_cat_xz_wrap(self):
+        cmd = "{ cat arch/x86/boot/compressed/vmlinux.bin | sh ../scripts/xz_wrap.sh; printf \\130\\064\\024\\000; } > arch/x86/boot/compressed/vmlinux.bin.xz"
+        expected = "arch/x86/boot/compressed/vmlinux.bin"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
     # objcopy command tests
 
     def test_objcopy(self):
@@ -176,13 +192,6 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_polgen(self):
         cmd = "scripts/ipe/polgen/polgen security/ipe/boot_policy.c"
-        expected = []
-        self.assertEqual(parse_commands(cmd), expected)
-
-    # manual file creation tests
-
-    def test_manual_file_creation(self):
-        cmd = """{ symbase=__dtbo_overlay_bad_unresolved; echo '$(pound)include <asm-generic/vmlinux.lds.h>'; echo '.section .rodata,"a"'; echo '.balign STRUCT_ALIGNMENT'; echo ".global $${symbase}_begin"; echo "$${symbase}_begin:"; echo '.incbin "drivers/of/unittest-data/overlay_bad_unresolved.dtbo" '; echo ".global $${symbase}_end"; echo "$${symbase}_end:"; echo '.balign STRUCT_ALIGNMENT'; } > drivers/of/unittest-data/overlay_bad_unresolved.dtbo.S"""
         expected = []
         self.assertEqual(parse_commands(cmd), expected)
 

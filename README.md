@@ -32,7 +32,7 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/
     python3 sbom/sbom.py \
       --src-tree ../linux \
       --output-tree ../linux/kernel_build \
-      --root-output-in-tree vmlinux \
+      --root-output-in-tree arch/x86/boot/bzImage \
       --spdx sbom.spdx.json \
       --used-files sbom.used_files.txt
     ```
