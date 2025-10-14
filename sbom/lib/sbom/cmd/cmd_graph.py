@@ -98,10 +98,12 @@ def build_cmd_graph(
     return node
 
 
-def iter_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[CmdGraphNode]:
-    yield cmd_graph
+def iter_cmd_graph(cmd_graph: CmdGraphNode, visited: set[Path] = set()) -> Iterator[CmdGraphNode]:
+    if cmd_graph.absolute_path not in visited:
+        visited.add(cmd_graph.absolute_path)
+        yield cmd_graph
     for child_node in cmd_graph.children:
-        yield from iter_cmd_graph(child_node)
+        yield from iter_cmd_graph(child_node, visited)
 
 
 def save_cmd_graph(node: CmdGraphNode, path: Path) -> None:
