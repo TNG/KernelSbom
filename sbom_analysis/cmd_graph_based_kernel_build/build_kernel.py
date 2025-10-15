@@ -67,7 +67,7 @@ def build_kernel(
             json.dump([str(source_file) for source_file in missing_sources_in_cmd_graph], f, indent=2)
         logging.info(f"Saved {potential_missing_file} in {missing_sources_in_cmd_graph_path}")
 
-    previous_make_error_message: str | None = None
+    previous_make_error_missing_file_path: Path | None = None
     potential_missing_file: Path | None = None
     potential_missing_files_iterator: Iterator[Path] = iter([])
     while True:
@@ -83,7 +83,7 @@ def build_kernel(
 
         make_error = MakeError.from_log_outputs(log_outputs)
 
-        is_new_error = make_error.message != previous_make_error_message
+        is_new_error = make_error.missing_file_path != previous_make_error_missing_file_path
         if is_new_error:
             if potential_missing_file is not None:
                 # potential missing file from last iteration did fix the previous error
@@ -100,7 +100,7 @@ def build_kernel(
                 raise RuntimeError("No potential files found to fix the make error")
             logging.info(f"Found potential missing files: {potential_missing_files}")
             potential_missing_files_iterator = iter(potential_missing_files)
-            previous_make_error_message = make_error.message
+            previous_make_error_missing_file_path = make_error.missing_file_path
         elif potential_missing_file:
             # delete previously copied file which did not fix the make error
             logging.info(f"Failed to fix make error with: {potential_missing_file}")
@@ -184,8 +184,9 @@ def _get_potential_missing_files(
         return potential_missing_files
 
     # Test those files first that are more similar to the reference file found in the make error.
+    target_sequence = str(make_error.reference_file if make_error.reference_file else make_error.missing_file_path)
     return sorted(
         potential_missing_files,
-        key=lambda p: SequenceMatcher(None, str(p), str(make_error.reference_file)).ratio(),
+        key=lambda p: SequenceMatcher(None, str(p), target_sequence).ratio(),
         reverse=True,
     )
