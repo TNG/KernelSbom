@@ -100,6 +100,16 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "../arch/x86/pci/i386.c"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
+    def test_gcc_linking(self):
+        cmd = "gcc   -o arch/x86/tools/relocs arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+        expected = "arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_gcc_without_compile_flag(self):
+        cmd = "gcc -Wp,-MMD,arch/x86/boot/compressed/.mkpiggy.d -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu11   -I ../scripts/include -I../tools/include  -I arch/x86/boot/compressed   -o arch/x86/boot/compressed/mkpiggy ../arch/x86/boot/compressed/mkpiggy.c"
+        expected = "../arch/x86/boot/compressed/mkpiggy.c"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
     def test_clang(self):
         cmd = """clang -Wp,-MMD,arch/x86/entry/.entry_64_compat.o.d -nostdinc -I../arch/x86/include -I./arch/x86/include/generated -I../include -I./include -I../arch/x86/include/uapi -I./arch/x86/include/generated/uapi -I../include/uapi -I./include/generated/uapi -include ../include/linux/compiler-version.h -include ../include/linux/kconfig.h -D__KERNEL__ --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option -Werror=ignored-optimization-argument -Werror=option-ignored -Werror=unused-command-line-argument -fmacro-prefix-map=../= -Werror -D__ASSEMBLY__ -fno-PIE -m64 -I../arch/x86/entry -Iarch/x86/entry    -DKBUILD_MODFILE='"arch/x86/entry/entry_64_compat"' -DKBUILD_MODNAME='"entry_64_compat"' -D__KBUILD_MODNAME=kmod_entry_64_compat -c -o arch/x86/entry/entry_64_compat.o ../arch/x86/entry/entry_64_compat.S"""
         expected = "../arch/x86/entry/entry_64_compat.S"
@@ -243,6 +253,13 @@ class TestSavedCmdParser(unittest.TestCase):
     def test_relocs(self):
         cmd = "arch/x86/tools/relocs vmlinux.unstripped > arch/x86/boot/compressed/vmlinux.relocs;arch/x86/tools/relocs --abs-relocs vmlinux.unstripped"
         expected = "vmlinux.unstripped"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_relocs_with_realmode(self):
+        cmd = (
+            "arch/x86/tools/relocs --realmode arch/x86/realmode/rm/realmode.elf > arch/x86/realmode/rm/realmode.relocs"
+        )
+        expected = "arch/x86/realmode/rm/realmode.elf"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # build command tests

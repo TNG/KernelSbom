@@ -191,11 +191,13 @@ def _parse_ar_piped_xargs_command(command: str) -> list[Path]:
 
 def _parse_gcc_or_clang_command(command: str) -> list[Path]:
     parts = shlex.split(command)
-    # expect last positional argument ending in `.c` or `.S` to be the input file
+    # compile mode: expect last positional argument ending in `.c` or `.S` to be the input file
     for part in reversed(parts):
         if not part.startswith("-") and Path(part).suffix in [".c", ".S"]:
             return [Path(part)]
-    raise ValueError(f"Could not find input source file in command: {command}")
+
+    # linking mode: expect all .o files to be the inputs
+    return [Path(p) for p in parts if p.endswith(".o")]
 
 
 def _parse_rustc_command(command: str) -> list[Path]:
@@ -321,9 +323,9 @@ def _parse_relocs_command(command: str) -> list[Path]:
         # If there's no redirection, we assume it produces no output file and therefore has no input we care about.
         return []
     relocs_command, _ = command.split(">", 1)
-    positionals = _tokenize_single_command_positionals_only(relocs_command)
-    # expect positionals to be ["relocs", input]
-    return [Path(p) for p in positionals[1:]]
+    command_parts = shlex.split(relocs_command)
+    # expect command_parts to be ["relocs", options, input]
+    return [Path(command_parts[-1])]
 
 
 def _parse_mk_elfconfig_command(command: str) -> list[Path]:
