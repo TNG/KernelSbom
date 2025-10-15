@@ -97,7 +97,7 @@ def _parse_dd_command(command: str) -> list[Path]:
     return []
 
 
-def _parse_compound_cat_command(command: str) -> list[Path]:
+def _parse_cat_command(command: str) -> list[Path]:
     if "|" in command or ">" in command:
         logging.warning(f"Skip parsing command because the given pipe/redirect destination is not supported {command}")
         return []
@@ -109,14 +109,15 @@ def _parse_compound_cat_command(command: str) -> list[Path]:
 def _parse_compound_command(command: str) -> list[Path]:
     compound_command_parsers: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
         (re.compile(r"dd\b"), _parse_dd_command),
-        (re.compile(r"cat.*?|\s+sh\b.*?xz_wrap\.sh"), lambda c: _parse_compound_cat_command(c.split("|")[0])),
-        (re.compile(r"cat\b"), _parse_compound_cat_command),
+        (re.compile(r"cat.*?|\s+sh\b.*?xz_wrap\.sh"), lambda c: _parse_cat_command(c.split("|")[0])),
+        (re.compile(r"cat\b"), _parse_cat_command),
         (re.compile(r"echo\b"), _parse_noop),
         (re.compile(r"\S+="), _parse_noop),
         (re.compile(r"printf\b"), _parse_noop),
+        (re.compile(r"sed\b"), _parse_sed_command),
     ]
 
-    match = re.match(r"\s*[\(\{](.*)[\)\}]\s*>", command)
+    match = re.match(r"\s*[\(\{](.*)[\)\}]\s*>", command, re.DOTALL)
     if match is None:
         logging.error(f"No inner commands found for compound command {command}")
         return []
@@ -266,10 +267,11 @@ def _parse_ld_command(command: str) -> list[Path]:
 
 def _parse_sed_command(command: str) -> list[Path]:
     command_parts = shlex.split(command)
-    # expect command parts to be ["sed", *, input, ">", output]
-    if command_parts[-2] == ">":
-        return [Path(command_parts[-3])]
-    raise NotImplementedError("Unrecognized sed command format: {command}")
+    # expect command parts to be ["sed", *, input]
+    input = command_parts[-1]
+    if input == "/dev/null":
+        return []
+    return [Path(input)]
 
 
 def _parse_nm_piped_command(command: str) -> list[Path]:
@@ -309,13 +311,6 @@ def _parse_mkpiggy_command(command: str) -> list[Path]:
     return [Path(positionals[1])]
 
 
-def _parse_cat_piped_gzip_command(command: str) -> list[Path]:
-    cat_command, _ = command.split("|", 1)
-    positionals = _tokenize_single_command_positionals_only(cat_command)
-    # expect positionals to be ["cat", input1, input2, ...]
-    return [Path(p) for p in positionals[1:]]
-
-
 def _parse_relocs_command(command: str) -> list[Path]:
     if ">" not in command:
         # Only consider relocs commands that redirect output to a file.
@@ -351,10 +346,16 @@ def _parse_bison_command(command: str) -> list[Path]:
     raise ValueError(f"Could not find input source file in command: {command}")
 
 
+def _parse_tools_build_command(command: str) -> list[Path]:
+    positionals = _tokenize_single_command_positionals_only(command)
+    # expect positionals to be ["tools/build", "input1", "input2", "input3", "output"]
+    return [Path(p) for p in positionals[1:-1]]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
-    (re.compile(r"\(.*?\)\s*>"), _parse_compound_command),
-    (re.compile(r"\{.*?\}\s*>"), _parse_compound_command),
+    (re.compile(r"\(.*?\)\s*>", re.DOTALL), _parse_compound_command),
+    (re.compile(r"\{.*?\}\s*>", re.DOTALL), _parse_compound_command),
     (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
     (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
     (re.compile(r"^rm\b"), _parse_noop),
@@ -375,19 +376,20 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
     (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
     (re.compile(r"^ld\b"), _parse_ld_command),
-    (re.compile(r"^sed.*?>"), _parse_sed_command),
+    (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
     (re.compile(r"^(llvm-)?nm\b.*?\|"), _parse_nm_piped_command),
     (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
     (re.compile(r"^perl\b"), _parse_perl_command),
     (re.compile(r"^(.*/)polgen\b"), _parse_noop),
-    (re.compile(r"^strip\b"), _parse_strip_command),
+    (re.compile(r"^(llvm-)?strip\b"), _parse_strip_command),
     (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
-    (re.compile(r"^cat\b.*?\|\s*gzip"), _parse_cat_piped_gzip_command),
+    (re.compile(r"^cat\b.*?[\|>]"), lambda c: _parse_cat_command(c.split("|")[0].split(">")[0])),
     (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
     (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
     (re.compile(r"^flex\b"), _parse_flex_command),
     (re.compile(r"^bison\b"), _parse_bison_command),
+    (re.compile(r"^(.*/)?tools/build\b"), _parse_tools_build_command),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
