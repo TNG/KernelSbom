@@ -80,7 +80,6 @@ def _get_manual_missing_sources(config: Literal["tinyconfig"]) -> list[Path]:
         "tinyconfig": [
             "tools/include/linux/types.h",
             "tools/include/linux/kernel.h",
-            "arch/x86/include/uapi/asm/stat.h",
         ]
     }
     return [Path(p) for p in missing_sources[config]]
