@@ -80,7 +80,6 @@ def _get_manual_missing_sources(config: Literal["tinyconfig"]) -> list[Path]:
         "tinyconfig": [
             "tools/include/linux/types.h",
             "tools/include/linux/kernel.h",
-            "arch/x86/include/uapi/asm/stat.h",
         ]
     }
     return [Path(p) for p in missing_sources[config]]
@@ -99,7 +98,7 @@ if __name__ == "__main__":
     output_tree = (
         Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
     )
-    root_output_in_tree = Path("vmlinux")
+    root_output_in_tree = Path("arch/x86/boot/bzImage")
     cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
 
     cmd_src_tree = (src_tree.parent / f"{src_tree.name}_cmd").resolve()

@@ -8,9 +8,12 @@
             "program": "sbom/sbom.py",
             "console": "integratedTerminal",
             "args": [
-                "--src-tree", "../linux",
-                "--output-tree", "../linux/kernel_build",
-                "--root-output-in-tree", "vmlinux",
+                "--src-tree",
+                "../linux",
+                "--output-tree",
+                "../linux/kernel_build",
+                "--root-output-in-tree",
+                "arch/x86/boot/bzImage",
                 "--debug"
             ]
         }

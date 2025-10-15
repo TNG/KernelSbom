@@ -8,24 +8,50 @@ from sbom.cmd.savedcmd_parser import parse_commands
 
 
 class TestSavedCmdParser(unittest.TestCase):
+    # compound command tests
+    def test_dd_cat(self):
+        cmd = "(dd if=arch/x86/boot/setup.bin bs=4k conv=sync status=none; cat arch/x86/boot/vmlinux.bin) >arch/x86/boot/bzImage"
+        expected = "arch/x86/boot/setup.bin arch/x86/boot/vmlinux.bin"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_manual_file_creation(self):
+        cmd = """{ symbase=__dtbo_overlay_bad_unresolved; echo '$(pound)include <asm-generic/vmlinux.lds.h>'; echo '.section .rodata,"a"'; echo '.balign STRUCT_ALIGNMENT'; echo ".global $${symbase}_begin"; echo "$${symbase}_begin:"; echo '.incbin "drivers/of/unittest-data/overlay_bad_unresolved.dtbo" '; echo ".global $${symbase}_end"; echo "$${symbase}_end:"; echo '.balign STRUCT_ALIGNMENT'; } > drivers/of/unittest-data/overlay_bad_unresolved.dtbo.S"""
+        expected = []
+        self.assertEqual(parse_commands(cmd), expected)
+
+    def test_cat_xz_wrap(self):
+        cmd = "{ cat arch/x86/boot/compressed/vmlinux.bin | sh ../scripts/xz_wrap.sh; printf \\130\\064\\024\\000; } > arch/x86/boot/compressed/vmlinux.bin.xz"
+        expected = "arch/x86/boot/compressed/vmlinux.bin"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_printf_sed(self):
+        cmd = """{  printf 'static char tomoyo_builtin_profile[] __initdata =\n'; sed -e 's/\\/\\\\/g' -e 's/\"/\\"/g' -e 's/\(.*\)/\t"\1\\n"/' -- /dev/null; printf '\t"";\n';  printf 'static char tomoyo_builtin_exception_policy[] __initdata =\n'; sed -e 's/\\/\\\\/g' -e 's/\"/\\"/g' -e 's/\(.*\)/\t"\1\\n"/' -- ../security/tomoyo/policy/exception_policy.conf.default; printf '\t"";\n';  printf 'static char tomoyo_builtin_domain_policy[] __initdata =\n'; sed -e 's/\\/\\\\/g' -e 's/\"/\\"/g' -e 's/\(.*\)/\t"\1\\n"/' -- /dev/null; printf '\t"";\n';  printf 'static char tomoyo_builtin_manager[] __initdata =\n'; sed -e 's/\\/\\\\/g' -e 's/\"/\\"/g' -e 's/\(.*\)/\t"\1\\n"/' -- /dev/null; printf '\t"";\n';  printf 'static char tomoyo_builtin_stat[] __initdata =\n'; sed -e 's/\\/\\\\/g' -e 's/\"/\\"/g' -e 's/\(.*\)/\t"\1\\n"/' -- /dev/null; printf '\t"";\n'; } > security/tomoyo/builtin-policy.h"""
+        expected = "../security/tomoyo/policy/exception_policy.conf.default"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_bin2c_echo(self):
+        cmd = """(echo "static char tomoyo_builtin_profile[] __initdata ="; ./scripts/bin2c </dev/null; echo ";"; echo "static char tomoyo_builtin_exception_policy[] __initdata ="; ./scripts/bin2c <../security/tomoyo/policy/exception_policy.conf.default; echo ";"; echo "static char tomoyo_builtin_domain_policy[] __initdata ="; ./scripts/bin2c </dev/null; echo ";"; echo "static char tomoyo_builtin_manager[] __initdata ="; ./scripts/bin2c </dev/null; echo ";"; echo "static char tomoyo_builtin_stat[] __initdata ="; ./scripts/bin2c </dev/null; echo ";") >security/tomoyo/builtin-policy.h"""
+        expected = "../security/tomoyo/policy/exception_policy.conf.default"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
     # objcopy command tests
 
     def test_objcopy(self):
         cmd = "objcopy --remove-section='.rel*' --remove-section=!'.rel*.dyn' vmlinux.unstripped vmlinux"
-        expected = [Path("vmlinux.unstripped")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "vmlinux.unstripped"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     def test_objcopy_llvm(self):
         cmd = "llvm-objcopy --remove-section='.rel*' --remove-section=!'.rel*.dyn' vmlinux.unstripped vmlinux"
-        expected = [Path("vmlinux.unstripped")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "vmlinux.unstripped"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # link-vmlinux.sh command tests
 
     def test_link_vmlinux(self):
         cmd = '../scripts/link-vmlinux.sh "ld" "-m elf_x86_64 -z noexecstack" "-z max-page-size=0x200000 --build-id=sha1 --orphan-handling=error --emit-relocs --discard-none" "vmlinux.unstripped";  true'
-        expected = [Path("vmlinux.a")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "vmlinux.a"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # ar command tests
 
@@ -71,34 +97,44 @@ class TestSavedCmdParser(unittest.TestCase):
             "i386"
             " -D__KBUILD_MODNAME=kmod_i386 -c -o arch/x86/pci/i386.o ../arch/x86/pci/i386.c  "
         )
-        expected = [Path("../arch/x86/pci/i386.c")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "../arch/x86/pci/i386.c"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_gcc_linking(self):
+        cmd = "gcc   -o arch/x86/tools/relocs arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+        expected = "arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_gcc_without_compile_flag(self):
+        cmd = "gcc -Wp,-MMD,arch/x86/boot/compressed/.mkpiggy.d -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu11   -I ../scripts/include -I../tools/include  -I arch/x86/boot/compressed   -o arch/x86/boot/compressed/mkpiggy ../arch/x86/boot/compressed/mkpiggy.c"
+        expected = "../arch/x86/boot/compressed/mkpiggy.c"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     def test_clang(self):
         cmd = """clang -Wp,-MMD,arch/x86/entry/.entry_64_compat.o.d -nostdinc -I../arch/x86/include -I./arch/x86/include/generated -I../include -I./include -I../arch/x86/include/uapi -I./arch/x86/include/generated/uapi -I../include/uapi -I./include/generated/uapi -include ../include/linux/compiler-version.h -include ../include/linux/kconfig.h -D__KERNEL__ --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option -Werror=ignored-optimization-argument -Werror=option-ignored -Werror=unused-command-line-argument -fmacro-prefix-map=../= -Werror -D__ASSEMBLY__ -fno-PIE -m64 -I../arch/x86/entry -Iarch/x86/entry    -DKBUILD_MODFILE='"arch/x86/entry/entry_64_compat"' -DKBUILD_MODNAME='"entry_64_compat"' -D__KBUILD_MODNAME=kmod_entry_64_compat -c -o arch/x86/entry/entry_64_compat.o ../arch/x86/entry/entry_64_compat.S"""
-        expected = [Path("../arch/x86/entry/entry_64_compat.S")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "../arch/x86/entry/entry_64_compat.S"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # test rustc
 
     def test_rustc(self):
         cmd = """OBJTREE=/workspace/linux/kernel_build rustc -Zbinary_dep_depinfo=y -Astable_features -Dnon_ascii_idents -Dunsafe_op_in_unsafe_fn -Wmissing_docs -Wrust_2018_idioms -Wclippy::all -Wclippy::as_ptr_cast_mut -Wclippy::as_underscore -Wclippy::cast_lossless -Wclippy::ignored_unit_patterns -Wclippy::mut_mut -Wclippy::needless_bitwise_bool -Aclippy::needless_lifetimes -Wclippy::no_mangle_with_rust_abi -Wclippy::ptr_as_ptr -Wclippy::ptr_cast_constness -Wclippy::ref_as_ptr -Wclippy::undocumented_unsafe_blocks -Wclippy::unnecessary_safety_comment -Wclippy::unnecessary_safety_doc -Wrustdoc::missing_crate_level_docs -Wrustdoc::unescaped_backticks -Cpanic=abort -Cembed-bitcode=n -Clto=n -Cforce-unwind-tables=n -Ccodegen-units=1 -Csymbol-mangling-version=v0 -Crelocation-model=static -Zfunction-sections=n -Wclippy::float_arithmetic --target=./scripts/target.json -Ctarget-feature=-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-avx,-avx2 -Zcf-protection=branch -Zno-jump-tables -Ctarget-cpu=x86-64 -Ztune-cpu=generic -Cno-redzone=y -Ccode-model=kernel -Zfunction-return=thunk-extern -Zpatchable-function-entry=16,16 -Copt-level=2 -Cdebug-assertions=n -Coverflow-checks=y -Dwarnings @./include/generated/rustc_cfg --edition=2021 --cfg no_fp_fmt_parse --emit=dep-info=rust/.core.o.d --emit=obj=rust/core.o --emit=metadata=rust/libcore.rmeta --crate-type rlib -L./rust --crate-name core /usr/lib/rust-1.84/lib/rustlib/src/rust/library/core/src/lib.rs --sysroot=/dev/null ;llvm-objcopy --redefine-sym __addsf3=__rust__addsf3 --redefine-sym __eqsf2=__rust__eqsf2 --redefine-sym __extendsfdf2=__rust__extendsfdf2 --redefine-sym __gesf2=__rust__gesf2 --redefine-sym __lesf2=__rust__lesf2 --redefine-sym __ltsf2=__rust__ltsf2 --redefine-sym __mulsf3=__rust__mulsf3 --redefine-sym __nesf2=__rust__nesf2 --redefine-sym __truncdfsf2=__rust__truncdfsf2 --redefine-sym __unordsf2=__rust__unordsf2 --redefine-sym __adddf3=__rust__adddf3 --redefine-sym __eqdf2=__rust__eqdf2 --redefine-sym __ledf2=__rust__ledf2 --redefine-sym __ltdf2=__rust__ltdf2 --redefine-sym __muldf3=__rust__muldf3 --redefine-sym __unorddf2=__rust__unorddf2 --redefine-sym __muloti4=__rust__muloti4 --redefine-sym __multi3=__rust__multi3 --redefine-sym __udivmodti4=__rust__udivmodti4 --redefine-sym __udivti3=__rust__udivti3 --redefine-sym __umodti3=__rust__umodti3 rust/core.o"""
-        expected = [Path("/usr/lib/rust-1.84/lib/rustlib/src/rust/library/core/src/lib.rs"), Path("rust/core.o")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "/usr/lib/rust-1.84/lib/rustlib/src/rust/library/core/src/lib.rs rust/core.o"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # .sh script command tests
 
     def test_syscallhdr(self):
         """tests syscallhdr.sh command in `arch/x86/include/generated/uapi/asm/.unistd_64.h.cmd`"""
         cmd = "sh ../scripts/syscallhdr.sh --abis common,64 --emit-nr   ../arch/x86/entry/syscalls/syscall_64.tbl arch/x86/include/generated/uapi/asm/unistd_64.h"
-        expected = [Path("../arch/x86/entry/syscalls/syscall_64.tbl")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "../arch/x86/entry/syscalls/syscall_64.tbl"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     def test_syscalltbl(self):
         """tests syscalltbl.sh command in `arch/x86/include/generated/asm/.syscalls_64.h.cmd`"""
         cmd = "sh ../scripts/syscalltbl.sh --abis common,64 ../arch/x86/entry/syscalls/syscall_64.tbl arch/x86/include/generated/asm/syscalls_64.h"
-        expected = [Path("../arch/x86/entry/syscalls/syscall_64.tbl")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "../arch/x86/entry/syscalls/syscall_64.tbl"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     def test_mkcapflags(self):
         cmd = "sh ../arch/x86/kernel/cpu/mkcapflags.sh arch/x86/kernel/cpu/capflags.c ../arch/x86/kernel/cpu/../../include/asm/cpufeatures.h ../arch/x86/kernel/cpu/../../include/asm/vmxfeatures.h ../arch/x86/kernel/cpu/mkcapflags.sh FORCE"
@@ -107,8 +143,8 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_orc_hash(self):
         cmd = "mkdir -p arch/x86/include/generated/asm/; sh ../scripts/orc_hash.sh < ../arch/x86/include/asm/orc_types.h > arch/x86/include/generated/asm/orc_hash.h"
-        expected = [Path("../arch/x86/include/asm/orc_types.h")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "../arch/x86/include/asm/orc_types.h"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     def test_xen_hypercalls(self):
         cmd = "sh '../scripts/xen-hypercalls.sh' arch/x86/include/generated/asm/xen-hypercalls.h ../include/xen/interface/xen-mca.h ../include/xen/interface/xen.h ../include/xen/interface/xenpmu.h"
@@ -136,13 +172,13 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_ld_whole_archive(self):
         cmd = "ld -m elf_x86_64 -z noexecstack -r -o vmlinux.o   --whole-archive vmlinux.a --no-whole-archive --start-group  --end-group"
-        expected = [Path("vmlinux.a")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "vmlinux.a"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     def test_ld_with_at_symbol(self):
         cmd = "ld -m elf_x86_64 -z noexecstack   -r -o fs/efivarfs/efivarfs.o @fs/efivarfs/efivarfs.mod"
-        expected = [Path("@fs/efivarfs/efivarfs.mod")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "@fs/efivarfs/efivarfs.mod"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # sed command tests
 
@@ -179,47 +215,59 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = []
         self.assertEqual(parse_commands(cmd), expected)
 
-    # manual file creation tests
-
-    def test_manual_file_creation(self):
-        cmd = """{ symbase=__dtbo_overlay_bad_unresolved; echo '$(pound)include <asm-generic/vmlinux.lds.h>'; echo '.section .rodata,"a"'; echo '.balign STRUCT_ALIGNMENT'; echo ".global $${symbase}_begin"; echo "$${symbase}_begin:"; echo '.incbin "drivers/of/unittest-data/overlay_bad_unresolved.dtbo" '; echo ".global $${symbase}_end"; echo "$${symbase}_end:"; echo '.balign STRUCT_ALIGNMENT'; } > drivers/of/unittest-data/overlay_bad_unresolved.dtbo.S"""
-        expected = []
-        self.assertEqual(parse_commands(cmd), expected)
-
     # strip command tests
 
     def test_strip(self):
         cmd = "strip --strip-debug -o drivers/firmware/efi/libstub/mem.stub.o drivers/firmware/efi/libstub/mem.o"
-        expected = [Path("drivers/firmware/efi/libstub/mem.o")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "drivers/firmware/efi/libstub/mem.o"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # nm command tests
 
     def test_nm_vmlinux(self):
         cmd = r"nm vmlinux | sed -n -e 's/^\([0-9a-fA-F]*\) [ABbCDGRSTtVW] \(_text\|__start_rodata\|__bss_start\|_end\)$/#define VO_\2 _AC(0x\1,UL)/p' > arch/x86/boot/voffset.h"
-        expected = [Path("vmlinux")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "vmlinux"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # mkpiggy command tests
 
     def test_mkpiggy(self):
         cmd = "arch/x86/boot/compressed/mkpiggy arch/x86/boot/compressed/vmlinux.bin.gz > arch/x86/boot/compressed/piggy.S"
-        expected = [Path("arch/x86/boot/compressed/vmlinux.bin.gz")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "arch/x86/boot/compressed/vmlinux.bin.gz"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
-    # cat piped gzip command tests
+    # cat command tests
 
-    def test_cat_piped_gzip(self):
+    def test_cat_redirect(self):
+        cmd = "cat ../fs/unicode/utf8data.c_shipped > fs/unicode/utf8data.c"
+        expected = "../fs/unicode/utf8data.c_shipped"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_cat_piped(self):
         cmd = "cat arch/x86/boot/compressed/vmlinux.bin arch/x86/boot/compressed/vmlinux.relocs | gzip -n -f -9 > arch/x86/boot/compressed/vmlinux.bin.gz"
-        expected = [Path("arch/x86/boot/compressed/vmlinux.bin"), Path("arch/x86/boot/compressed/vmlinux.relocs")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "arch/x86/boot/compressed/vmlinux.bin arch/x86/boot/compressed/vmlinux.relocs"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # relocs command tests
 
     def test_relocs(self):
         cmd = "arch/x86/tools/relocs vmlinux.unstripped > arch/x86/boot/compressed/vmlinux.relocs;arch/x86/tools/relocs --abs-relocs vmlinux.unstripped"
-        expected = [Path("vmlinux.unstripped")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "vmlinux.unstripped"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    def test_relocs_with_realmode(self):
+        cmd = (
+            "arch/x86/tools/relocs --realmode arch/x86/realmode/rm/realmode.elf > arch/x86/realmode/rm/realmode.relocs"
+        )
+        expected = "arch/x86/realmode/rm/realmode.elf"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
+    # build command tests
+
+    def test_build(self):
+        cmd = "arch/x86/boot/tools/build arch/x86/boot/setup.bin arch/x86/boot/vmlinux.bin arch/x86/boot/zoffset.h arch/x86/boot/bzImage"
+        expected = "arch/x86/boot/setup.bin arch/x86/boot/vmlinux.bin arch/x86/boot/zoffset.h"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # mkcpustr command tests
 
@@ -232,22 +280,22 @@ class TestSavedCmdParser(unittest.TestCase):
 
     def test_mk_elfconfig(self):
         cmd = "scripts/mod/mk_elfconfig < scripts/mod/empty.o > scripts/mod/elfconfig.h"
-        expected = [Path("scripts/mod/empty.o")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "scripts/mod/empty.o"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # flex command tests
 
     def test_flex(self):
         cmd = "flex -oscripts/kconfig/lexer.lex.c -L ../scripts/kconfig/lexer.l"
-        expected = [Path("../scripts/kconfig/lexer.l")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "../scripts/kconfig/lexer.l"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
     # bison command tests
 
     def test_bison(self):
         cmd = "bison -o scripts/kconfig/parser.tab.c --defines=scripts/kconfig/parser.tab.h -t -l ../scripts/kconfig/parser.y"
-        expected = [Path("../scripts/kconfig/parser.y")]
-        self.assertEqual(parse_commands(cmd), expected)
+        expected = "../scripts/kconfig/parser.y"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
 
 if __name__ == "__main__":

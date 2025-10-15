@@ -17,10 +17,14 @@ jobs:
       fail-fast: false 
       matrix:
         archive:
+          # v6.17
           - linux.v6.17.tinyconfig.tar.gz
           - linux.v6.17.defconfig.tar.gz
           - linux.v6.17.allmodconfig.tar.gz
           - linux.v6.17.localmodconfig.Ubuntu24.04.tar.gz
           - linux.v6.17.defconfig.rust.tar.gz
+          - linux.v6.17.y.grekh-linux-stable.tar.gz
+          # v6.1.y
           - linux.v6.1.y.localmodconfig.Ubuntu25.04.tar.gz
+          - linux.v6.1.y.grekh-linux-stable.tar.gz
     

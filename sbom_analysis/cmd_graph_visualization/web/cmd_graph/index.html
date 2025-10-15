@@ -21,37 +21,42 @@ SPDX-FileCopyrightText: (C) 2018 Vasco Asturiano
 
     <script>
         window.devicePixelRatio = 1; // use standard resolution in retina displays
-        console.log("Start");
 
         function initializeGraph(data) {
             console.log("Loaded", data)
             const formatNodeLabel = node => {
-                return `depth=${node.depth}, root=${node.root_node_index}: ${node.id}, missing_file=${node.is_missing_file}`;
+                return `${node.depth}: ${node.id}`;
             };
 
             const colorScale = node => {
-                if (node.is_missing_file == true) {
-                    return '#000000'
+                if (node.id.endsWith("built-in.a")) {
+                    return '#000000';   // Black
                 }
-                if (node.id.endsWith("vmlinux")) {
-                    return '#00ff00';
+                if (node.id.endsWith(".o")) {
+                    return '#66cc33' // Green
+                }
+                if (node.id.endsWith(".c") || node.id.endsWith(".S") || node.id.endsWith(".rs")) {
+                    return '#3399ff';   // Blue
                 }
                 switch (node.depth) {
                     case 0: return '#ff0000';   // Red
-                    default: return '#d9d9d9';  // Very Light Gray (fallback)
+                    case 1: return '#ff7f00';   // Orange
+                    case 2: return '#ffbf00';   // Golden Yellow
+                    case 3: return '#9966cc';   // Purple
+                    default: return '#d9d9d9';  // Light Gray (fallback)
                 }
             };
 
-            const size = (node) => (node.root_node_index == 0 && node.depth == 0) ? 50 : (5 + 10 * Math.exp(-0.5 * node.depth));
+            const size = node => 5 + 10 * Math.exp(-0.5 * node.depth);
 
             const graph = ForceGraph()(document.getElementById('graph'))
                 .graphData(data)
-                .d3AlphaDecay(0.01)
-                .d3VelocityDecay(0.2)
+                .d3AlphaDecay(0.02)
+                .d3VelocityDecay(0.08)
                 .linkColor(() => 'rgba(0,0,0,0.5)')
                 .linkWidth(1)
                 .linkDirectionalArrowLength(6)
-                .zoom(0.5)
+                .zoom(0.2)
                 .enablePointerInteraction(true)
                 .nodeLabel(node => formatNodeLabel(node))
                 .nodeCanvasObject((node, ctx, globalScale) => {
@@ -68,8 +73,6 @@ SPDX-FileCopyrightText: (C) 2018 Vasco Asturiano
                     ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
                     ctx.fill();
                 });
-
-            graph.d3Force('link').distance(200);
         }
 
         fetch('./cmd_graph.json')
