@@ -29,6 +29,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "../security/tomoyo/policy/exception_policy.conf.default"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
+    def test_bin2c_echo(self):
+        cmd = """(echo "static char tomoyo_builtin_profile[] __initdata ="; ./scripts/bin2c </dev/null; echo ";"; echo "static char tomoyo_builtin_exception_policy[] __initdata ="; ./scripts/bin2c <../security/tomoyo/policy/exception_policy.conf.default; echo ";"; echo "static char tomoyo_builtin_domain_policy[] __initdata ="; ./scripts/bin2c </dev/null; echo ";"; echo "static char tomoyo_builtin_manager[] __initdata ="; ./scripts/bin2c </dev/null; echo ";"; echo "static char tomoyo_builtin_stat[] __initdata ="; ./scripts/bin2c </dev/null; echo ";") >security/tomoyo/builtin-policy.h"""
+        expected = "../security/tomoyo/policy/exception_policy.conf.default"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
     # objcopy command tests
 
     def test_objcopy(self):
