@@ -13,10 +13,15 @@ import logging
 import os
 import sys
 from pathlib import Path
-import lib.sbom.spdx as spdx
-from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph, iter_cmd_graph
-import time
-import lib.sbom.errors as sbom_errors
+
+LIB_DIR = "./lib"
+SRC_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
+
+import sbom.spdx as spdx  # noqa: E402
+from sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph, iter_cmd_graph  # noqa: E402
+import time  # noqa: E402
+import sbom.errors as sbom_errors  # noqa: E402
 
 
 @dataclass

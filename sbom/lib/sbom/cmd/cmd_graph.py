@@ -9,10 +9,10 @@ from dataclasses import dataclass, field
 import pickle
 from typing import Iterator
 
-from lib.sbom.cmd.deps_parser import parse_deps
-from lib.sbom.cmd.savedcmd_parser import parse_commands
-from lib.sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
-import lib.sbom.errors as sbom_errors
+from sbom.cmd.deps_parser import parse_deps
+from sbom.cmd.savedcmd_parser import parse_commands
+from sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
+import sbom.errors as sbom_errors
 
 
 @dataclass
