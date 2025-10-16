@@ -26,9 +26,7 @@ MAKE_ERROR_PATTERNS = [
     re.compile(
         r"(?P<full_error>LD\s+(?P<reference_file>\S+)\nld: cannot (find|open linker script file) (?P<missing_file>\S+): No such file or directory)"
     ),
-    re.compile(
-        r"(?P<full_error>(?:UPD\s+(?P<reference_file>\S+)\n)?\S+: \d+: cannot open (?P<missing_file>\S+): No such file)"
-    ),
+    re.compile(r"(?P<full_error>\S+: \d+: cannot open (?P<missing_file>\S+): No such file)"),
 ]
 
 
@@ -47,7 +45,9 @@ class MakeError:
                 return MakeError(
                     message=match.group("full_error"),
                     missing_file_path=Path(match.group("missing_file")),
-                    reference_file=Path(reference_file) if (reference_file := match.group("reference_file")) else None,
+                    reference_file=Path(match.group("reference_file"))
+                    if ("reference_file" in match.re.groupindex)
+                    else None,
                 )
         raise NotImplementedError("Build failed, but no make error could be detected.")
 
