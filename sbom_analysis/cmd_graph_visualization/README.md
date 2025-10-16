@@ -14,10 +14,10 @@ To view the interactive force graphs:
 1. Generate graph data by running the script:
     ```bash
     cd sbom_analysis/cmd_graph_visualization
-    python main.py
+    # provide source and output tree
+    python main.py ../../../linux ../../../linux/kernel_build
     ```
     This will create `cmd_graph.json` graph data within the `web/` directory.
-    > **Note:** The script assumes that the `linux` source tree lies next to this repository. You get this layout by following the [Getting Started](../../README.md#getting-started) section.
 2. Start a simple HTTP server to serve the [index.html](web/index.html)
     ```bash
     cd web

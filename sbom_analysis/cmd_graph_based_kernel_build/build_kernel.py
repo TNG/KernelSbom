@@ -23,10 +23,13 @@ MAKE_ERROR_PATTERNS = [
     re.compile(
         r"(?P<full_error>(AS|CALL)\s+(?P<reference_file>\S+)\n\S+: fatal error: (?P<missing_file>\S+): No such file or directory)"
     ),
+    re.compile(r"(?P<full_error>\S+: (?P<missing_file>\S+): No such file or directory)"),
     re.compile(
         r"(?P<full_error>LD\s+(?P<reference_file>\S+)\nld: cannot (find|open linker script file) (?P<missing_file>\S+): No such file or directory)"
     ),
     re.compile(r"(?P<full_error>\S+: \d+: cannot open (?P<missing_file>\S+): No such file)"),
+    re.compile(r"(?P<full_error>ld: cannot find (?P<missing_file>\S+): No such file or directory)"),
+    re.compile(r"(?P<full_error>)(?P<reference_file>\S+):\d+:\s+included file '(?P<missing_file>\S+)' is not exported"),
 ]
 
 
@@ -179,9 +182,6 @@ def _get_potential_missing_files(
             continue
 
         potential_missing_files.append(path.relative_to(src_tree))
-
-    if make_error.reference_file is None:
-        return potential_missing_files
 
     # Test those files first that are more similar to the reference file found in the make error.
     target_sequence = str(make_error.reference_file if make_error.reference_file else make_error.missing_file_path)

@@ -191,14 +191,8 @@ if __name__ == "__main__":
     cmd_graph_visualization.py <src_tree> <output_tree>
     """
     script_path = Path(__file__).parent
-    src_tree = (
-        Path(sys.argv[1]).resolve()
-        if len(sys.argv) >= 2 and sys.argv[1]
-        else (script_path / "../../../linux").resolve()
-    )
-    output_tree = (
-        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
-    )
+    src_tree = Path(sys.argv[1]).resolve() if len(sys.argv) >= 2 else (script_path / "../../../linux").resolve()
+    output_tree = Path(sys.argv[2]).resolve() if len(sys.argv) >= 3 else (src_tree / "kernel_build").resolve()
     root_output_in_tree = Path("arch/x86/boot/bzImage")
     cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
 
