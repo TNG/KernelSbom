@@ -6,7 +6,7 @@ import re
 import shlex
 from dataclasses import dataclass
 from typing import Callable, Optional, Union
-import lib.sbom.errors as sbom_errors
+import sbom.errors as sbom_errors
 
 
 class CmdParsingError(Exception):
