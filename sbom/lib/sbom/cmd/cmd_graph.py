@@ -9,9 +9,10 @@ from dataclasses import dataclass, field
 import pickle
 from typing import Iterator
 
-from .deps_parser import parse_deps
-from .savedcmd_parser import parse_commands
-from .cmd_file_parser import CmdFile, parse_cmd_file
+from lib.sbom.cmd.deps_parser import parse_deps
+from lib.sbom.cmd.savedcmd_parser import parse_commands
+from lib.sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
+import lib.sbom.errors as sbom_errors
 
 
 @dataclass
@@ -79,6 +80,11 @@ def build_cmd_graph(
         # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
         # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
         working_directory = _get_working_directory(relative_inputs[0], output_tree, src_tree, root_output_in_tree)
+        if working_directory is None:
+            sbom_errors.log(
+                f"Skip children of node {root_output_in_tree} because no working directory for relative input {relative_inputs[0]} could be found"
+            )
+            return node
         child_paths += [Path(os.path.normpath(working_directory / input_file)) for input_file in relative_inputs]
 
     # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
@@ -133,7 +139,9 @@ def _to_cmd_path(path: Path) -> Path:
     return path.parent / f".{path.name}.cmd"
 
 
-def _get_working_directory(input_file: Path, output_tree: Path, src_tree: Path, root_output_in_tree: Path) -> Path:
+def _get_working_directory(
+    input_file: Path, output_tree: Path, src_tree: Path, root_output_in_tree: Path
+) -> Path | None:
     # Input paths in .cmd files are often relative paths but it is unclear to which original working directory these paths are relative to.
     # This function estimates the working directory based on the location of one input_file and various heuristics.
 
@@ -153,7 +161,7 @@ def _get_working_directory(input_file: Path, output_tree: Path, src_tree: Path, 
         # Input path relative to `tools/lib/subcmd` (e.g., `tools/objtool/libsubcmd/.sigchain.o` has input `subcmd-util.h` which lives in `tools/lib/subcmd/subcmd-util.h`)
         return Path(os.path.relpath(src_tree, output_tree)) / "tools/lib/subcmd"
 
-    raise ValueError(f"Cannot resolve input: {input_file} of file for {_to_cmd_path(root_output_in_tree)}")
+    return None
 
 
 def _expand_resolve_files(input_files: list[Path], output_tree: Path) -> list[Path]:
