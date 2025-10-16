@@ -11,10 +11,12 @@ import argparse
 from dataclasses import dataclass
 import logging
 import os
+import sys
 from pathlib import Path
 import lib.sbom.spdx as spdx
 from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph, iter_cmd_graph
 import time
+import lib.sbom.errors as sbom_errors
 
 
 @dataclass
@@ -169,6 +171,14 @@ def main():
     with open(args.spdx, "w", encoding="utf-8") as f:
         f.write(spdx_json)
     logging.info(f"Saved {args.spdx} successfully")
+
+    # report collected errors in case of failure
+    errors = sbom_errors.get()
+    if len(errors) > 0:
+        logging.error(f"Sbom generation failed with {len(errors)} errors:")
+        for error in errors:
+            logging.error(error)
+        sys.exit(1)
 
 
 # Call main method
