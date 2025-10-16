@@ -23,8 +23,8 @@ jobs:
           - linux.v6.17.allmodconfig.tar.gz
           - linux.v6.17.localmodconfig.Ubuntu24.04.tar.gz
           - linux.v6.17.defconfig.rust.tar.gz
-          - linux.v6.17.y.grekh-linux-stable.tar.gz
+          - linux.v6.17.y.gregkh-linux-stable.tar.gz
           # v6.1.y
           - linux.v6.1.y.localmodconfig.Ubuntu25.04.tar.gz
-          - linux.v6.1.y.grekh-linux-stable.tar.gz
+          - linux.v6.1.y.gregkh-linux-stable.tar.gz
     
