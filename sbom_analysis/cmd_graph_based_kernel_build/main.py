@@ -75,12 +75,28 @@ def _create_cmd_graph_based_kernel_directory(
     )
 
 
-def _get_manual_missing_sources(config: Literal["tinyconfig"]) -> list[Path]:
-    missing_sources = {
-        "tinyconfig": [
+def _get_manual_missing_sources(config: Literal["v6.17.tinyconfig", "v6.17.y.gregkh-linux-stable"]) -> list[Path]:
+    missing_sources: dict[str, list[str]] = {
+        "v6.17.tinyconfig": [
             "tools/include/linux/types.h",
             "tools/include/linux/kernel.h",
-        ]
+        ],
+        "v6.17.y.gregkh-linux-stable": [
+            "tools/include/linux/types.h",
+            "tools/include/linux/string.h",
+            "tools/include/linux/kernel.h",
+            "tools/arch/x86/lib/inat.c",
+            "tools/arch/x86/lib/insn.c",
+            "tools/lib/string.c",
+            "tools/lib/rbtree.c",
+            "include/linux/netfilter/nf_conntrack_common.h",
+            "include/uapi/asm-generic/shmbuf.h",
+            "include/linux/hpet.h",
+            "arch/x86/kvm/vmx/hyperv.h",
+            "include/linux/blk-crypto.h",
+            "include/linux/sock_diag.h",
+            "linux/include/linux/fanotify.h",
+        ],
     }
     return [Path(p) for p in missing_sources[config]]
 
@@ -90,14 +106,8 @@ if __name__ == "__main__":
     cmd_graph_based_kernel_build.py <src_tree> <output_tree>
     """
     script_path = Path(__file__).parent
-    src_tree = (
-        Path(sys.argv[1]).resolve()
-        if len(sys.argv) >= 2 and sys.argv[1]
-        else (script_path / "../../../linux").resolve()
-    )
-    output_tree = (
-        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
-    )
+    src_tree = Path(sys.argv[1]).resolve() if len(sys.argv) >= 2 else (script_path / "../../../linux").resolve()
+    output_tree = Path(sys.argv[2]).resolve() if len(sys.argv) >= 3 else (src_tree / "kernel_build").resolve()
     root_outputs_in_tree = [Path("arch/x86/boot/bzImage"), Path("modules.order")]
     cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
 
@@ -109,7 +119,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # missing files that need to be added manually because corresponding error messages are difficult to parse:
-    missing_sources_in_cmd_graph: list[Path] = _get_manual_missing_sources(config="tinyconfig")
+    missing_sources_in_cmd_graph: list[Path] = _get_manual_missing_sources(config="v6.17.y.gregkh-linux-stable")
     if (missing_sources_in_cmd_graph_path).exists():
         with open(missing_sources_in_cmd_graph_path, "r") as f:
             missing_sources_in_cmd_graph += [Path(p) for p in json.load(f)]

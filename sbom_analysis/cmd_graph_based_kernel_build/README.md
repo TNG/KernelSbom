@@ -17,6 +17,6 @@ Outputs for different configs are stored in the `missing_sources/` directory.
 cd sbom_analysis/cmd_graph_based_kernel_build
 cp missing_sources/missing_sources_in_cmd_graph.linux.v6.17.tinyconfig.json missing_sources_in_cmd_graph.json 
 
-python main.py
+# Provide source and output tree to the script
+python main.py ../../../linux ../../../linux/kernel_build
 ```
-> **Note:** The script assumes that the `linux` source tree lies next to this repository. You get this layout by following the [Getting Started](../../README.md#getting-started) section.
