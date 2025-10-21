@@ -396,6 +396,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^flex\b"), _parse_flex_command),
     (re.compile(r"^bison\b"), _parse_bison_command),
     (re.compile(r"^(.*/)?tools/build\b"), _parse_tools_build_command),
+    (re.compile(r"make -f .*/arch/x86/Makefile\.postlink"), _parse_noop),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
