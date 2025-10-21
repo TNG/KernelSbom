@@ -119,6 +119,7 @@ def _parse_compound_command(command: str) -> list[Path]:
             re.compile(r"(.*/)scripts/bin2c\s*<"),
             lambda c: [Path(input)] if (input := c.split("<")[1].strip()) != "/dev/null" else [],
         ),
+        (re.compile(r"^:$"), _parse_noop),
     ]
 
     match = re.match(r"\s*[\(\{](.*)[\)\}]\s*>", command, re.DOTALL)

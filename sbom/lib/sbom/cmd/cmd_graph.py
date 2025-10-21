@@ -21,7 +21,25 @@ class CmdGraphNode:
     children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
 
+@dataclass
+class CmdGraph:
+    """Virtual root node for the cmd graph"""
+
+    roots: list[CmdGraphNode] = field(default_factory=list[CmdGraphNode])
+
+
 def build_cmd_graph(
+    root_outputs_in_tree: list[Path], output_tree: Path, src_tree: Path, log_depth: int = 3
+) -> CmdGraph:
+    node_cache: dict[Path, CmdGraphNode] = {}
+    root_nodes = [
+        build_cmd_graph_node(root, output_tree, src_tree, node_cache, log_depth=log_depth)
+        for root in root_outputs_in_tree
+    ]
+    return CmdGraph(root_nodes)
+
+
+def build_cmd_graph_node(
     root_output_in_tree: Path,
     output_tree: Path,
     src_tree: Path,
@@ -87,15 +105,15 @@ def build_cmd_graph(
 
     # create child nodes
     for child_path in child_paths:
-        child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
+        child_node = build_cmd_graph_node(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
         node.children.append(child_node)
 
     return node
 
 
-def iter_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[CmdGraphNode]:
+def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]:
     visited: set[Path] = set()
-    node_stack: list[CmdGraphNode] = [cmd_graph]
+    node_stack: list[CmdGraphNode] = cmd_graph.roots if isinstance(cmd_graph, CmdGraph) else [cmd_graph]
     while len(node_stack) > 0:
         node = node_stack.pop(0)
         if node.absolute_path in visited:
@@ -106,25 +124,25 @@ def iter_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[CmdGraphNode]:
         yield node
 
 
-def save_cmd_graph(node: CmdGraphNode, path: Path) -> None:
+def save_cmd_graph(node: CmdGraph, path: Path) -> None:
     with open(path, "wb") as f:
         pickle.dump(node, f)
 
 
-def load_cmd_graph(path: Path) -> CmdGraphNode:
+def load_cmd_graph(path: Path) -> CmdGraph:
     with open(path, "rb") as f:
         return pickle.load(f)
 
 
 def build_or_load_cmd_graph(
-    root_output_in_tree: Path, output_tree: Path, src_tree: Path, cmd_graph_path: Path
-) -> CmdGraphNode:
+    root_outputs_in_tree: list[Path], output_tree: Path, src_tree: Path, cmd_graph_path: Path
+) -> CmdGraph:
     if cmd_graph_path.exists():
         logging.info("Load cmd graph")
         cmd_graph = load_cmd_graph(cmd_graph_path)
     else:
         logging.info("Build cmd graph")
-        cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
+        cmd_graph = build_cmd_graph(root_outputs_in_tree, output_tree, src_tree)
         save_cmd_graph(cmd_graph, cmd_graph_path)
     return cmd_graph
 

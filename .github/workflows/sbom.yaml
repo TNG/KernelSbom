@@ -9,11 +9,15 @@ on:
       test_archive:
         description: Name of the test archive to download from https://fileshare.tngtech.com/d/e69946da808b41f88047/
         required: false
-        default: linux.v6.17.tinyconfig.tar.gz
+        default: linux.v6.17.defconfig.tar.gz
       output_tree: 
         description: Path to the output tree relative to the src tree
         required: false
         default: kernel_build
+      root_outputs_in_tree:
+        description: list of paths relative to the output tree on which the sbom should be based on 
+        required: false
+        default: 'arch/x86/boot/bzImage modules.order'
   workflow_call:
     inputs:
       test_archive:
@@ -23,7 +27,9 @@ on:
         required: false
         type: string
         default: kernel_build
-      
+      root_outputs_in_tree:
+        required: false
+        type: string
 
 run-name: ${{ inputs.test_archive }}
 
@@ -49,7 +55,7 @@ jobs:
           python3 sbom/sbom.py \
             --src-tree ../linux \
             --output-tree ../linux/${{ inputs.output_tree }} \
-            --root-output-in-tree arch/x86/boot/bzImage \
+            --root-outputs-in-tree ${{ inputs.root_outputs_in_tree }} \
             --spdx sbom.spdx.json \
             --used-files sbom.used_files.txt
           
