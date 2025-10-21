@@ -89,13 +89,12 @@ def _get_manual_missing_sources(config: Literal["v6.17.tinyconfig", "v6.17.y.gre
             "tools/arch/x86/lib/insn.c",
             "tools/lib/string.c",
             "tools/lib/rbtree.c",
-            "include/linux/netfilter/nf_conntrack_common.h",
-            "include/uapi/asm-generic/shmbuf.h",
-            "include/linux/hpet.h",
             "arch/x86/kvm/vmx/hyperv.h",
-            "include/linux/blk-crypto.h",
-            "include/linux/sock_diag.h",
-            "linux/include/linux/fanotify.h",
+            "include/linux/dlm.h",
+            "include/linux/dlm_plock.h",
+            "include/linux/connector.h",
+            "include/linux/rpmsg.h",
+            "include/sound/tlv.h",
         ],
     }
     return [Path(p) for p in missing_sources[config]]
