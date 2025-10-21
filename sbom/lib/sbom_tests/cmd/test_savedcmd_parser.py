@@ -53,6 +53,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "vmlinux.a"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
+    def test_link_vmlinux_postlink(self):
+        cmd = '../scripts/link-vmlinux.sh "ld" "-m elf_x86_64 -z noexecstack --no-warn-rwx-segments" "--emit-relocs --discard-none -z max-page-size=0x200000 --build-id=sha1 -X --orphan-handling=error";  make -f ../arch/x86/Makefile.postlink vmlinux'
+        expected = "vmlinux.a"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
     # ar command tests
 
     def test_ar_reordering(self):

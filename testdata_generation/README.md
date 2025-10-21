@@ -21,11 +21,10 @@ make -j$(nproc) O=kernel_build
 
 # or alternatively
 git clone https://github.com/gregkh/gregkh-linux.git
-git clone --depth=1 --no-single-branch https://github.com/gregkh/linux.git
+git clone --depth 1 --branch linux-6.17.y https://github.com/gregkh/linux.git
 cd linux
-git checkout linux-6.17.y
 mkdir kernel_build
-cp ../gregkh-linux/stable/configs/6.1.y kernel_build/.config
+cp ../gregkh-linux/stable/configs/6.17.y kernel_build/.config
 make -j$(nproc) O=kernel_build
 
 # Depending on the config, e.g., for localmodconfig some options might need to be disabled to make the build work.
