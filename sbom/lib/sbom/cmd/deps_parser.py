@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-import logging
 from pathlib import Path
 import re
+import sbom.errors as sbom_errors
 
 CONFIG_PATTERN = re.compile(r"\$\(wildcard (include/config/[^)]+)\)")
 VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
@@ -28,5 +28,5 @@ def parse_deps(deps: list[str]) -> list[Path]:
                 input_files.append(Path(dep))
 
             case _:
-                logging.warning(f"Skip dependency {dep} because of unrecognized format")
+                sbom_errors.log(f"Skip parsing dependency {dep} because of unrecognized format")
     return input_files
