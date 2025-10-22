@@ -13,6 +13,7 @@ from sbom.cmd.deps_parser import parse_deps
 from sbom.cmd.savedcmd_parser import parse_commands
 from sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
 import sbom.errors as sbom_errors
+from .hardcoded_dependencies import get_hardcoded_dependencies
 
 
 @dataclass
@@ -62,9 +63,9 @@ def build_cmd_graph(
     cache[root_output_absolute] = node
 
     # find referenced files from current root
-    child_paths: list[Path] = _get_hardcoded_child_paths(root_output_in_tree)
+    child_paths: list[Path] = get_hardcoded_dependencies(root_output_in_tree)
     if cmd_file is not None:
-        child_paths += _get_child_paths_from_cmd_file(cmd_file, output_tree, src_tree, root_output_in_tree)
+        child_paths += _get_cmd_file_dependencies(cmd_file, output_tree, src_tree, root_output_in_tree)
 
     # create child nodes
     for child_path in child_paths:
@@ -74,23 +75,7 @@ def build_cmd_graph(
     return node
 
 
-def _get_hardcoded_child_paths(root_output_in_tree: Path) -> list[Path]:
-    """
-    At the time of writing some dependencies are not covered by .cmd files and need to be hardcoded for now to make the cmd graph complete.
-    """
-    hardcoded_dependencies: dict[str, list[str]] = {
-        # defined in linux/Kbuild
-        "include/generated/asm-offsets.h": ["arch/x86/kernel/asm-offsets.s"],
-        "include/generated/rq-offsets.h": ["kernel/sched/rq-offsets.s"],
-        "kernel/sched/rq-offsets.s": ["include/generated/asm-offsets.h"],
-        "include/generated/bounds.h": ["kernel/bounds.s"],
-    }
-    if str(root_output_in_tree) not in hardcoded_dependencies.keys():
-        return []
-    return [Path(p) for p in hardcoded_dependencies[str(root_output_in_tree)]]
-
-
-def _get_child_paths_from_cmd_file(
+def _get_cmd_file_dependencies(
     cmd_file: CmdFile, output_tree: Path, src_tree: Path, root_output_in_tree: Path
 ) -> list[Path]:
     # search for input files

@@ -7,6 +7,9 @@
             "request": "launch",
             "program": "sbom/sbom.py",
             "console": "integratedTerminal",
+            "env": {
+                "SRCARCH": "x86"
+            },
             "args": [
                 "--src-tree",
                 "../linux",

@@ -14,6 +14,13 @@ on:
         description: Path to the output tree relative to the src tree
         required: false
         default: kernel_build
+      arch:
+        description: The architecture on which the kernel was built
+        required: false
+        default: x86
+        type: choice
+        options:
+          - x86
   workflow_call:
     inputs:
       test_archive:
@@ -22,7 +29,9 @@ on:
       output_tree:
         required: false
         type: string
-        default: kernel_build
+      arch:
+        required: false
+        type: string
       
 
 run-name: ${{ inputs.test_archive }}
@@ -46,10 +55,15 @@ jobs:
       - name: Run sbom.py
         id: run_sbom
         run: |
+          export SRCARCH="${{ inputs.arch }}"
+          declare -A roots=(
+            [x86]="arch/x86/boot/bzImage"
+          )
+
           python3 sbom/sbom.py \
             --src-tree ../linux \
             --output-tree ../linux/${{ inputs.output_tree }} \
-            --root-output-in-tree arch/x86/boot/bzImage \
+            --root-output-in-tree "${roots[$SRCARCH]}" \
             --spdx sbom.spdx.json \
             --used-files sbom.used_files.txt
           
