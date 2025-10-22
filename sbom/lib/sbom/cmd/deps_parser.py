@@ -5,19 +5,15 @@ import logging
 from pathlib import Path
 import re
 
-WILDCARD_PATTERN = re.compile(r"\$\(wildcard ([^)]+)\)")
+CONFIG_PATTERN = re.compile(r"\$\(wildcard (include/config/[^)]+)\)")
 VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
 
 
-def parse_deps(deps: list[str], output_tree: Path) -> list[Path]:
+def parse_deps(deps: list[str]) -> list[Path]:
     """
     Parse dependency strings of a .cmd file and return valid input file paths.
-    Supports:
-    - $(wildcard ...) paths relative to output_tree (only returned if the file exists)
-    - Source files ending in .h, .c, or .S (returned as-is)
     Args:
         deps: List of dependency strings as found in `.cmd` files.
-        output_tree: Base directory for resolving wildcard paths.
     Returns:
         input_files: List of input file paths
     """
@@ -25,12 +21,9 @@ def parse_deps(deps: list[str], output_tree: Path) -> list[Path]:
     for dep in deps:
         dep = dep.strip()
         match dep:
-            case _ if wildcard_match := WILDCARD_PATTERN.match(dep):
-                config_path_in_tree = wildcard_match.group(1)
-                # expect config path to be "$(wildcard include/config/<CONFIG_NAME>)"
-                if Path(output_tree / config_path_in_tree).exists():
-                    input_files.append(Path(config_path_in_tree))
-
+            case _ if _ := CONFIG_PATTERN.match(dep):
+                # config paths like include/config/<CONFIG_NAME> are not included in the graph
+                continue
             case _ if VALID_PATH_PATTERN.match(dep):
                 input_files.append(Path(dep))
 
