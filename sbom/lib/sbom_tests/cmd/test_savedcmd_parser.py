@@ -34,6 +34,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "../security/tomoyo/policy/exception_policy.conf.default"
         self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
 
+    def test_cat_colon(self):
+        cmd = "{   cat init/modules.order;   cat usr/modules.order;   cat arch/x86/modules.order;   cat arch/x86/boot/startup/modules.order;   cat kernel/modules.order;   cat certs/modules.order;   cat mm/modules.order;   cat fs/modules.order;   cat ipc/modules.order;   cat security/modules.order;   cat crypto/modules.order;   cat block/modules.order;   cat io_uring/modules.order;   cat lib/modules.order;   cat arch/x86/lib/modules.order;   cat drivers/modules.order;   cat sound/modules.order;   cat samples/modules.order;   cat net/modules.order;   cat virt/modules.order;   cat arch/x86/pci/modules.order;   cat arch/x86/power/modules.order;   cat arch/x86/video/modules.order; :; } > modules.order"
+        expected = "init/modules.order usr/modules.order arch/x86/modules.order arch/x86/boot/startup/modules.order kernel/modules.order certs/modules.order mm/modules.order fs/modules.order ipc/modules.order security/modules.order crypto/modules.order block/modules.order io_uring/modules.order lib/modules.order arch/x86/lib/modules.order drivers/modules.order sound/modules.order samples/modules.order net/modules.order virt/modules.order arch/x86/pci/modules.order arch/x86/power/modules.order arch/x86/video/modules.order"
+        self.assertEqual(parse_commands(cmd), [Path(p) for p in expected.split(" ")])
+
     # objcopy command tests
 
     def test_objcopy(self):

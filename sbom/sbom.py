@@ -13,21 +13,21 @@ import logging
 import os
 from pathlib import Path
 import lib.sbom.spdx as spdx
-from lib.sbom.cmd.cmd_graph import CmdGraphNode, build_cmd_graph, iter_cmd_graph
+from lib.sbom.cmd.cmd_graph import CmdGraph, build_cmd_graph, iter_cmd_graph
 import time
 
 
 @dataclass
 class Args:
-    src_tree: str
-    output_tree: str
-    root_output_in_tree: str
-    spdx: str
-    used_files: str
+    src_tree: Path
+    output_tree: Path
+    root_outputs_in_tree: list[Path]
+    spdx: Path | None
+    used_files: Path | None
     debug: bool
 
 
-def parse_args() -> Args:
+def _parse_args() -> Args:
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
         description="Generate SPDX SBOM from kernel sources and build artifacts",
@@ -41,9 +41,10 @@ def parse_args() -> Args:
         help="Path to the build output tree directory (default: ../linux/kernel_build)",
     )
     parser.add_argument(
-        "--root-output-in-tree",
-        default="arch/x86/boot/bzImage",
-        help="Root build output path relative to --output-tree the SBOM will be based on (default: arch/x86/boot/bzImage)",
+        "--root-outputs-in-tree",
+        nargs="+",
+        default=["arch/x86/boot/bzImage", "modules.order"],
+        help="Space-separated list of paths (relative to --output-tree) on which the SBOM will be based (default: arch/x86/boot/bzImage modules.order)",
     )
     parser.add_argument(
         "--spdx",
@@ -57,11 +58,30 @@ def parse_args() -> Args:
     )
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
 
-    ns = parser.parse_args()
-    return Args(**vars(ns))
+    # Extract arguments
+    args = vars(parser.parse_args())
+    src_tree = Path(os.path.realpath(args["src_tree"]))
+    output_tree = Path(os.path.realpath(args["output_tree"]))
+    root_outputs_in_tree = [Path(root) for root in args["root_outputs_in_tree"]]
+    spdx = Path(args["spdx"]) if args["spdx"] != "none" else None
+    used_files = Path(args["used_files"]) if args["used_files"] != "none" else None
+    debug = args["debug"]
+
+    # Validate arguments
+    if not src_tree.exists():
+        raise argparse.ArgumentTypeError(f"src-tree {str(src_tree)} does not exist")
+    if not output_tree.exists():
+        raise argparse.ArgumentTypeError(f"output-tree {str(output_tree)} does not exist")
+    for root_output_in_tree in root_outputs_in_tree:
+        if not (output_tree / root_output_in_tree).exists():
+            raise argparse.ArgumentTypeError(
+                f"root-output-in-tree {str(output_tree / root_output_in_tree)} does not exist"
+            )
+
+    return Args(src_tree, output_tree, root_outputs_in_tree, spdx, used_files, debug)
 
 
-def create_spdx_document(cmd_graph: CmdGraphNode) -> spdx.JsonLdDocument:
+def create_spdx_document(cmd_graph: CmdGraph) -> spdx.JsonLdDocument:
     person = spdx.Person(
         name="Luis Augenstein",
         externalIdentifier=[
@@ -123,41 +143,38 @@ def create_spdx_document(cmd_graph: CmdGraphNode) -> spdx.JsonLdDocument:
 def main():
     """Main program"""
     # Parse cli arguments
-    args = parse_args()
-    src_tree = Path(os.path.realpath(args.src_tree))
-    output_tree = Path(os.path.realpath(args.output_tree))
-    root_output_in_tree = Path(args.root_output_in_tree)
+    args = _parse_args()
 
     # Configure logging
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Build cmd graph
-    logging.info(f"Building cmd graph for {args.root_output_in_tree}")
+    logging.info("Start building cmd graph")
     start_time = time.time()
-    cmd_graph = build_cmd_graph(root_output_in_tree, output_tree, src_tree)
+    cmd_graph = build_cmd_graph(args.root_outputs_in_tree, args.output_tree, args.src_tree)
     logging.info(f"Built cmd graph in {time.time() - start_time} seconds")
 
     # Save used files
-    if args.used_files != "none":
-        if src_tree == output_tree:
+    if args.used_files is not None:
+        if args.src_tree == args.output_tree:
             logging.warning(
                 "Cannot distinguish source and output files because source and output tree are equal. Extracting all files from cmd graph"
             )
-            used_files = [os.path.relpath(node.absolute_path, src_tree) for node in iter_cmd_graph(cmd_graph)]
+            used_files = [os.path.relpath(node.absolute_path, args.src_tree) for node in iter_cmd_graph(cmd_graph)]
             logging.info(f"Found {len(used_files)} files in cmd graph.")
         else:
             logging.info("Extracting source files from cmd graph")
             used_files = [
-                os.path.relpath(node.absolute_path, src_tree)
+                os.path.relpath(node.absolute_path, args.src_tree)
                 for node in iter_cmd_graph(cmd_graph)
-                if not node.absolute_path.is_relative_to(output_tree)
+                if not node.absolute_path.is_relative_to(args.output_tree)
             ]
             logging.info(f"Found {len(used_files)} source files in cmd graph.")
         with open(args.used_files, "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
         logging.info(f"Saved {args.used_files} successfully")
 
-    if args.spdx == "none":
+    if args.spdx is None:
         return
 
     # Fill SPDX Document
@@ -168,7 +185,7 @@ def main():
     spdx_json = spdx_doc.to_json()
     with open(args.spdx, "w", encoding="utf-8") as f:
         f.write(spdx_json)
-    logging.info(f"Saved {args.spdx} successfully")
+    logging.info(f"Saved {str(args.spdx)} successfully")
 
 
 # Call main method

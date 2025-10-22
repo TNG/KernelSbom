@@ -11,7 +11,7 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/
 ## Getting Started
 1. Provide a linux source and output tree, e.g., by downloading precompiled test data from [KernelSbom-TestData](https://fileshare.tngtech.com/d/e69946da808b41f88047/files)
     ```bash
-    test_archive="linux.v6.17.tinyconfig.tar.gz"
+    test_archive="linux.v6.17.defconfig.tar.gz"
     curl -L -o "$test_archive" "https://fileshare.tngtech.com/d/e69946da808b41f88047/files/?p=%2F$test_archive&dl=1"
     tar -xzf "$test_archive"
     ```
@@ -32,7 +32,7 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/
     python3 sbom/sbom.py \
       --src-tree ../linux \
       --output-tree ../linux/kernel_build \
-      --root-output-in-tree arch/x86/boot/bzImage \
+      --root-outputs-in-tree arch/x86/boot/bzImage modules.order \
       --spdx sbom.spdx.json \
       --used-files sbom.used_files.txt
     ```

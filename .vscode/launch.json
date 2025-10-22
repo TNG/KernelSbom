@@ -12,7 +12,7 @@
                 "../linux",
                 "--output-tree",
                 "../linux/kernel_build",
-                "--root-output-in-tree",
+                "--root-outputs-in-tree",
                 "arch/x86/boot/bzImage",
                 "--debug"
             ]
