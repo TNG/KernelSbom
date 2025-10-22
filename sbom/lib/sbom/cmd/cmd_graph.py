@@ -66,7 +66,7 @@ def build_cmd_graph(
     # search for input files
     input_files = parse_commands(cmd_file.savedcmd)
     if cmd_file.deps:
-        input_files += parse_deps(cmd_file.deps, output_tree)
+        input_files += parse_deps(cmd_file.deps)
     input_files = _expand_resolve_files(input_files, output_tree)
     if len(input_files) == 0:
         return node
@@ -79,7 +79,7 @@ def build_cmd_graph(
         # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
         # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
         working_directory = _get_working_directory(relative_inputs[0], output_tree, src_tree, root_output_in_tree)
-        child_paths += [working_directory / input_file for input_file in relative_inputs]
+        child_paths += [Path(os.path.normpath(working_directory / input_file)) for input_file in relative_inputs]
 
     # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
     # remove generated output from the input_files to prevent nodes from being their own children.

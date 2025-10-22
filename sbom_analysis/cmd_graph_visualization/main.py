@@ -222,8 +222,7 @@ if __name__ == "__main__":
     force_graph = _to_force_graph(
         cmd_graphs,
         filter_patterns=[
-            # re.compile(r"^(?!.*voffset\.h$).+\.h$"), # uncomment if header files make the graph too messy
-            re.compile(r"^.*/include/config/"),
+            # re.compile(r"^(?!.*voffset\.h$).+\.h$"),  # uncomment if header files make the graph too messy
         ],
         missing_files=missing_files,
     )
