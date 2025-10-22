@@ -1,12 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-import logging
 from pathlib import Path
 import re
 import shlex
 from dataclasses import dataclass
 from typing import Callable, Optional, Union
+import sbom.errors as sbom_errors
+
+
+class CmdParsingError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
 
 
 @dataclass
@@ -75,7 +81,7 @@ def _tokenize_single_command(command: str, flag_options: list[str] | None = None
             i += 2
             continue
 
-        raise NotImplementedError(f"Unrecognized token: {token} in command {command}")
+        raise CmdParsingError(f"Unrecognized token: {token} in command {command}")
 
     return parsed
 
@@ -84,7 +90,7 @@ def _tokenize_single_command_positionals_only(command: str) -> list[str]:
     command_parts = _tokenize_single_command(command)
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     if len(positionals) != len(command_parts):
-        raise NotImplementedError(
+        raise CmdParsingError(
             f"Invalid command format: expected positional arguments only but got options in command {command}."
         )
     return positionals
@@ -98,9 +104,6 @@ def _parse_dd_command(command: str) -> list[Path]:
 
 
 def _parse_cat_command(command: str) -> list[Path]:
-    if "|" in command or ">" in command:
-        logging.warning(f"Skip parsing command because the given pipe/redirect destination is not supported {command}")
-        return []
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["cat", input1, input2, ...]
     return [Path(p) for p in positionals[1:]]
@@ -109,8 +112,8 @@ def _parse_cat_command(command: str) -> list[Path]:
 def _parse_compound_command(command: str) -> list[Path]:
     compound_command_parsers: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
         (re.compile(r"dd\b"), _parse_dd_command),
-        (re.compile(r"cat.*?|\s+sh\b.*?xz_wrap\.sh"), lambda c: _parse_cat_command(c.split("|")[0])),
-        (re.compile(r"cat\b"), _parse_cat_command),
+        (re.compile(r"cat.*?\|\s+sh\b.*?xz_wrap\.sh"), lambda c: _parse_cat_command(c.split("|")[0])),
+        (re.compile(r"cat\b[^|>]*$"), _parse_cat_command),
         (re.compile(r"echo\b"), _parse_noop),
         (re.compile(r"\S+="), _parse_noop),
         (re.compile(r"printf\b"), _parse_noop),
@@ -123,24 +126,28 @@ def _parse_compound_command(command: str) -> list[Path]:
 
     match = re.match(r"\s*[\(\{](.*)[\)\}]\s*>", command, re.DOTALL)
     if match is None:
-        logging.error(f"No inner commands found for compound command {command}")
-        return []
+        raise CmdParsingError("No inner commands found for compound command")
     input_files: list[Path] = []
     inner_commands = _split_commands(match.group(1))
     for inner_command in inner_commands:
         if isinstance(inner_command, IfBlock):
-            logging.warning(
-                f"Skip parsing inner command of compound command because IfBlock is not supported {inner_command}"
+            sbom_errors.log(
+                f"Skip parsing inner command {inner_command} of compound command because IfBlock is not supported"
             )
             continue
 
         parser = next((parser for pattern, parser in compound_command_parsers if pattern.match(inner_command)), None)
         if parser is None:
-            logging.warning(
-                f"Skip parsing inner command of compound command because no parser was found for {inner_command}"
+            sbom_errors.log(
+                f"Skip parsing inner command {inner_command} of compound command because no matching parser was found"
             )
             continue
-        input_files += parser(inner_command)
+        try:
+            input_files += parser(inner_command)
+        except CmdParsingError as e:
+            sbom_errors.log(
+                f"Skip parsing inner command {inner_command} of compount command because of command parsing error: {e.message}"
+            )
     return input_files
 
 
@@ -149,7 +156,7 @@ def _parse_objcopy_command(command: str) -> list[Path]:
     positionals = [part.value for part in command_parts if isinstance(part, Positional)]
     # expect positionals to be ['objcopy', input_file] or ['objcopy', input_file, output_file]
     if not (len(positionals) == 2 or len(positionals) == 3):
-        raise NotImplementedError(
+        raise CmdParsingError(
             f"Invalid objcopy command format: expected 2 or 3 positional arguments, got {len(positionals)} ({positionals})"
         )
     return [Path(positionals[1])]
@@ -206,7 +213,7 @@ def _parse_rustc_command(command: str) -> list[Path]:
     for part in reversed(parts):
         if not part.startswith("-") and Path(part).suffix == ".rs":
             return [Path(part)]
-    raise ValueError(f"Could not find input source file in command: {command}")
+    raise CmdParsingError("Could not find .rs input source file")
 
 
 def _parse_syscallhdr_command(command: str) -> list[Path]:
@@ -340,7 +347,7 @@ def _parse_flex_command(command: str) -> list[Path]:
     for part in reversed(parts):
         if not part.startswith("-") and Path(part).suffix in [".l"]:
             return [Path(part)]
-    raise ValueError(f"Could not find input source file in command: {command}")
+    raise CmdParsingError("Could not find .l input source file in command")
 
 
 def _parse_bison_command(command: str) -> list[Path]:
@@ -349,7 +356,7 @@ def _parse_bison_command(command: str) -> list[Path]:
     for part in reversed(parts):
         if not part.startswith("-") and Path(part).suffix in [".y"]:
             return [Path(part)]
-    raise ValueError(f"Could not find input source file in command: {command}")
+    raise CmdParsingError("Could not find input .y input source file in command")
 
 
 def _parse_tools_build_command(command: str) -> list[Path]:
@@ -510,8 +517,8 @@ def parse_commands(commands: str) -> list[Path]:
         if isinstance(single_command, IfBlock):
             inputs = parse_commands(single_command.then_statement)
             if inputs:
-                logging.warning(
-                    f"Skip command because input files in IfBlock 'then' statement are not supported: {single_command.then_statement}"
+                sbom_errors.log(
+                    f"Skip parsing command {single_command.then_statement} because input files in IfBlock 'then' statement are not supported"
                 )
             continue
 
@@ -519,8 +526,11 @@ def parse_commands(commands: str) -> list[Path]:
             (parser for pattern, parser in SINGLE_COMMAND_PARSERS if pattern.match(single_command)), None
         )
         if matched_parser is None:
-            logging.warning(f"Skipped parsing command because no matching parser was found for: {single_command}")
+            sbom_errors.log(f"Skip parsing command {single_command} because no matching parser was found")
             continue
-        inputs = matched_parser(single_command)
-        input_files.extend(inputs)
+        try:
+            inputs = matched_parser(single_command)
+            input_files.extend(inputs)
+        except CmdParsingError as e:
+            sbom_errors.log(f"Skip parsing command {single_command} because of command parsing error: {e.message}")
     return input_files
