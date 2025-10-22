@@ -14,20 +14,12 @@ on:
         description: Path to the output tree relative to the src tree
         required: false
         default: kernel_build
-      root_outputs_in_tree:
-        description: list of paths relative to the output tree on which the sbom should be based on 
-        required: false
-        default: 'arch/x86/boot/bzImage modules.order'
   workflow_call:
     inputs:
       test_archive:
         required: true
         type: string
       output_tree:
-        required: false
-        type: string
-        default: kernel_build
-      root_outputs_in_tree:
         required: false
         type: string
 
@@ -55,7 +47,7 @@ jobs:
           python3 sbom/sbom.py \
             --src-tree ../linux \
             --output-tree ../linux/${{ inputs.output_tree }} \
-            --root-outputs-in-tree ${{ inputs.root_outputs_in_tree }} \
+            --root-output-in-tree arch/x86/boot/bzImage \
             --spdx sbom.spdx.json \
             --used-files sbom.used_files.txt
           

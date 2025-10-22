@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 from typing import Literal
 from build_kernel import build_kernel
+from sbom.cmd.module_roots import get_module_roots
 
 LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -39,7 +40,7 @@ def _create_cmd_graph_based_kernel_directory(
     output_tree: Path,
     cmd_src_tree: Path,
     cmd_output_tree: Path,
-    root_outputs_in_tree: list[Path],
+    root_outputs: list[Path],
     cmd_graph_path: Path,
     missing_sources_in_cmd_graph: list[Path],
 ) -> None:
@@ -51,7 +52,7 @@ def _create_cmd_graph_based_kernel_directory(
     shutil.copyfile(output_tree / ".config", cmd_output_tree / ".config")
 
     # Load cached command graph or build it from .cmd files
-    cmd_graph = build_or_load_cmd_graph(root_outputs_in_tree, output_tree, src_tree, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_outputs, output_tree, src_tree, cmd_graph_path)
 
     # remove source files not in cmd_graph
     source_patterns = [
@@ -98,7 +99,10 @@ if __name__ == "__main__":
     output_tree = (
         Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
     )
-    root_outputs_in_tree = [Path("arch/x86/boot/bzImage"), Path("modules.order")]
+    root_outputs = [
+        Path("arch/x86/boot/bzImage"),
+        # *get_module_roots(Path("modules.order")), # uncomment when modules should be added to the graph
+    ]
     cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
 
     cmd_src_tree = (src_tree.parent / f"{src_tree.name}_cmd").resolve()
@@ -120,7 +124,7 @@ if __name__ == "__main__":
             output_tree,
             cmd_src_tree,
             cmd_output_tree,
-            root_outputs_in_tree,
+            root_outputs,
             cmd_graph_path,
             missing_sources_in_cmd_graph,
         )

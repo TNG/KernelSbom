@@ -124,7 +124,7 @@ def _extend_cmd_graph_with_missing_files(
         if file_path_abs in cmd_graph_node_cache.keys():
             continue
         potential_new_root = build_cmd_graph_node(
-            root_output_in_tree=file_path_abs.relative_to(output_tree),
+            root_output=file_path_abs.relative_to(output_tree),
             output_tree=output_tree,
             src_tree=src_tree,
             cache=cmd_graph_node_cache,
@@ -196,7 +196,10 @@ if __name__ == "__main__":
     output_tree = (
         Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
     )
-    root_outputs_in_tree = [Path("arch/x86/boot/bzImage"), Path("modules.order")]
+    root_outputs = [
+        Path("arch/x86/boot/bzImage"),
+        # *get_module_roots(Path("modules.order")), # uncomment when modules should be added to the graph
+    ]
     cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
 
     # missing file graph options
@@ -207,7 +210,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Load cached command graph if available, otherwise build it from .cmd files
-    cmd_graph = build_or_load_cmd_graph(root_outputs_in_tree, output_tree, src_tree, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_outputs, output_tree, src_tree, cmd_graph_path)
 
     # Extend cmd graph with missing files
     missing_files: set[Path] = set()

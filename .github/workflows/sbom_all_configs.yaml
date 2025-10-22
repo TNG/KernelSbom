@@ -14,7 +14,6 @@ jobs:
     with:
       test_archive: ${{ matrix.test_archive }}
       output_tree: ${{ matrix.output_tree || 'kernel_build' }}
-      root_outputs_in_tree: ${{ matrix.root_outputs_in_tree || 'arch/x86/boot/bzImage modules.order' }}
 
     strategy:
       fail-fast: false 
@@ -31,7 +30,6 @@ jobs:
           - test_archive: linux.v6.12.y.gregkh-linux-stable.tar.gz
           # v6.17
           - test_archive: linux.v6.17.tinyconfig.tar.gz
-            root_outputs_in_tree: arch/x86/boot/bzImage
           - test_archive: linux.v6.17.defconfig.tar.gz
           - test_archive: linux.v6.17.defconfig.rust.tar.gz
           - test_archive: linux.v6.17.allmodconfig.tar.gz

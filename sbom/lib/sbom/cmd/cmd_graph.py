@@ -28,19 +28,17 @@ class CmdGraph:
     roots: list[CmdGraphNode] = field(default_factory=list[CmdGraphNode])
 
 
-def build_cmd_graph(
-    root_outputs_in_tree: list[Path], output_tree: Path, src_tree: Path, log_depth: int = 3
-) -> CmdGraph:
+def build_cmd_graph(root_outputs: list[Path], output_tree: Path, src_tree: Path, log_depth: int = 3) -> CmdGraph:
     node_cache: dict[Path, CmdGraphNode] = {}
     root_nodes = [
-        build_cmd_graph_node(root, output_tree, src_tree, node_cache, log_depth=log_depth)
-        for root in root_outputs_in_tree
+        build_cmd_graph_node(root_output, output_tree, src_tree, node_cache, log_depth=log_depth)
+        for root_output in root_outputs
     ]
     return CmdGraph(root_nodes)
 
 
 def build_cmd_graph_node(
-    root_output_in_tree: Path,
+    root_output: Path,
     output_tree: Path,
     src_tree: Path,
     cache: dict[Path, CmdGraphNode] | None = None,
@@ -48,11 +46,11 @@ def build_cmd_graph_node(
     log_depth: int = 3,
 ) -> CmdGraphNode:
     """
-    Recursively builds a dependency graph starting from `root_output_in_tree` by
-    parsing its corresponding `.<root_output_in_tree.name>.cmd` file to discover and follow dependencies.
+    Recursively builds a dependency graph starting from `root_output` by
+    parsing its corresponding `.<root_output.name>.cmd` file to discover and follow dependencies.
 
     Args:
-        root_output_in_tree (Path): Path to the root output file relative to output_tree.
+        root_output (Path): Path to the root output file relative to output_tree.
         output_tree (Path): absolute Path to the base directory of the output_tree.
         src_tree (Path): absolute Path to the `linux` source directory.
         cache (dict | None): Tracks processed nodes to prevent cycles.
@@ -65,14 +63,14 @@ def build_cmd_graph_node(
     if cache is None:
         cache = {}
 
-    root_output_absolute = Path(os.path.realpath(output_tree / root_output_in_tree))
+    root_output_absolute = Path(os.path.realpath(output_tree / root_output))
     if root_output_absolute in cache.keys():
         if depth <= log_depth:
-            logging.info(f"Reuse Node: {'  ' * depth}{root_output_in_tree}")
+            logging.info(f"Reuse Node: {'  ' * depth}{root_output}")
         return cache[root_output_absolute]
 
     if depth <= log_depth:
-        logging.info(f"Build Node: {'  ' * depth}{root_output_in_tree}")
+        logging.info(f"Build Node: {'  ' * depth}{root_output}")
     cmd_path = _to_cmd_path(root_output_absolute)
     cmd_file = parse_cmd_file(cmd_path) if cmd_path.exists() else None
     node = CmdGraphNode(root_output_absolute, cmd_file)
@@ -96,12 +94,12 @@ def build_cmd_graph_node(
     if len(relative_inputs) > 0:
         # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
         # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
-        working_directory = _get_working_directory(relative_inputs[0], output_tree, src_tree, root_output_in_tree)
+        working_directory = _get_working_directory(relative_inputs[0], output_tree, src_tree, root_output)
         child_paths += [working_directory / input_file for input_file in relative_inputs]
 
     # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
     # remove generated output from the input_files to prevent nodes from being their own children.
-    child_paths = [child_path for child_path in child_paths if child_path != root_output_in_tree]
+    child_paths = [child_path for child_path in child_paths if child_path != root_output]
 
     # create child nodes
     for child_path in child_paths:
@@ -135,14 +133,14 @@ def load_cmd_graph(path: Path) -> CmdGraph:
 
 
 def build_or_load_cmd_graph(
-    root_outputs_in_tree: list[Path], output_tree: Path, src_tree: Path, cmd_graph_path: Path
+    root_outputs: list[Path], output_tree: Path, src_tree: Path, cmd_graph_path: Path
 ) -> CmdGraph:
     if cmd_graph_path.exists():
         logging.info("Load cmd graph")
         cmd_graph = load_cmd_graph(cmd_graph_path)
     else:
         logging.info("Build cmd graph")
-        cmd_graph = build_cmd_graph(root_outputs_in_tree, output_tree, src_tree)
+        cmd_graph = build_cmd_graph(root_outputs, output_tree, src_tree)
         save_cmd_graph(cmd_graph, cmd_graph_path)
     return cmd_graph
 
@@ -151,17 +149,17 @@ def _to_cmd_path(path: Path) -> Path:
     return path.parent / f".{path.name}.cmd"
 
 
-def _get_working_directory(input_file: Path, output_tree: Path, src_tree: Path, root_output_in_tree: Path) -> Path:
+def _get_working_directory(input_file: Path, output_tree: Path, src_tree: Path, root_output: Path) -> Path:
     # Input paths in .cmd files are often relative paths but it is unclear to which original working directory these paths are relative to.
     # This function estimates the working directory based on the location of one input_file and various heuristics.
 
-    relative_to_cmd_file = (output_tree / root_output_in_tree.parent / input_file).exists()
+    relative_to_cmd_file = (output_tree / root_output.parent / input_file).exists()
     relative_to_output_tree = (output_tree / input_file).exists()
-    relative_to_tools_objtool = str(root_output_in_tree).startswith("tools/objtool/arch/x86")
-    relative_to_tools_lib_subcmd = str(root_output_in_tree).startswith("tools/objtool/libsubcmd")
+    relative_to_tools_objtool = str(root_output).startswith("tools/objtool/arch/x86")
+    relative_to_tools_lib_subcmd = str(root_output).startswith("tools/objtool/libsubcmd")
 
     if relative_to_cmd_file:
-        return root_output_in_tree.parent
+        return root_output.parent
     elif relative_to_output_tree:
         return Path(".")
     elif relative_to_tools_objtool:
@@ -171,7 +169,7 @@ def _get_working_directory(input_file: Path, output_tree: Path, src_tree: Path, 
         # Input path relative to `tools/lib/subcmd` (e.g., `tools/objtool/libsubcmd/.sigchain.o` has input `subcmd-util.h` which lives in `tools/lib/subcmd/subcmd-util.h`)
         return Path(os.path.relpath(src_tree, output_tree)) / "tools/lib/subcmd"
 
-    raise ValueError(f"Cannot resolve input: {input_file} of file for {_to_cmd_path(root_output_in_tree)}")
+    raise ValueError(f"Cannot resolve input: {input_file} of file for {_to_cmd_path(root_output)}")
 
 
 def _expand_resolve_files(input_files: list[Path], output_tree: Path) -> list[Path]:

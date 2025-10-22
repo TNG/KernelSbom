@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import lib.sbom.spdx as spdx
 from lib.sbom.cmd.cmd_graph import CmdGraph, build_cmd_graph, iter_cmd_graph
+from lib.sbom.cmd.module_roots import get_module_roots
 import time
 
 
@@ -21,7 +22,8 @@ import time
 class Args:
     src_tree: Path
     output_tree: Path
-    root_outputs_in_tree: list[Path]
+    root_output: Path
+    modules: Path | list[Path] | None
     spdx: Path | None
     used_files: Path | None
     debug: bool
@@ -41,10 +43,19 @@ def _parse_args() -> Args:
         help="Path to the build output tree directory (default: ../linux/kernel_build)",
     )
     parser.add_argument(
-        "--root-outputs-in-tree",
+        "--root-output",
+        default="arch/x86/boot/bzImage",
+        help="paths relative to --output-tree on which the SBOM will be based (default: arch/x86/boot/bzImage)",
+    )
+    parser.add_argument(
+        "--modules",
         nargs="+",
-        default=["arch/x86/boot/bzImage", "modules.order"],
-        help="Space-separated list of paths (relative to --output-tree) on which the SBOM will be based (default: arch/x86/boot/bzImage modules.order)",
+        default=["modules.order"],
+        help=(
+            "Either a path relative to --output-tree to a file containing module paths (e.g., 'modules.order'), "
+            "or a space-separated list of .ko/.o files passed directly, "
+            "or 'none' to disable (default: modules.order)."
+        ),
     )
     parser.add_argument(
         "--spdx",
@@ -62,23 +73,29 @@ def _parse_args() -> Args:
     args = vars(parser.parse_args())
     src_tree = Path(os.path.realpath(args["src_tree"]))
     output_tree = Path(os.path.realpath(args["output_tree"]))
-    root_outputs_in_tree = [Path(root) for root in args["root_outputs_in_tree"]]
+    root_output = Path(args["root_output"])
+    modules = [Path(p) for p in args["modules"]] if args["modules"] != "none" else None
     spdx = Path(args["spdx"]) if args["spdx"] != "none" else None
     used_files = Path(args["used_files"]) if args["used_files"] != "none" else None
     debug = args["debug"]
 
     # Validate arguments
     if not src_tree.exists():
-        raise argparse.ArgumentTypeError(f"src-tree {str(src_tree)} does not exist")
+        raise argparse.ArgumentTypeError(f"--src-tree {str(src_tree)} does not exist")
     if not output_tree.exists():
-        raise argparse.ArgumentTypeError(f"output-tree {str(output_tree)} does not exist")
-    for root_output_in_tree in root_outputs_in_tree:
-        if not (output_tree / root_output_in_tree).exists():
-            raise argparse.ArgumentTypeError(
-                f"root-output-in-tree {str(output_tree / root_output_in_tree)} does not exist"
-            )
+        raise argparse.ArgumentTypeError(f"--output-tree {str(output_tree)} does not exist")
+    if not (output_tree / root_output).exists():
+        raise argparse.ArgumentTypeError(f"--root-output {str(output_tree / root_output)} does not exist")
+    if modules is not None:
+        for module in modules:
+            if not (output_tree / module).exists():
+                raise argparse.ArgumentTypeError(f"--modules {str(output_tree / module)} does not exist")
+        if len(modules) == 1 and modules[0].suffix not in [".o", ".ko"]:
+            modules = Path(os.path.normpath(output_tree / modules[0]))
+        elif any(module.suffix not in [".o", ".ko"] for module in modules):
+            raise argparse.ArgumentTypeError(f"--modules {[str(m) for m in modules]} do not end with '.o' or '.ko'.")
 
-    return Args(src_tree, output_tree, root_outputs_in_tree, spdx, used_files, debug)
+    return Args(src_tree, output_tree, root_output, modules, spdx, used_files, debug)
 
 
 def create_spdx_document(cmd_graph: CmdGraph) -> spdx.JsonLdDocument:
@@ -151,7 +168,8 @@ def main():
     # Build cmd graph
     logging.info("Start building cmd graph")
     start_time = time.time()
-    cmd_graph = build_cmd_graph(args.root_outputs_in_tree, args.output_tree, args.src_tree)
+    module_roots = get_module_roots(args.modules) if args.modules is not None else []
+    cmd_graph = build_cmd_graph([args.root_output, *module_roots], args.output_tree, args.src_tree)
     logging.info(f"Built cmd graph in {time.time() - start_time} seconds")
 
     # Save used files
