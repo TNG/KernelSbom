@@ -11,6 +11,7 @@ from typing import Iterator
 
 from sbom.cmd.deps_parser import parse_deps
 from sbom.cmd.savedcmd_parser import parse_commands
+from sbom.cmd.incbin_parser import parse_incbin
 from sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
 import sbom.errors as sbom_errors
 from .hardcoded_dependencies import get_hardcoded_dependencies
@@ -62,12 +63,14 @@ def build_cmd_graph(
     node = CmdGraphNode(root_output_absolute, cmd_file)
     cache[root_output_absolute] = node
 
-    # find referenced files from current root
-    child_paths: list[Path] = get_hardcoded_dependencies(root_output_absolute, output_tree, src_tree)
+    # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
+    child_paths = get_hardcoded_dependencies(root_output_absolute, output_tree, src_tree)
     if cmd_file is not None:
-        child_paths += _get_cmd_file_dependencies(cmd_file, output_tree, src_tree, root_output_in_tree)
+        child_paths += _parse_cmd_file(cmd_file, output_tree, src_tree, root_output_in_tree)
+    if node.absolute_path.suffix == ".S":
+        child_paths += _parse_incbin(node.absolute_path, output_tree, src_tree, root_output_in_tree)
 
-    # create child nodes
+    # Create child nodes
     for child_path in child_paths:
         child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
         node.children.append(child_node)
@@ -75,37 +78,48 @@ def build_cmd_graph(
     return node
 
 
-def _get_cmd_file_dependencies(
-    cmd_file: CmdFile, output_tree: Path, src_tree: Path, root_output_in_tree: Path
-) -> list[Path]:
-    # search for input files
+def _parse_cmd_file(cmd_file: CmdFile, output_tree: Path, src_tree: Path, root_output_in_tree: Path) -> list[Path]:
     input_files = parse_commands(cmd_file.savedcmd)
     if cmd_file.deps:
         input_files += parse_deps(cmd_file.deps)
     input_files = _expand_resolve_files(input_files, output_tree)
-    if len(input_files) == 0:
-        return []
 
-    # turn input files to valid child paths relative to output tree
-    absolute_inputs = [input for input in input_files if os.path.isabs(input)]
-    child_paths = [Path(os.path.relpath(input_file, output_tree)) for input_file in absolute_inputs]
-    relative_inputs = [input for input in input_files if not os.path.isabs(input)]
-    if len(relative_inputs) > 0:
-        # define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
-        # TODO: find a way to parse this directly from the cmd file. For now we estimate the working directory by searching where the first input file lives.
-        working_directory = _get_working_directory(relative_inputs[0], output_tree, src_tree, root_output_in_tree)
+    child_paths: list[Path] = []
+    working_directory: Path | None = None
+    for input_file in input_files:
+        if os.path.isabs(input_file):
+            child_paths.append(Path(os.path.relpath(input_file, output_tree)))
+            continue
+
         if working_directory is None:
-            sbom_errors.log(
-                f"Skip children of node {root_output_in_tree} because no working directory for relative input {relative_inputs[0]} could be found"
-            )
-            return []
-        child_paths += [Path(os.path.normpath(working_directory / input_file)) for input_file in relative_inputs]
+            # Define working directory relative to output_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
+            # In the future there might be a way to parse this directly from the cmd file. For now the working directory is estimated heuristically.
+            working_directory = _get_working_directory(input_file, output_tree, src_tree, root_output_in_tree)
+            if working_directory is None:
+                sbom_errors.log(
+                    f"Skip children of node {root_output_in_tree} because no working directory for relative input {input_file} could be found"
+                )
+                return []
 
-    # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
-    # remove generated output from the input_files to prevent nodes from being their own children.
+        child_paths.append(Path(os.path.normpath(working_directory / input_file)))
+
+    # Some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
+    # Remove generated output from the child paths to prevent nodes from being their own children.
     child_paths = [child_path for child_path in child_paths if child_path != root_output_in_tree]
-
     return child_paths
+
+
+def _parse_incbin(assembly_path: Path, output_tree: Path, src_tree: Path, root_output_in_tree: Path) -> list[Path]:
+    incbin_paths = parse_incbin(assembly_path)
+    if len(incbin_paths) == 0:
+        return []
+    working_directory = _get_working_directory(incbin_paths[0], output_tree, src_tree, root_output_in_tree)
+    if working_directory is None:
+        sbom_errors.log(
+            f"Skip children of node {root_output_in_tree} because no working directory for {incbin_paths[0]} could be found"
+        )
+        return []
+    return [Path(os.path.normpath(working_directory / incbin_path)) for incbin_path in incbin_paths]
 
 
 def iter_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[CmdGraphNode]:
@@ -151,8 +165,10 @@ def _to_cmd_path(path: Path) -> Path:
 def _get_working_directory(
     input_file: Path, output_tree: Path, src_tree: Path, root_output_in_tree: Path
 ) -> Path | None:
-    # Input paths in .cmd files are often relative paths but it is unclear to which original working directory these paths are relative to.
-    # This function estimates the working directory based on the location of one input_file and various heuristics.
+    """
+    Input paths in .cmd files are often relative paths but it is unclear to which original working directory these paths are relative to.
+    This function heuristically estimates the working directory for a given input_file and returns the working directory relative to the output tree.
+    """
 
     relative_to_cmd_file = (output_tree / root_output_in_tree.parent / input_file).exists()
     relative_to_output_tree = (output_tree / input_file).exists()
