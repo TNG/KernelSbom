@@ -13,6 +13,7 @@ from sbom.cmd.deps_parser import parse_deps
 from sbom.cmd.savedcmd_parser import parse_commands
 from sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
 import sbom.errors as sbom_errors
+from .hardcoded_dependencies import get_hardcoded_dependencies
 
 
 @dataclass
@@ -36,7 +37,7 @@ def build_cmd_graph(
 
     Args:
         root_output_in_tree (Path): Path to the root output file relative to output_tree.
-        output_tree (Path): absolute Path to the base directory of the output_tree.
+        output_tree (Path): absolute Path to the base directory of the output tree.
         src_tree (Path): absolute Path to the `linux` source directory.
         cache (dict | None): Tracks processed nodes to prevent cycles.
         depth (int): Internal parameter to track the current recursion depth.
@@ -61,16 +62,29 @@ def build_cmd_graph(
     node = CmdGraphNode(root_output_absolute, cmd_file)
     cache[root_output_absolute] = node
 
-    if cmd_file is None:
-        return node
+    # find referenced files from current root
+    child_paths: list[Path] = get_hardcoded_dependencies(root_output_absolute, output_tree, src_tree)
+    if cmd_file is not None:
+        child_paths += _get_cmd_file_dependencies(cmd_file, output_tree, src_tree, root_output_in_tree)
 
+    # create child nodes
+    for child_path in child_paths:
+        child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
+        node.children.append(child_node)
+
+    return node
+
+
+def _get_cmd_file_dependencies(
+    cmd_file: CmdFile, output_tree: Path, src_tree: Path, root_output_in_tree: Path
+) -> list[Path]:
     # search for input files
     input_files = parse_commands(cmd_file.savedcmd)
     if cmd_file.deps:
         input_files += parse_deps(cmd_file.deps)
     input_files = _expand_resolve_files(input_files, output_tree)
     if len(input_files) == 0:
-        return node
+        return []
 
     # turn input files to valid child paths relative to output tree
     absolute_inputs = [input for input in input_files if os.path.isabs(input)]
@@ -84,19 +98,14 @@ def build_cmd_graph(
             sbom_errors.log(
                 f"Skip children of node {root_output_in_tree} because no working directory for relative input {relative_inputs[0]} could be found"
             )
-            return node
+            return []
         child_paths += [Path(os.path.normpath(working_directory / input_file)) for input_file in relative_inputs]
 
     # some multi stage commands create an output and then pass it as input to the next command for postprocessing, e.g., objcopy.
     # remove generated output from the input_files to prevent nodes from being their own children.
     child_paths = [child_path for child_path in child_paths if child_path != root_output_in_tree]
 
-    # create child nodes
-    for child_path in child_paths:
-        child_node = build_cmd_graph(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
-        node.children.append(child_node)
-
-    return node
+    return child_paths
 
 
 def iter_cmd_graph(cmd_graph: CmdGraphNode) -> Iterator[CmdGraphNode]:

@@ -199,6 +199,7 @@ if __name__ == "__main__":
     output_tree = (
         Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
     )
+    os.environ["SRCARCH"] = "x86"
     root_output_in_tree = Path("arch/x86/boot/bzImage")
     cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
 
