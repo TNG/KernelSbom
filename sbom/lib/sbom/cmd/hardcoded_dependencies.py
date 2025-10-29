@@ -21,7 +21,7 @@ def get_hardcoded_dependencies(path: Path, output_tree: Path, src_tree: Path) ->
     This function provides a temporary workaround by manually specifying known missing dependencies required to correctly model the build graph.
 
     Args:
-        path (Path): absolute path to a file
+        path (Path): absolute path to a file within the src tree or output tree.
         output_tree (Path): absolute Path to the base directory of the output tree.
         src_tree (Path): absolute Path to the `linux` source directory.
 
@@ -33,12 +33,8 @@ def get_hardcoded_dependencies(path: Path, output_tree: Path, src_tree: Path) ->
         key = str(path.relative_to(output_tree))
     elif path.is_relative_to(src_tree):
         key = str(path.relative_to(src_tree))
-    if key is None:
-        sbom_errors.log(
-            f"Skip evaluating hardcoded dependency for '{path}' because the file lies neither in the src tree nor the output tree"
-        )
-        return []
-    if key not in HARDCODED_DEPENDENCIES:
+
+    if key is None or key not in HARDCODED_DEPENDENCIES:
         return []
 
     template_variables: dict[str, Callable[[], str | None]] = {
