@@ -19,6 +19,10 @@ on:
         options:
           - x86
           - arm64
+      use_modules:
+        description: Whether to include modules into the sbom
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       test_archive:
@@ -30,7 +34,9 @@ on:
       arch:
         required: true
         type: string
-
+      use_modules:
+        required: true
+        type: boolean
 
 run-name: ${{ inputs.test_archive }}
 
@@ -50,19 +56,33 @@ jobs:
           curl -L -o "$test_archive" "https://fileshare.tngtech.com/d/e69946da808b41f88047/files/?p=%2F$test_archive&dl=1"
           tar -xzf "$test_archive"
 
+      - name: Prepare roots.txt
+        run: |
+          declare -A primaryRoots=(
+            [x86]="arch/x86/boot/bzImage"
+            [arm64]="arch/arm64/boot/Image"
+          )
+          echo ${primaryRoots["${{ inputs.arch }}"]} > roots.txt
+          
+          if [ "${{ inputs.use_modules }}" = "true" ]; then
+            python3 sbom_analysis/module_roots.py \
+              ../linux/${{ inputs.output_tree }}/modules.order \
+              module_roots.txt
+            cat module_roots.txt >> roots.txt
+          fi
+          
+          echo "=================roots.txt=================="
+          cat roots.txt
+
       - name: Run sbom.py
         id: run_sbom
         run: |
           export SRCARCH="${{ inputs.arch }}"
-          declare -A roots=(
-            [x86]="arch/x86/boot/bzImage"
-            [arm64]="arch/arm64/boot/Image"
-          )
 
           python3 sbom/sbom.py \
             --src-tree ../linux \
             --output-tree ../linux/${{ inputs.output_tree }} \
-            --root-output-in-tree "${roots[$SRCARCH]}" \
+            --roots-file roots.txt \
             --spdx sbom.spdx.json \
             --used-files sbom.used_files.txt
           

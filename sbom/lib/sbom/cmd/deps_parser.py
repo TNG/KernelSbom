@@ -6,6 +6,7 @@ import re
 import sbom.errors as sbom_errors
 
 CONFIG_PATTERN = re.compile(r"\$\(wildcard (include/config/[^)]+)\)")
+WILDCARD_PATTERN = re.compile(r"\$\(wildcard (?P<path>[^)]+)\)")
 VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
 
 
@@ -24,6 +25,9 @@ def parse_deps(deps: list[str]) -> list[Path]:
             case _ if _ := CONFIG_PATTERN.match(dep):
                 # config paths like include/config/<CONFIG_NAME> are not included in the graph
                 continue
+            case _ if match := WILDCARD_PATTERN.match(dep):
+                path = Path(match.group("path"))
+                input_files.append(path)
             case _ if VALID_PATH_PATTERN.match(dep):
                 input_files.append(Path(dep))
 

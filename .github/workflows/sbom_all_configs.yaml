@@ -5,6 +5,11 @@ name: Sbom all Configs
 
 on:
   workflow_dispatch:
+    inputs:
+      use_modules:
+        description: Whether to include modules into the sbom
+        default: true
+        type: boolean
 
 run-name: Sbom all Configs
 
@@ -15,6 +20,7 @@ jobs:
       test_archive: ${{ matrix.test_archive }}
       output_tree: ${{ matrix.output_tree || 'kernel_build' }}
       arch: ${{ matrix.arch || 'x86' }}
+      use_modules: ${{ matrix.use_modules != 'false' && inputs.use_modules }} # use string 'false' because boolean false and undefined are undistinguishable 
     strategy:
       fail-fast: false 
       matrix:
@@ -32,6 +38,7 @@ jobs:
           # - archive: linux.v6.16.y.allmodcondig.x86.rust.tar.gz
           # v6.17
           - test_archive: linux.v6.17.tinyconfig.x86.tar.gz
+            use_modules: 'false'
           # - test_archive: linux.v6.17.defconfig.x86.tar.gz
           - test_archive: linux.v6.17.defconfig.x86.rust.tar.gz
           - test_archive: linux.v6.17.allmodconfig.x86.tar.gz
