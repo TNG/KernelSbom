@@ -27,6 +27,8 @@ jobs:
           - archive: linux.v6.6.y.gregkh-linux-stable.tar.gz
           # v6.12
           - archive: linux.v6.12.y.gregkh-linux-stable.tar.gz
+          # v6.16
+          - archive: linux.v6.16.y.allmodcondig.rust.tar.gz
           # v6.17
           - archive: linux.v6.17.tinyconfig.tar.gz
           - archive: linux.v6.17.defconfig.tar.gz
