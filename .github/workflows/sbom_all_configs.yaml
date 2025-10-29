@@ -12,27 +12,30 @@ jobs:
   sbom-all-configs:
     uses: ./.github/workflows/sbom.yaml
     with:
-      test_archive: ${{ matrix.archive }}
+      test_archive: ${{ matrix.test_archive }}
       output_tree: ${{ matrix.output_tree || 'kernel_build' }}
+      arch: ${{ matrix.arch || 'x86' }}
     strategy:
       fail-fast: false 
       matrix:
         include:
           # v6.1
-          - archive: linux.v6.1.y.localmodconfig.Ubuntu25.04.tar.gz
-          - archive: linux.v6.1.y.gregkh-linux-stable.tar.gz
-          - archive: linux.v6.1.y.gregkh-linux-stable.in-tree.tar.gz
+          # - test_archive: linux.v6.1.y.localmodconfig.Ubuntu25.04.x86.tar.gz
+          # - test_archive: linux.v6.1.y.gregkh-linux-stable.x86.tar.gz
+          - test_archive: linux.v6.1.y.gregkh-linux-stable.x86.in-tree.tar.gz
             output_tree: .
           # v6.6
-          - archive: linux.v6.6.y.gregkh-linux-stable.tar.gz
+          # - test_archive: linux.v6.6.y.gregkh-linux-stable.x86.tar.gz
           # v6.12
-          - archive: linux.v6.12.y.gregkh-linux-stable.tar.gz
+          # - test_archive: linux.v6.12.y.gregkh-linux-stable.x86.tar.gz
           # v6.16
-          - archive: linux.v6.16.y.allmodcondig.rust.tar.gz
+          # - archive: linux.v6.16.y.allmodcondig.x86.rust.tar.gz
           # v6.17
-          - archive: linux.v6.17.tinyconfig.tar.gz
-          - archive: linux.v6.17.defconfig.tar.gz
-          - archive: linux.v6.17.allmodconfig.tar.gz
-          - archive: linux.v6.17.localmodconfig.Ubuntu24.04.tar.gz
-          - archive: linux.v6.17.defconfig.rust.tar.gz
-          - archive: linux.v6.17.y.gregkh-linux-stable.tar.gz
+          - test_archive: linux.v6.17.tinyconfig.x86.tar.gz
+          # - test_archive: linux.v6.17.defconfig.x86.tar.gz
+          - test_archive: linux.v6.17.defconfig.x86.rust.tar.gz
+          - test_archive: linux.v6.17.allmodconfig.x86.tar.gz
+          # - test_archive: linux.v6.17.localmodconfig.Ubuntu24.04.x86.tar.gz
+          - test_archive: linux.v6.17.y.gregkh-linux-stable.x86.tar.gz
+          - test_archive: linux.v6.17.y.gregkh-linux-stable.arm64.rust.tar.gz
+            arch: arm64
