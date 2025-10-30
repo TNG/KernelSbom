@@ -21,3 +21,7 @@ def log(msg: str) -> None:
 
 def get() -> list[str]:
     return _errors
+
+
+def clear() -> None:
+    _errors.clear()

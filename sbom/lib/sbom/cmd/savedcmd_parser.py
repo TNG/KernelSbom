@@ -112,7 +112,7 @@ def _parse_cat_command(command: str) -> list[Path]:
 def _parse_compound_command(command: str) -> list[Path]:
     compound_command_parsers: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
         (re.compile(r"dd\b"), _parse_dd_command),
-        (re.compile(r"cat.*?\|\s+sh\b.*?xz_wrap\.sh"), lambda c: _parse_cat_command(c.split("|")[0])),
+        (re.compile(r"cat.*?\|"), lambda c: _parse_cat_command(c.split("|")[0])),
         (re.compile(r"cat\b[^|>]*$"), _parse_cat_command),
         (re.compile(r"echo\b"), _parse_noop),
         (re.compile(r"\S+="), _parse_noop),
@@ -122,6 +122,7 @@ def _parse_compound_command(command: str) -> list[Path]:
             re.compile(r"(.*/)scripts/bin2c\s*<"),
             lambda c: [Path(input)] if (input := c.split("<")[1].strip()) != "/dev/null" else [],
         ),
+        (re.compile(r"^:$"), _parse_noop),
     ]
 
     match = re.match(r"\s*[\(\{](.*)[\)\}]\s*>", command, re.DOTALL)
@@ -248,8 +249,15 @@ def _parse_xen_hypercalls_command(command: str) -> list[Path]:
     return [Path(p) for p in positionals[3:]]
 
 
+def _parse_gen_initramfs_command(command: str) -> list[Path]:
+    command_parts = _tokenize_single_command(command)
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be ["sh", path/to/gen_initramfs.sh, input1, input2, ...]
+    return [Path(p) for p in positionals[2:]]
+
+
 def _parse_vdso2c_command(command: str) -> list[Path]:
-    positionals = _tokenize_single_command_positionals_only(command.strip())
+    positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ['vdso2c', raw_input, stripped_input, output]
     return [Path(positionals[1]), Path(positionals[2])]
 
@@ -365,6 +373,23 @@ def _parse_tools_build_command(command: str) -> list[Path]:
     return [Path(p) for p in positionals[1:-1]]
 
 
+def _parse_extract_cert_command(command: str) -> list[Path]:
+    command_parts = shlex.split(command)
+    # expect command parts to be [path/to/extract-cert, input, output]
+    input = command_parts[1]
+    if not input:
+        return []
+    return [Path(input)]
+
+
+def _parse_dtc_command(command: str) -> list[Path]:
+    wno_flags = [command_part for command_part in shlex.split(command) if command_part.startswith("-Wno-")]
+    command_parts = _tokenize_single_command(command, flag_options=wno_flags)
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be [path/to/dtc, input]
+    return [Path(positionals[1])]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"\(.*?\)\s*>", re.DOTALL), _parse_compound_command),
@@ -385,6 +410,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
     (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
+    (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
     (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
     (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
@@ -404,6 +430,13 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^bison\b"), _parse_bison_command),
     (re.compile(r"^(.*/)?tools/build\b"), _parse_tools_build_command),
     (re.compile(r"make -f .*/arch/x86/Makefile\.postlink"), _parse_noop),
+    (re.compile(r"^(.*/)?raid6/mktables\s+>"), _parse_noop),
+    (re.compile(r"^awk.*?<.*?>"), lambda c: [Path(c.split("<")[1].split(">")[0].strip())]),
+    (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [Path(c.split(" ")[1].strip())]),
+    (re.compile(r"^(.*/)?certs/extract-cert"), _parse_extract_cert_command),
+    (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
+    (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
+    (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
