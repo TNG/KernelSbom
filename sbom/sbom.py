@@ -14,12 +14,14 @@ import os
 import sys
 from pathlib import Path
 
+from sbom.spdx_graph import build_spdx_graph
+
 LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-import sbom.spdx as spdx  # noqa: E402
-from sbom.cmd.cmd_graph import CmdGraph, build_cmd_graph, iter_cmd_graph  # noqa: E402
+from sbom.spdx.serialization import JsonLdDocument  # noqa: E402
+from sbom.cmd.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
 import time  # noqa: E402
 import sbom.errors as sbom_errors  # noqa: E402
 
@@ -97,65 +99,6 @@ def _parse_args() -> Args:
     return Args(src_tree, output_tree, root_paths, spdx, used_files, debug)
 
 
-def create_spdx_document(cmd_graph: CmdGraph) -> spdx.JsonLdDocument:
-    person = spdx.Person(
-        name="Luis Augenstein",
-        externalIdentifier=[
-            spdx.ExternalIdentifier(externalIdentifierType="email", identifier="luis.augenstein@tngtech.com")
-        ],
-    )
-    creation_info = spdx.CreationInfo(createdBy=[person.spdxId])
-
-    software_package = spdx.SoftwarePackage(
-        name="amazing-widget",
-        software_packageVersion="1.0",
-        software_downloadLocation="http://dl.example.com/amazing-widget_1.0.0.tar",
-        builtTime="2024-03-06T00:00:00Z",
-        originatedBy=[person.spdxId],
-        verifiedUsing=[spdx.Hash(hashValue="f3f60ce8615d1cfb3f6d7d149699ab53170ce0b8f24f841fb616faa50151082d")],
-    )
-    software_file1 = spdx.SoftwareFile(
-        name="/usr/bin/amazing-widget",
-        builtTime="2024-03-05T00:00:00Z",
-        originatedBy=[person.spdxId],
-        software_primaryPurpose="executable",
-        software_additionalPurpose=["application"],
-        software_copyrightText="Copyright 2024, Joshua Watt",
-        verifiedUsing=[spdx.Hash(hashValue="ee4f96ed470ea288be281407dacb380fd355886dbd52c8c684dfec3a90e78f45")],
-    )
-    software_file2 = spdx.SoftwareFile(
-        name="/etc/amazing-widget.cfg",
-        builtTime="2024-03-05T00:00:00Z",
-        originatedBy=[person.spdxId],
-        software_primaryPurpose="configuration",
-        verifiedUsing=[spdx.Hash(hashValue="ee4f96ed470ea288be281407dacb380fd355886dbd52c8c684dfec3a90e78f45")],
-    )
-    relationship = spdx.RelationShipContains(
-        from_=software_package.spdxId, to=[software_file1.spdxId, software_file2.spdxId], completeness="complete"
-    )
-
-    software_sbom = spdx.SoftwareSbom(
-        software_sbomType=["build"],
-        rootElement=[software_package.spdxId],
-        element=[software_file1.spdxId, software_file2.spdxId],
-    )
-    spdx_document = spdx.SpdxDocument(
-        profileConformance=["core", "software", "licensing", "build"], rootElement=[software_sbom.spdxId]
-    )
-    return spdx.JsonLdDocument(
-        graph=[
-            person,
-            creation_info,
-            software_package,
-            software_file1,
-            software_file2,
-            relationship,
-            software_sbom,
-            spdx_document,
-        ]
-    )
-
-
 def main():
     """Main program"""
     # Parse cli arguments
@@ -193,12 +136,13 @@ def main():
     if args.spdx is None:
         return
 
-    # Fill SPDX Document
+    # Build SPDX Document
     logging.info("Generating SPDX Document based on cmd graph")
-    spdx_doc = create_spdx_document(cmd_graph)
+    spdx_graph = build_spdx_graph(cmd_graph)
+    spdx_doc = JsonLdDocument(graph=spdx_graph)
 
     # Save SPDX Document
-    spdx_json = spdx_doc.to_json()
+    spdx_json = spdx_doc.to_jsonld()
     with open(args.spdx, "w", encoding="utf-8") as f:
         f.write(spdx_json)
     logging.info(f"Saved {str(args.spdx)} successfully")
