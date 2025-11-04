@@ -138,7 +138,7 @@ def _parse_incbin(assembly_path: Path, output_tree: Path, src_tree: Path, root_o
 
 def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]:
     visited: set[Path] = set()
-    node_stack: list[CmdGraphNode] = cmd_graph.roots if isinstance(cmd_graph, CmdGraph) else [cmd_graph]
+    node_stack: list[CmdGraphNode] = cmd_graph.roots.copy() if isinstance(cmd_graph, CmdGraph) else [cmd_graph]
     while len(node_stack) > 0:
         node = node_stack.pop(0)
         if node.absolute_path in visited:

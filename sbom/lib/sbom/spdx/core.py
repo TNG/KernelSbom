@@ -4,19 +4,14 @@
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
-import uuid
+from sbom.spdx.spdxId import SpdxId, generate_spdx_id
 
 SPDX_SPEC_VERSION = "3.0.1"
-SpdxId = str
 ExternalIdentifierType = Literal["email", "gitoid", "urlScheme"]
 HashAlgorithm = Literal["sha256", "sha512"]
 ProfileIdentifierType = Literal["core", "software", "build", "lite", "simpleLicensing"]
-RelationshipType = Literal["contains", "hasInput", "hasOutput"]
+RelationshipType = Literal["contains", "generates", "hasDeclaredLicense"]
 RelationshipCompleteness = Literal["complete", "incomplete", "noAssertion"]
-
-
-def get_default_spdx_id(entity_type: str) -> SpdxId:
-    return f"https://spdx.org/spdxdocs/{entity_type}-{uuid.uuid4()}"
 
 
 @dataclass
@@ -29,13 +24,14 @@ class SpdxEntity:
 class Hash(SpdxEntity):
     type: str = field(init=False, default="Hash")
     hashValue: str
-    algorithm: HashAlgorithm = "sha256"
+    algorithm: HashAlgorithm
 
 
 @dataclass(kw_only=True)
 class Element(SpdxEntity):
     type: str = field(init=False, default="Element")
-    spdxId: SpdxId = field(default_factory=lambda: get_default_spdx_id("Element"))
+    spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("Element"))
+    name: str | None = None
     creationInfo: str = "_:creationinfo"
     verifiedUsing: list[Hash] = field(default_factory=list[Hash])
 
@@ -43,22 +39,24 @@ class Element(SpdxEntity):
 @dataclass(kw_only=True)
 class ElementCollection(Element):
     type: str = field(init=False, default="ElementCollection")
-    spdxId: SpdxId = field(default_factory=lambda: get_default_spdx_id("ElementCollection"))
+    spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("ElementCollection"))
     element: list[Element] = field(default_factory=list[Element])
     rootElement: list[Element] = field(default_factory=list[Element])
     profileConformance: list[ProfileIdentifierType] = field(default_factory=list[ProfileIdentifierType])
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
-        d["element"] = [element.spdxId for element in self.element]
-        d["rootElement"] = [element.spdxId for element in self.rootElement]
+        if self.element:
+            d["element"] = [element.spdxId for element in self.element]
+        if self.rootElement:
+            d["rootElement"] = [element.spdxId for element in self.rootElement]
         return d
 
 
 @dataclass(kw_only=True)
 class SpdxDocument(ElementCollection):
     type: str = field(init=False, default="SpdxDocument")
-    spdxId: SpdxId = field(default_factory=lambda: get_default_spdx_id("Document"))
+    spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("Document"))
 
 
 @dataclass(kw_only=True)
@@ -71,15 +69,14 @@ class ExternalIdentifier(SpdxEntity):
 @dataclass(kw_only=True)
 class Agent(Element):
     type: str = field(init=False, default="Agent")
-    spdxId: SpdxId = field(default_factory=lambda: get_default_spdx_id("Agent"))
-    name: str
+    spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("Agent"))
     externalIdentifier: list[ExternalIdentifier] = field(default_factory=list[ExternalIdentifier])
 
 
 @dataclass(kw_only=True)
 class SoftwareAgent(Agent):
     type: str = field(init=False, default="SoftwareAgent")
-    spdxId: SpdxId = field(default_factory=lambda: get_default_spdx_id("SoftwareAgent"))
+    spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("SoftwareAgent"))
 
 
 @dataclass(kw_only=True)
@@ -92,7 +89,8 @@ class CreationInfo(SpdxEntity):
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
-        d["createdBy"] = [agent.spdxId for agent in self.createdBy]
+        if self.createdBy:
+            d["createdBy"] = [agent.spdxId for agent in self.createdBy]
         return d
 
 
@@ -107,10 +105,11 @@ class Relationship(Element):
 
     def __post_init__(self):
         if self.spdxId == "":
-            self.spdxId = get_default_spdx_id(f"Relationship/{self.relationshipType}")
+            self.spdxId = generate_spdx_id(f"Relationship_{self.relationshipType}")
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
+        d.pop("from_")
         d["from"] = self.from_.spdxId
         d["to"] = [element.spdxId for element in self.to]
         return d
@@ -119,11 +118,12 @@ class Relationship(Element):
 @dataclass(kw_only=True)
 class Artifact(Element):
     type: str = field(init=False, default="Artifact")
-    spdxId: SpdxId = field(default_factory=lambda: get_default_spdx_id("Artifact"))
+    spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("Artifact"))
     builtTime: str | None = None
     originatedBy: list[Agent] = field(default_factory=list[Agent])
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
-        d["originatedBy"] = [agent.spdxId for agent in self.originatedBy]
+        if self.originatedBy:
+            d["originatedBy"] = [agent.spdxId for agent in self.originatedBy]
         return d

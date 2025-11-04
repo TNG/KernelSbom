@@ -14,12 +14,12 @@ import os
 import sys
 from pathlib import Path
 
-from sbom.spdx_graph import build_spdx_graph
-
 LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
+from sbom.spdx.spdxId import set_spdx_uri_prefix  # noqa: E402
+from sbom.spdx_graph import build_spdx_graph  # noqa: E402
 from sbom.spdx.serialization import JsonLdDocument  # noqa: E402
 from sbom.cmd.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
 import time  # noqa: E402
@@ -33,6 +33,7 @@ class Args:
     root_paths: list[Path]
     spdx: Path | None
     used_files: Path | None
+    spdx_uri_prefix: str
     debug: bool
 
 
@@ -71,6 +72,11 @@ def _parse_args() -> Args:
         default="sbom.used_files.txt",
         help="Path to create the a flat list of all source files used for the kernel build, or 'none' to disable (default: sbom.used_files.txt)",
     )
+    parser.add_argument(
+        "--spdx-uri-prefix",
+        default="https://spdx.org/spdxdocs/",
+        help="The uri prefix to be used for all 'spdxId' fields in the spdx document",
+    )
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
 
     # Extract arguments
@@ -85,6 +91,7 @@ def _parse_args() -> Args:
             root_paths = [Path(root.strip()) for root in f.readlines()]
     spdx = Path(args["spdx"]) if args["spdx"] != "none" else None
     used_files = Path(args["used_files"]) if args["used_files"] != "none" else None
+    spdx_uri_prefix = args["spdx_uri_prefix"]
     debug = args["debug"]
 
     # Validate arguments
@@ -96,7 +103,7 @@ def _parse_args() -> Args:
         if not (output_tree / root_path).exists():
             raise argparse.ArgumentTypeError(f"path to root artifact {str(output_tree / root_path)} does not exist")
 
-    return Args(src_tree, output_tree, root_paths, spdx, used_files, debug)
+    return Args(src_tree, output_tree, root_paths, spdx, used_files, spdx_uri_prefix, debug)
 
 
 def main():
@@ -138,7 +145,8 @@ def main():
 
     # Build SPDX Document
     logging.info("Generating SPDX Document based on cmd graph")
-    spdx_graph = build_spdx_graph(cmd_graph)
+    set_spdx_uri_prefix(args.spdx_uri_prefix)
+    spdx_graph = build_spdx_graph(cmd_graph, args.output_tree)
     spdx_doc = JsonLdDocument(graph=spdx_graph)
 
     # Save SPDX Document
