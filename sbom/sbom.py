@@ -146,7 +146,7 @@ def main():
     # Build SPDX Document
     logging.info("Generating SPDX Document based on cmd graph")
     set_spdx_uri_prefix(args.spdx_uri_prefix)
-    spdx_graph = build_spdx_graph(cmd_graph, args.output_tree)
+    spdx_graph = build_spdx_graph(cmd_graph, args.output_tree, args.src_tree)
     spdx_doc = JsonLdDocument(graph=spdx_graph)
 
     # Save SPDX Document

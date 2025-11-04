@@ -15,6 +15,8 @@ from sbom.spdx.simplelicensing import LicenseExpression
 from sbom.spdx.software import Package, File, Sbom
 import hashlib
 import os
+import sbom.errors as sbom_errors
+import logging
 
 from sbom.spdx.spdxId import generate_spdx_id
 
@@ -22,6 +24,7 @@ from sbom.spdx.spdxId import generate_spdx_id
 def build_spdx_graph(
     cmd_graph: CmdGraph,
     output_tree: Path,
+    src_tree: Path,
     buildVersion: str = "NOASSERTION",
     package_name: str = "Linux Kernel",
 ) -> list[SpdxEntity]:
@@ -49,7 +52,7 @@ def build_spdx_graph(
         profileConformance=["core", "software"],
         rootElement=[sbom],
     )
-    file_elements, file_relationship_elements = _build_file_graph(cmd_graph, output_tree)
+    file_elements, file_relationship_elements = _build_file_graph(cmd_graph, output_tree, src_tree)
 
     # update direct parent-child relations
     sbom.element = [package, *file_elements]
@@ -67,23 +70,12 @@ def build_spdx_graph(
     ]
 
 
-def _build_file_graph(cmd_graph: CmdGraph, output_tree: Path) -> tuple[list[File], list[Relationship]]:
+def _build_file_graph(cmd_graph: CmdGraph, output_tree: Path, src_tree: Path) -> tuple[list[File], list[Relationship]]:
     # First cmd graph traversal: create a file element for each node
-    file_elements: dict[Path, File] = {}
-    for node in iter_cmd_graph(cmd_graph):
-        file_element_name = os.path.relpath(node.absolute_path, output_tree)
-        file_element = File(
-            spdxId=generate_spdx_id("software_File", file_element_name),
-            name=file_element_name,
-            software_copyrightText="NOASSERTION",
-            verifiedUsing=[
-                Hash(
-                    algorithm="sha256",
-                    hashValue=_sha256(node.absolute_path),
-                )
-            ],
-        )
-        file_elements[node.absolute_path] = file_element
+    file_elements: dict[Path, File] = {
+        node.absolute_path: _build_file_element(node.absolute_path, src_tree, output_tree)
+        for node in iter_cmd_graph(cmd_graph)
+    }
 
     # Second cmd graph traversal: create a relationship for each (child)node representing the generation of all its parents
     relationhip_elements: dict[Path, Relationship] = {}
@@ -101,6 +93,37 @@ def _build_file_graph(cmd_graph: CmdGraph, output_tree: Path) -> tuple[list[File
             )
 
     return list(file_elements.values()), list(relationhip_elements.values())
+
+
+def _build_file_element(absolute_path: Path, output_tree: Path, src_tree: Path) -> File:
+    is_in_output_tree = absolute_path.is_relative_to(output_tree)
+    is_in_src_tree = absolute_path.is_relative_to(src_tree)
+
+    # file element name should be relative to output or src tree if possible
+    if is_in_output_tree:
+        file_element_name = os.path.relpath(absolute_path, output_tree)
+    elif is_in_src_tree:
+        file_element_name = os.path.relpath(absolute_path, src_tree)
+    else:
+        file_element_name = str(absolute_path)
+
+    # Create file hash if possible. Hashes for files outside the src and output trees are optional.
+    verifiedUsing: list[Hash] = []
+    if absolute_path.exists():
+        verifiedUsing = [Hash(algorithm="sha256", hashValue=_sha256(absolute_path))]
+    elif is_in_output_tree or is_in_src_tree:
+        sbom_errors.log(f"Cannot compute hash for {absolute_path} because file does not exist.")
+    else:
+        logging.warning(f"Cannot compute hash for {absolute_path} because file does not exist.")
+
+    file_element = File(
+        spdxId=generate_spdx_id("software_File", file_element_name),
+        name=file_element_name,
+        software_copyrightText="NOASSERTION",
+        verifiedUsing=verifiedUsing,
+    )
+
+    return file_element
 
 
 def _sha256(path: Path) -> str:
