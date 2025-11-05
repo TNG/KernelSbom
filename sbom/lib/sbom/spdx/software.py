@@ -9,6 +9,7 @@ from sbom.spdx.spdxId import SpdxId, generate_spdx_id
 
 
 SbomType = Literal["build"]
+FileKindType = Literal["file", "directory"]
 
 
 @dataclass(kw_only=True)
@@ -41,3 +42,4 @@ class File(SoftwareArtifact):
     type: str = field(init=False, default="software_File")
     spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("software_File"))
     name: str  # type: ignore
+    software_FileKind: FileKindType

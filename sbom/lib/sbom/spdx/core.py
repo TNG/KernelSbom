@@ -31,8 +31,8 @@ class Hash(SpdxEntity):
 class Element(SpdxEntity):
     type: str = field(init=False, default="Element")
     spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("Element"))
-    name: str | None = None
     creationInfo: str = "_:creationinfo"
+    name: str | None = None
     verifiedUsing: list[Hash] = field(default_factory=list[Hash])
 
 
@@ -110,6 +110,7 @@ class Relationship(Element):
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d.pop("from_")
+        d.pop("to")
         d["from"] = self.from_.spdxId
         d["to"] = [element.spdxId for element in self.to]
         return d

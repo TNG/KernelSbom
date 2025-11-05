@@ -34,6 +34,7 @@ class Args:
     spdx: Path | None
     used_files: Path | None
     spdx_uri_prefix: str
+    build_version: str
     debug: bool
 
 
@@ -77,6 +78,11 @@ def _parse_args() -> Args:
         default="https://spdx.org/spdxdocs/",
         help="The uri prefix to be used for all 'spdxId' fields in the spdx document",
     )
+    parser.add_argument(
+        "--build-version",
+        default="NOASSERTION",
+        help="The version of the build that created the artifacts provided in --roots. (default: NOASSERTION)",
+    )
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
 
     # Extract arguments
@@ -92,6 +98,7 @@ def _parse_args() -> Args:
     spdx = Path(args["spdx"]) if args["spdx"] != "none" else None
     used_files = Path(args["used_files"]) if args["used_files"] != "none" else None
     spdx_uri_prefix = args["spdx_uri_prefix"]
+    build_version = args["build_version"]
     debug = args["debug"]
 
     # Validate arguments
@@ -103,7 +110,7 @@ def _parse_args() -> Args:
         if not (output_tree / root_path).exists():
             raise argparse.ArgumentTypeError(f"path to root artifact {str(output_tree / root_path)} does not exist")
 
-    return Args(src_tree, output_tree, root_paths, spdx, used_files, spdx_uri_prefix, debug)
+    return Args(src_tree, output_tree, root_paths, spdx, used_files, spdx_uri_prefix, build_version, debug)
 
 
 def main():
@@ -146,7 +153,7 @@ def main():
     # Build SPDX Document
     logging.info("Generating SPDX Document based on cmd graph")
     set_spdx_uri_prefix(args.spdx_uri_prefix)
-    spdx_graph = build_spdx_graph(cmd_graph, args.output_tree, args.src_tree)
+    spdx_graph = build_spdx_graph(cmd_graph, args.output_tree, args.src_tree, args.build_version)
     spdx_doc = JsonLdDocument(graph=spdx_graph)
 
     # Save SPDX Document

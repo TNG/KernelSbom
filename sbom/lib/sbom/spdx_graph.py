@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Literal
 from sbom.cmd.cmd_graph import CmdGraph, iter_cmd_graph
 from sbom.spdx.core import (
     SoftwareAgent,
@@ -21,18 +23,50 @@ import logging
 from sbom.spdx.spdxId import generate_spdx_id
 
 
-def build_spdx_graph(
-    cmd_graph: CmdGraph,
-    output_tree: Path,
-    src_tree: Path,
-    buildVersion: str = "NOASSERTION",
-    package_name: str = "Linux Kernel",
-) -> list[SpdxEntity]:
+@dataclass(kw_only=True)
+class KernelFile(File):
+    """SPDX File annotated with additional metadata about the files origin tree (src/output)."""
+
+    tree: Literal["src_tree", "output_tree"] | None
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d.pop("tree", None)
+        return d
+
+
+def build_spdx_graph(cmd_graph: CmdGraph, output_tree: Path, src_tree: Path, build_version: str) -> list[SpdxEntity]:
+    spdx_document = SpdxDocument(profileConformance=["core", "software"])
+    sbom = Sbom(software_sbomType=["build"])
     agent = SoftwareAgent(name="KernelSbom")
     creation_info = CreationInfo(createdBy=[agent])
+
+    # src and output tree elements
+    src_tree_element = File(
+        spdxId=generate_spdx_id("software_File", "$(src_tree)"),
+        name="$(src_tree)",
+        software_FileKind="directory",
+    )
+    output_tree_element = File(
+        spdxId=generate_spdx_id("software_File", "$(output_tree)"),
+        name="$(output_tree)",
+        software_FileKind="directory",
+    )
+    src_tree_contains_relationship = Relationship(
+        relationshipType="contains",
+        from_=src_tree_element,
+        to=[],
+    )
+    output_tree_contains_relationship = Relationship(
+        relationshipType="contains",
+        from_=output_tree_element,
+        to=[],
+    )
+
+    # package elements
     package = Package(
-        name=package_name,
-        software_packageVersion=buildVersion,
+        name="Linux Kernel",
+        software_packageVersion=build_version,
         originatedBy=[agent],
         software_copyrightText="NOASSERTION",
     )
@@ -44,36 +78,50 @@ def build_spdx_graph(
         from_=package,
         to=[package_license],
     )
-    sbom = Sbom(
-        software_sbomType=["build"],
-        rootElement=[package],
+    package_contains_files_relationship = Relationship(
+        relationshipType="contains",
+        from_=package,
+        to=[],
     )
-    spdx_document = SpdxDocument(
-        profileConformance=["core", "software"],
-        rootElement=[sbom],
-    )
-    file_elements, file_relationship_elements = _build_file_graph(cmd_graph, output_tree, src_tree)
 
-    # update direct parent-child relations
-    sbom.element = [package, *file_elements]
-    spdx_document.element = [sbom, *sbom.element]
+    file_elements, file_relationships = _build_kernel_file_graph(cmd_graph, output_tree, src_tree)
+
+    # update relationships
+    spdx_document.rootElement = [sbom]
+    spdx_document.element = [sbom, src_tree_element, output_tree_element, package, *file_elements]
+
+    sbom.rootElement = [package]
+    sbom.element = [src_tree_element, output_tree_element, package, *file_elements]
+
+    src_tree_contains_relationship.to = [file for file in file_elements if file.tree == "src_tree"]
+    output_tree_contains_relationship.to = [file for file in file_elements if file.tree == "output_tree"]
+
+    package_contains_files_relationship.to = [*file_elements]
 
     return [
+        spdx_document,
+        sbom,
         agent,
         creation_info,
+        src_tree_element,
+        src_tree_contains_relationship,
+        output_tree_element,
+        output_tree_contains_relationship,
         package,
+        package_license,
         package_hasDeclaredLicense_relationship,
-        sbom,
-        spdx_document,
+        package_contains_files_relationship,
         *file_elements,
-        *file_relationship_elements,
+        *file_relationships,
     ]
 
 
-def _build_file_graph(cmd_graph: CmdGraph, output_tree: Path, src_tree: Path) -> tuple[list[File], list[Relationship]]:
+def _build_kernel_file_graph(
+    cmd_graph: CmdGraph, output_tree: Path, src_tree: Path
+) -> tuple[list[KernelFile], list[Relationship]]:
     # First cmd graph traversal: create a file element for each node
-    file_elements: dict[Path, File] = {
-        node.absolute_path: _build_file_element(node.absolute_path, src_tree, output_tree)
+    file_elements: dict[Path, KernelFile] = {
+        node.absolute_path: _build_kernel_file_element(node.absolute_path, output_tree, src_tree)
         for node in iter_cmd_graph(cmd_graph)
     }
 
@@ -95,17 +143,20 @@ def _build_file_graph(cmd_graph: CmdGraph, output_tree: Path, src_tree: Path) ->
     return list(file_elements.values()), list(relationhip_elements.values())
 
 
-def _build_file_element(absolute_path: Path, output_tree: Path, src_tree: Path) -> File:
+def _build_kernel_file_element(absolute_path: Path, output_tree: Path, src_tree: Path) -> KernelFile:
     is_in_output_tree = absolute_path.is_relative_to(output_tree)
     is_in_src_tree = absolute_path.is_relative_to(src_tree)
 
     # file element name should be relative to output or src tree if possible
     if is_in_output_tree:
         file_element_name = os.path.relpath(absolute_path, output_tree)
+        tree = "output_tree"
     elif is_in_src_tree:
         file_element_name = os.path.relpath(absolute_path, src_tree)
+        tree = "src_tree"
     else:
         file_element_name = str(absolute_path)
+        tree = None
 
     # Create file hash if possible. Hashes for files outside the src and output trees are optional.
     verifiedUsing: list[Hash] = []
@@ -116,11 +167,13 @@ def _build_file_element(absolute_path: Path, output_tree: Path, src_tree: Path) 
     else:
         logging.warning(f"Cannot compute hash for {absolute_path} because file does not exist.")
 
-    file_element = File(
+    file_element = KernelFile(
         spdxId=generate_spdx_id("software_File", file_element_name),
         name=file_element_name,
         software_copyrightText="NOASSERTION",
         verifiedUsing=verifiedUsing,
+        software_FileKind="file",
+        tree=tree,
     )
 
     return file_element
