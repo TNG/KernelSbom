@@ -62,6 +62,16 @@ def build_spdx_graph(cmd_graph: CmdGraph, output_tree: Path, src_tree: Path, bui
         from_=output_tree_element,
         to=[],
     )
+    src_and_output_tree_elements: list[SpdxEntity] = (
+        [
+            src_tree_element,
+            src_tree_contains_relationship,
+            output_tree_element,
+            output_tree_contains_relationship,
+        ]
+        if src_tree != output_tree
+        else []
+    )
 
     # package elements
     package = Package(
@@ -103,10 +113,7 @@ def build_spdx_graph(cmd_graph: CmdGraph, output_tree: Path, src_tree: Path, bui
         sbom,
         agent,
         creation_info,
-        src_tree_element,
-        src_tree_contains_relationship,
-        output_tree_element,
-        output_tree_contains_relationship,
+        *src_and_output_tree_elements,
         package,
         package_license,
         package_hasDeclaredLicense_relationship,
