@@ -390,6 +390,12 @@ def _parse_dtc_command(command: str) -> list[Path]:
     return [Path(positionals[1])]
 
 
+def _parse_bindgen_command(command: str) -> list[Path]:
+    command_parts = shlex.split(command)
+    header_file_input_paths = [part for part in command_parts if part.endswith(".h")]
+    return [Path(p) for p in header_file_input_paths]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     (re.compile(r"\(.*?\)\s*>", re.DOTALL), _parse_compound_command),
@@ -416,6 +422,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
     (re.compile(r"^ld\b"), _parse_ld_command),
     (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
+    (re.compile(r"^sed\b"), _parse_noop),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
     (re.compile(r"^(llvm-)?nm\b.*?\|"), _parse_nm_piped_command),
     (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
@@ -437,6 +444,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
     (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
     (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
+    (re.compile(r"bindgen\b"), _parse_bindgen_command),
 ]
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.

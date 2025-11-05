@@ -360,6 +360,20 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = ""
         self._assert_parsing(cmd, expected)
 
+    # bindgen command tests
+    def test_bindgen(self):
+        cmd = (
+            "bindgen ../rust/bindings/bindings_helper.h "
+            "--blocklist-type __kernel_s?size_t --blocklist-type __kernel_ptrdiff_t "
+            "--opaque-type xregs_state --opaque-type desc_struct --no-doc-comments "
+            "--rust-target 1.68 --use-core --with-derive-default -o rust/bindings/bindings_generated.rs "
+            "-- -Wp,-MMD,rust/bindings/.bindings_generated.rs.d -nostdinc -I../arch/x86/include "
+            "-include ../include/linux/compiler-version.h -D__KERNEL__ -fintegrated-as -fno-builtin -DMODULE; "
+            "sed -Ei 's/pub const RUST_CONST_HELPER_([a-zA-Z0-9_]*)/pub const \\1/g' rust/bindings/bindings_generated.rs"
+        )
+        expected = "../rust/bindings/bindings_helper.h ../include/linux/compiler-version.h"
+        self._assert_parsing(cmd, expected)
+
 
 if __name__ == "__main__":
     unittest.main()
