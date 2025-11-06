@@ -34,6 +34,8 @@ class Args:
     spdx: Path | None
     used_files: Path | None
     spdx_uri_prefix: str
+    package_name: str
+    package_license: str
     build_version: str
     debug: bool
 
@@ -79,9 +81,19 @@ def _parse_args() -> Args:
         help="The uri prefix to be used for all 'spdxId' fields in the spdx document",
     )
     parser.add_argument(
+        "--package-name",
+        default="Linux Kernel",
+        help="The name of the Spdx Package element containing the artifacts provided in --roots. (default: Linux Kernel)",
+    )
+    parser.add_argument(
+        "--package-license",
+        default="NOASSERTION",
+        help="The license expression to use when generating the Spdx Package element. (default: NOASSERTION)",
+    )
+    parser.add_argument(
         "--build-version",
         default="NOASSERTION",
-        help="The version of the build that created the artifacts provided in --roots. (default: NOASSERTION)",
+        help="The version of the build that created the artifacts provided in --roots. Will be used when generating the Spdx Package element. (default: NOASSERTION)",
     )
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
 
@@ -98,6 +110,8 @@ def _parse_args() -> Args:
     spdx = Path(args["spdx"]) if args["spdx"] != "none" else None
     used_files = Path(args["used_files"]) if args["used_files"] != "none" else None
     spdx_uri_prefix = args["spdx_uri_prefix"]
+    package_name = args["package_name"]
+    package_license = args["package_license"]
     build_version = args["build_version"]
     debug = args["debug"]
 
@@ -110,11 +124,21 @@ def _parse_args() -> Args:
         if not (output_tree / root_path).exists():
             raise argparse.ArgumentTypeError(f"path to root artifact {str(output_tree / root_path)} does not exist")
 
-    return Args(src_tree, output_tree, root_paths, spdx, used_files, spdx_uri_prefix, build_version, debug)
+    return Args(
+        src_tree,
+        output_tree,
+        root_paths,
+        spdx,
+        used_files,
+        spdx_uri_prefix,
+        package_name,
+        package_license,
+        build_version,
+        debug,
+    )
 
 
 def main():
-    """Main program"""
     # Parse cli arguments
     args = _parse_args()
 
@@ -131,7 +155,7 @@ def main():
     if args.used_files is not None:
         if args.src_tree == args.output_tree:
             logging.warning(
-                "Cannot distinguish source and output files because source and output tree are equal. Extracting all files from cmd graph"
+                "Cannot distinguish source and output files because source and output trees are equal. Extracting all files from cmd graph"
             )
             used_files = [os.path.relpath(node.absolute_path, args.src_tree) for node in iter_cmd_graph(cmd_graph)]
             logging.info(f"Found {len(used_files)} files in cmd graph.")
@@ -151,9 +175,11 @@ def main():
         return
 
     # Build SPDX Document
-    logging.info("Generating SPDX Document based on cmd graph")
+    logging.info("Generating SPDX document based on cmd graph")
     set_spdx_uri_prefix(args.spdx_uri_prefix)
-    spdx_graph = build_spdx_graph(cmd_graph, args.output_tree, args.src_tree, args.build_version)
+    spdx_graph = build_spdx_graph(
+        cmd_graph, args.output_tree, args.src_tree, args.package_name, args.package_license, args.build_version
+    )
     spdx_doc = JsonLdDocument(graph=spdx_graph)
 
     # Save SPDX Document

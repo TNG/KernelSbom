@@ -15,7 +15,7 @@ def set_spdx_uri_prefix(prefix: str) -> None:
     _spdx_uri_prefix = prefix
 
 
-def generate_spdx_id(entity_type: str, entity_suffix: str | None = None) -> SpdxId:
-    if entity_suffix is None:
-        entity_suffix = f"gnrtd{next(_counter)}"
-    return f"{_spdx_uri_prefix}{_uuid}/{entity_type}#{entity_suffix}"
+def generate_spdx_id(object_type: str, object_suffix: str | None = None) -> SpdxId:
+    if object_suffix is None:
+        object_suffix = f"gnrtd{next(_counter)}"
+    return f"{_spdx_uri_prefix}{_uuid}/{object_type}#{object_suffix}"

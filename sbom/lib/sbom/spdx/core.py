@@ -15,20 +15,20 @@ RelationshipCompleteness = Literal["complete", "incomplete", "noAssertion"]
 
 
 @dataclass
-class SpdxEntity:
+class SpdxObject:
     def to_dict(self) -> dict[str, Any]:
         return {k: v for k, v in asdict(self).items() if v}
 
 
 @dataclass(kw_only=True)
-class Hash(SpdxEntity):
+class Hash(SpdxObject):
     type: str = field(init=False, default="Hash")
     hashValue: str
     algorithm: HashAlgorithm
 
 
 @dataclass(kw_only=True)
-class Element(SpdxEntity):
+class Element(SpdxObject):
     type: str = field(init=False, default="Element")
     spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("Element"))
     creationInfo: str = "_:creationinfo"
@@ -60,7 +60,7 @@ class SpdxDocument(ElementCollection):
 
 
 @dataclass(kw_only=True)
-class ExternalIdentifier(SpdxEntity):
+class ExternalIdentifier(SpdxObject):
     type: str = field(init=False, default="ExternalIdentifier")
     externalIdentifierType: ExternalIdentifierType
     identifier: str
@@ -80,7 +80,7 @@ class SoftwareAgent(Agent):
 
 
 @dataclass(kw_only=True)
-class CreationInfo(SpdxEntity):
+class CreationInfo(SpdxObject):
     type: str = field(init=False, default="CreationInfo")
     spdxId: SpdxId = "_:creationinfo"
     specVersion: str = SPDX_SPEC_VERSION

@@ -72,6 +72,13 @@ def build_cmd_graph_node(
 
     if depth <= log_depth:
         logging.info(f"Build Node: {'  ' * depth}{root_path}")
+
+    if not root_path_absolute.exists():
+        if root_path_absolute.is_relative_to(output_tree) or root_path_absolute.is_relative_to(src_tree):
+            sbom_errors.log(f"Skip parsing '{root_path_absolute}' because file does not exist.")
+        else:
+            logging.warning(f"Skip parsing {root_path_absolute} because file does not exist")
+
     cmd_path = _to_cmd_path(root_path_absolute)
     cmd_file = parse_cmd_file(cmd_path) if cmd_path.exists() else None
     node = CmdGraphNode(root_path_absolute, cmd_file)

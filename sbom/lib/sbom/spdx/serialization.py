@@ -4,13 +4,13 @@
 
 import json
 from dataclasses import dataclass, field
-from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxEntity
+from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxObject
 
 
 @dataclass(kw_only=True)
 class JsonLdDocument:
     context: str = f"https://spdx.org/rdf/{SPDX_SPEC_VERSION}/spdx-context.jsonld"
-    graph: list[SpdxEntity] = field(default_factory=list[SpdxEntity])
+    graph: list[SpdxObject] = field(default_factory=list[SpdxObject])
 
     def to_jsonld(self):
         return json.dumps(
