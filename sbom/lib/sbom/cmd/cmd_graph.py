@@ -64,7 +64,7 @@ def build_cmd_graph_node(
     if cache is None:
         cache = {}
 
-    root_path_absolute = Path(os.path.realpath(output_tree / root_path))
+    root_path_absolute = Path(os.path.normpath(output_tree / root_path))
     if root_path_absolute in cache.keys():
         if depth <= log_depth:
             logging.info(f"Reuse Node: {'  ' * depth}{root_path}")

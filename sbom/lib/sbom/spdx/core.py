@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 from sbom.spdx.spdxId import SpdxId, generate_spdx_id
@@ -17,7 +17,23 @@ RelationshipCompleteness = Literal["complete", "incomplete", "noAssertion"]
 @dataclass
 class SpdxObject:
     def to_dict(self) -> dict[str, Any]:
-        return {k: v for k, v in asdict(self).items() if v}
+        def _to_dict(v: Any):
+            return v.to_dict() if hasattr(v, "to_dict") else v
+
+        d: dict[str, Any] = {}
+        for field_name in self.__dataclass_fields__:
+            value = getattr(self, field_name)
+            if not value:
+                continue
+
+            if isinstance(value, Element):
+                d[field_name] = value.spdxId
+            elif isinstance(value, list) and len(value) > 0 and isinstance(value[0], Element):  # type: ignore
+                value: list[Element] = value
+                d[field_name] = [v.spdxId for v in value]
+            else:
+                d[field_name] = [_to_dict(v) for v in value] if isinstance(value, list) else _to_dict(value)  # type: ignore
+        return d
 
 
 @dataclass(kw_only=True)
@@ -44,14 +60,6 @@ class ElementCollection(Element):
     element: list[Element] = field(default_factory=list[Element])
     rootElement: list[Element] = field(default_factory=list[Element])
     profileConformance: list[ProfileIdentifierType] = field(default_factory=list[ProfileIdentifierType])
-
-    def to_dict(self) -> dict[str, Any]:
-        d = super().to_dict()
-        if self.element:
-            d["element"] = [element.spdxId for element in self.element]
-        if self.rootElement:
-            d["rootElement"] = [element.spdxId for element in self.rootElement]
-        return d
 
 
 @dataclass(kw_only=True)
@@ -88,12 +96,6 @@ class CreationInfo(SpdxObject):
     createdBy: list[Agent]
     created: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
 
-    def to_dict(self) -> dict[str, Any]:
-        d = super().to_dict()
-        if self.createdBy:
-            d["createdBy"] = [agent.spdxId for agent in self.createdBy]
-        return d
-
 
 @dataclass(kw_only=True)
 class Relationship(Element):
@@ -111,9 +113,7 @@ class Relationship(Element):
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d.pop("from_")
-        d.pop("to")
         d["from"] = self.from_.spdxId
-        d["to"] = [element.spdxId for element in self.to]
         return d
 
 
@@ -123,9 +123,3 @@ class Artifact(Element):
     spdxId: SpdxId = field(default_factory=lambda: generate_spdx_id("Artifact"))
     builtTime: str | None = None
     originatedBy: list[Agent] = field(default_factory=list[Agent])
-
-    def to_dict(self) -> dict[str, Any]:
-        d = super().to_dict()
-        if self.originatedBy:
-            d["originatedBy"] = [agent.spdxId for agent in self.originatedBy]
-        return d

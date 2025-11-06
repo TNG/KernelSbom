@@ -32,6 +32,7 @@ class Args:
     output_tree: Path
     root_paths: list[Path]
     spdx: Path | None
+    prettify_json: bool
     used_files: Path | None
     spdx_uri_prefix: str
     package_name: str
@@ -69,6 +70,12 @@ def _parse_args() -> Args:
         "--spdx",
         default="sbom.spdx.json",
         help="Path to create the SPDX document, or 'none' to disable (default: sbom.spdx.json)",
+    )
+    parser.add_argument(
+        "--prettify-json",
+        action="store_true",
+        default=False,
+        help="Whether to pretty print the gnerated spdx json document (default: False)",
     )
     parser.add_argument(
         "--used-files",
@@ -113,6 +120,7 @@ def _parse_args() -> Args:
     package_name = args["package_name"]
     package_license = args["package_license"]
     build_version = args["build_version"]
+    prettify_json = args["prettify_json"]
     debug = args["debug"]
 
     # Validate arguments
@@ -129,6 +137,7 @@ def _parse_args() -> Args:
         output_tree,
         root_paths,
         spdx,
+        prettify_json,
         used_files,
         spdx_uri_prefix,
         package_name,
@@ -160,7 +169,6 @@ def main():
             used_files = [os.path.relpath(node.absolute_path, args.src_tree) for node in iter_cmd_graph(cmd_graph)]
             logging.info(f"Found {len(used_files)} files in cmd graph.")
         else:
-            logging.info("Extracting source files from cmd graph")
             used_files = [
                 os.path.relpath(node.absolute_path, args.src_tree)
                 for node in iter_cmd_graph(cmd_graph)
@@ -175,7 +183,7 @@ def main():
         return
 
     # Build SPDX Document
-    logging.info("Generating Spdx document based on cmd graph")
+    logging.info("Start generating Spdx document based on cmd graph")
     start_time = time.time()
     set_spdx_uri_prefix(args.spdx_uri_prefix)
     spdx_graph = build_spdx_graph(
@@ -191,9 +199,8 @@ def main():
     logging.info(f"Generated Spdx document in {time.time() - start_time} seconds")
 
     # Save SPDX Document
-    start_time = time.time()
-    spdx_doc.save(args.spdx)
-    logging.info(f"Saved {str(args.spdx)} in {time.time() - start_time}")
+    spdx_doc.save(args.spdx, args.prettify_json)
+    logging.info(f"Saved {str(args.spdx)} successfully")
 
     # report collected errors in case of failure
     errors = sbom_errors.get()

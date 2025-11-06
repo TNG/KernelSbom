@@ -19,7 +19,8 @@
                 "arch/x86/boot/bzImage",
                 "--package-license",
                 "GPL-2.0 WITH Linux-syscall-note",
-                "--debug"
+                "--debug",
+                "--prettify-json"
             ]
         }
     ]

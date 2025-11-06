@@ -35,7 +35,8 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/
       --output-tree ../linux/kernel_build \
       --roots arch/x86/boot/bzImage \
       --spdx sbom.spdx.json \
-      --used-files sbom.used_files.txt
+      --used-files sbom.used_files.txt \
+      --prettify-json
     ```
     Starting from `bzImage`, the script builds the **cmd graph**, a directed acyclic graph where nodes are filenames and edges represent build dependencies extracted from `.<filename>.cmd` files. Based on the cmd graph, the final `sbom.used_files.txt` and `sbom.spdx.json` files are generated and saved to disk. 
     The `sbom.used_files.txt` file is a flat list of all files from the source tree that were used to build `bzImage`. The `sbom.spdx.json` file contains an [SPDX](https://github.com/spdx) document that describes the entire build process leading to `bzImage`.
