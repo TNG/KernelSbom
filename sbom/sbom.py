@@ -191,9 +191,7 @@ def main():
     logging.info(f"Generated Spdx document in {time.time() - start_time} seconds")
 
     # Save SPDX Document
-    spdx_json = spdx_doc.to_jsonld()
-    with open(args.spdx, "w", encoding="utf-8") as f:
-        f.write(spdx_json)
+    spdx_doc.save(args.spdx)
     logging.info(f"Saved {str(args.spdx)} successfully")
 
     # report collected errors in case of failure
