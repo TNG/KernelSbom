@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxObject
+import logging
+import time
 
 
 @dataclass(kw_only=True)
@@ -21,5 +23,11 @@ class JsonLdDocument:
         }
 
     def save(self, path: Path) -> None:
+        start = time.time()
+        logging.info("Start to_dict()")
+        d = self.to_dict()
+        logging.info(f"completed to_dict() in {time.time() - start} seconds")
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, indent=2)
+            start = time.time()
+            json.dump(d, f, separators=(",", ":"))
+            logging.info(f"Saved in {time.time() - start} seconds")

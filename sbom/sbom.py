@@ -191,8 +191,9 @@ def main():
     logging.info(f"Generated Spdx document in {time.time() - start_time} seconds")
 
     # Save SPDX Document
+    start_time = time.time()
     spdx_doc.save(args.spdx)
-    logging.info(f"Saved {str(args.spdx)} successfully")
+    logging.info(f"Saved {str(args.spdx)} in {time.time() - start_time}")
 
     # report collected errors in case of failure
     errors = sbom_errors.get()
