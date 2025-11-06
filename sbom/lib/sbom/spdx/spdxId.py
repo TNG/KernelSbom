@@ -5,7 +5,7 @@ from itertools import count
 import uuid
 
 SpdxId = str
-_spdx_uri_prefix = "https://spdx.org/spdxdocs/"
+_spdx_uri_prefix = "https://kernel.org/"
 _uuid = uuid.uuid4()
 _counter = count(0)
 

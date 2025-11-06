@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 from sbom.cmd.cmd_graph import CmdGraph, iter_cmd_graph
+from sbom.spdx.build import Build
 from sbom.spdx.core import (
     Element,
     SoftwareAgent,
@@ -39,7 +40,13 @@ class KernelFile(File):
 
 
 def build_spdx_graph(
-    cmd_graph: CmdGraph, output_tree: Path, src_tree: Path, package_name: str, package_license: str, build_version: str
+    cmd_graph: CmdGraph,
+    output_tree: Path,
+    src_tree: Path,
+    spdx_uri_prefix: str,
+    package_name: str,
+    package_license: str,
+    build_version: str,
 ) -> list[SpdxObject]:
     spdx_document = SpdxDocument(profileConformance=["core", "software", "build", "simpleLicensing"])
     agent = SoftwareAgent(name="KernelSbom")
@@ -96,7 +103,9 @@ def build_spdx_graph(
         to=[],
     )
 
-    file_elements, file_relationships = _build_kernel_file_graph(cmd_graph, output_tree, src_tree)
+    file_elements, build_and_relationship_elements = _build_kernel_file_graph(
+        cmd_graph, output_tree, src_tree, spdx_uri_prefix
+    )
 
     # update relationships
     spdx_document.rootElement = [sbom]
@@ -109,7 +118,7 @@ def build_spdx_graph(
         package_hasDeclaredLicense_relationship,
         package_contains_roots_relationship,
         *file_elements,
-        *file_relationships,
+        *build_and_relationship_elements,
     ]
 
     src_tree_contains_relationship.to = [file for file in file_elements if file.tree == "src_tree"]
@@ -127,8 +136,11 @@ def build_spdx_graph(
 
 
 def _build_kernel_file_graph(
-    cmd_graph: CmdGraph, output_tree: Path, src_tree: Path
-) -> tuple[list[KernelFile], list[Relationship]]:
+    cmd_graph: CmdGraph,
+    output_tree: Path,
+    src_tree: Path,
+    spdx_uri_prefix: str,
+) -> tuple[list[KernelFile], list[Build | Relationship]]:
     # First cmd graph traversal: create a file element for each node
     root_paths = {node.absolute_path for node in cmd_graph.roots}
     file_elements: dict[Path, KernelFile] = {
@@ -137,21 +149,31 @@ def _build_kernel_file_graph(
     }
 
     # Second cmd graph traversal: create a relationship for each (child)node representing the generation of all its parents
-    relationhip_elements: dict[Path, Relationship] = {}
+    build_and_relationship_elements: list[Build | Relationship] = []
     for node in iter_cmd_graph(cmd_graph):
-        output_file_element = file_elements[node.absolute_path]
-        for child_node in node.children:
-            if child_node.absolute_path in relationhip_elements:
-                relationhip_elements[child_node.absolute_path].to.append(output_file_element)
-                continue
-            input_file_element = file_elements[child_node.absolute_path]
-            relationhip_elements[child_node.absolute_path] = Relationship(
-                relationshipType="generates",
-                from_=input_file_element,
-                to=[output_file_element],
-            )
+        if len(node.children) == 0:
+            continue
+        output_filename = file_elements[node.absolute_path].name
+        build_element = Build(
+            spdxId=generate_spdx_id("build_Build", f"{output_filename}"),
+            build_buildType=f"{spdx_uri_prefix}Kbuild",
+            comment=node.cmd_file.savedcmd if node.cmd_file is not None else None,
+        )
+        hasInput_relationship = Relationship(
+            spdxId=generate_spdx_id("Relationship_hasInput", f"{output_filename}"),
+            relationshipType="hasInput",
+            from_=build_element,
+            to=[file_elements[child_node.absolute_path] for child_node in node.children],
+        )
+        hasOutput_relationship = Relationship(
+            spdxId=generate_spdx_id("Relationship_hasOutput", f"{output_filename}"),
+            relationshipType="hasOutput",
+            from_=build_element,
+            to=[file_elements[node.absolute_path]],
+        )
+        build_and_relationship_elements += [build_element, hasInput_relationship, hasOutput_relationship]
 
-    return list(file_elements.values()), list(relationhip_elements.values())
+    return list(file_elements.values()), build_and_relationship_elements
 
 
 def _build_kernel_file_element(

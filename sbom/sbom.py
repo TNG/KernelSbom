@@ -77,7 +77,7 @@ def _parse_args() -> Args:
     )
     parser.add_argument(
         "--spdx-uri-prefix",
-        default="https://spdx.org/spdxdocs/",
+        default="https://kernel.org/",
         help="The uri prefix to be used for all 'spdxId' fields in the spdx document",
     )
     parser.add_argument(
@@ -178,7 +178,13 @@ def main():
     logging.info("Generating SPDX document based on cmd graph")
     set_spdx_uri_prefix(args.spdx_uri_prefix)
     spdx_graph = build_spdx_graph(
-        cmd_graph, args.output_tree, args.src_tree, args.package_name, args.package_license, args.build_version
+        cmd_graph,
+        args.output_tree,
+        args.src_tree,
+        args.spdx_uri_prefix,
+        args.package_name,
+        args.package_license,
+        args.build_version,
     )
     spdx_doc = JsonLdDocument(graph=spdx_graph)
 

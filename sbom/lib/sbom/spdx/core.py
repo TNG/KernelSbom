@@ -10,7 +10,7 @@ SPDX_SPEC_VERSION = "3.0.1"
 ExternalIdentifierType = Literal["email", "gitoid", "urlScheme"]
 HashAlgorithm = Literal["sha256", "sha512"]
 ProfileIdentifierType = Literal["core", "software", "build", "lite", "simpleLicensing"]
-RelationshipType = Literal["contains", "generates", "hasDeclaredLicense"]
+RelationshipType = Literal["contains", "generates", "hasDeclaredLicense", "hasInput", "hasOutput"]
 RelationshipCompleteness = Literal["complete", "incomplete", "noAssertion"]
 
 
@@ -34,6 +34,7 @@ class Element(SpdxObject):
     creationInfo: str = "_:creationinfo"
     name: str | None = None
     verifiedUsing: list[Hash] = field(default_factory=list[Hash])
+    comment: str | None = None
 
 
 @dataclass(kw_only=True)
