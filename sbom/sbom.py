@@ -166,7 +166,7 @@ def main():
                 for node in iter_cmd_graph(cmd_graph)
                 if not node.absolute_path.is_relative_to(args.output_tree)
             ]
-            logging.info(f"Found {len(used_files)} source files in cmd graph.")
+            logging.info(f"Found {len(used_files)} source files in cmd graph")
         with open(args.used_files, "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
         logging.info(f"Saved {args.used_files} successfully")
@@ -175,7 +175,8 @@ def main():
         return
 
     # Build SPDX Document
-    logging.info("Generating SPDX document based on cmd graph")
+    logging.info("Generating Spdx document based on cmd graph")
+    start_time = time.time()
     set_spdx_uri_prefix(args.spdx_uri_prefix)
     spdx_graph = build_spdx_graph(
         cmd_graph,
@@ -187,6 +188,7 @@ def main():
         args.build_version,
     )
     spdx_doc = JsonLdDocument(graph=spdx_graph)
+    logging.info(f"Generated Spdx document in {time.time() - start_time} seconds")
 
     # Save SPDX Document
     spdx_json = spdx_doc.to_jsonld()

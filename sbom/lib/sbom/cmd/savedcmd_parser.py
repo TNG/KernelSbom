@@ -434,6 +434,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
     (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
     (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
+    (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
     (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
     (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
@@ -489,7 +490,9 @@ def _unwrap_outer_parentheses(s: str) -> str:
     return _unwrap_outer_parentheses(s[1:-1])
 
 
-def _find_first_top_level_semicolon_position(commands: str) -> int | None:
+def _find_first_top_level_command_separator(
+    commands: str, separators: list[str] = [";", "&&"]
+) -> tuple[int | None, int | None]:
     in_single_quote = False
     in_double_quote = False
     in_curly_braces = 0
@@ -516,11 +519,15 @@ def _find_first_top_level_semicolon_position(commands: str) -> int | None:
         if char == ")":
             in_braces -= 1
 
-        elif char == ";" and in_curly_braces == 0 and in_braces == 0:
-            # Found top level semicolon
-            return i
+        if in_curly_braces > 0 or in_braces > 0:
+            continue
 
-    return None
+        # return found separator position and separator length
+        for separator in separators:
+            if commands[i : i + len(separator)] == separator:
+                return i, len(separator)
+
+    return None, None
 
 
 def _split_commands(commands: str) -> list[str | IfBlock]:
@@ -538,11 +545,11 @@ def _split_commands(commands: str) -> list[str | IfBlock]:
             remaining_commands = remaining_commands.removeprefix(full_matched).lstrip("; \n")
             continue
 
-        # command until next semicolon
-        found_semicolon_pos = _find_first_top_level_semicolon_position(remaining_commands)
-        if found_semicolon_pos is not None:
-            single_commands.append(remaining_commands[:found_semicolon_pos].strip())
-            remaining_commands = remaining_commands[found_semicolon_pos + 1 :].strip()
+        # command until next separator
+        separator_position, separator_length = _find_first_top_level_command_separator(remaining_commands)
+        if separator_position is not None and separator_length is not None:
+            single_commands.append(remaining_commands[:separator_position].strip())
+            remaining_commands = remaining_commands[separator_position + separator_length :].strip()
             continue
 
         # single last command
@@ -554,7 +561,7 @@ def _split_commands(commands: str) -> list[str | IfBlock]:
 
 def parse_commands(commands: str) -> list[Path]:
     """
-    Parses a collection of command line commands separated by semicolon and returns the combined input files required for these commands.
+    Parses a collection of command line commands and returns the combined input files required for these commands.
 
     Returns:
         input_files (list[str]): Input files of the commands.
