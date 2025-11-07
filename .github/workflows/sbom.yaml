@@ -86,7 +86,9 @@ jobs:
             --output-tree /workspace/linux/${{ inputs.output_tree }} \
             --roots-file roots.txt \
             --spdx sbom.spdx.json \
-            --used-files sbom.used_files.txt
+            --used-files sbom.used_files.txt \
+            --package-license "GPL-2.0 WITH Linux-syscall-note" \
+            --prettify-json
           
           test_archive="${{ inputs.test_archive }}"
           output_dir="${test_archive%.tar.gz}"

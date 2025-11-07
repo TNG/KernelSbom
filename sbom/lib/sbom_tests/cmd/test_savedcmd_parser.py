@@ -229,6 +229,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "@fs/efivarfs/efivarfs.mod"
         self._assert_parsing(cmd, expected)
 
+    def test_ld_if_objdump(self):
+        cmd = """ld -o arch/x86/entry/vdso/vdso64.so.dbg -shared --hash-style=both --build-id=sha1  --eh-frame-hdr -Bsymbolic -z noexecstack -m elf_x86_64 -soname linux-vdso.so.1 --no-undefined -z max-page-size=4096 -T arch/x86/entry/vdso/vdso.lds arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vsgx.o && sh ./arch/x86/entry/vdso/checkundef.sh 'nm' 'arch/x86/entry/vdso/vdso64.so.dbg'; if objdump -R arch/x86/entry/vdso/vdso64.so.dbg | grep -E -h "R_X86_64_JUMP_SLOT|R_X86_64_GLOB_DAT|R_X86_64_RELATIVE| R_386_GLOB_DAT|R_386_JMP_SLOT|R_386_RELATIVE"; then (echo >&2 "arch/x86/entry/vdso/vdso64.so.dbg: dynamic relocations are not supported"; rm -f arch/x86/entry/vdso/vdso64.so.dbg; /bin/false); fi"""
+        expected = "arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vsgx.o"
+        self._assert_parsing(cmd, expected)
+
     # sed command tests
 
     def test_sed(self):
@@ -372,6 +377,12 @@ class TestSavedCmdParser(unittest.TestCase):
             "sed -Ei 's/pub const RUST_CONST_HELPER_([a-zA-Z0-9_]*)/pub const \\1/g' rust/bindings/bindings_generated.rs"
         )
         expected = "../rust/bindings/bindings_helper.h ../include/linux/compiler-version.h"
+        self._assert_parsing(cmd, expected)
+
+    # gen_header.py tests
+    def test_gen_header(self):
+        cmd = "mkdir -p drivers/gpu/drm/msm/generated && python3 ../drivers/gpu/drm/msm/registers/gen_header.py --no-validate --rnn ../drivers/gpu/drm/msm/registers --xml ../drivers/gpu/drm/msm/registers/adreno/a2xx.xml c-defines > drivers/gpu/drm/msm/generated/a2xx.xml.h"
+        expected = "../drivers/gpu/drm/msm/registers/adreno/a2xx.xml"
         self._assert_parsing(cmd, expected)
 
 

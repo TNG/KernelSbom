@@ -64,7 +64,7 @@ def build_cmd_graph_node(
     if cache is None:
         cache = {}
 
-    root_path_absolute = Path(os.path.realpath(output_tree / root_path))
+    root_path_absolute = Path(os.path.normpath(output_tree / root_path))
     if root_path_absolute in cache.keys():
         if depth <= log_depth:
             logging.info(f"Reuse Node: {'  ' * depth}{root_path}")
@@ -76,6 +76,13 @@ def build_cmd_graph_node(
     cmd_file = parse_cmd_file(cmd_path) if cmd_path.exists() else None
     node = CmdGraphNode(root_path_absolute, cmd_file)
     cache[root_path_absolute] = node
+
+    if not root_path_absolute.exists():
+        if root_path_absolute.is_relative_to(output_tree) or root_path_absolute.is_relative_to(src_tree):
+            sbom_errors.log(f"Skip parsing '{root_path_absolute}' because file does not exist")
+        else:
+            logging.warning(f"Skip parsing {root_path_absolute} because file does not exist")
+        return node
 
     # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
     child_paths = get_hardcoded_dependencies(root_path_absolute, output_tree, src_tree)
@@ -138,7 +145,7 @@ def _parse_incbin(assembly_path: Path, output_tree: Path, src_tree: Path, root_o
 
 def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]:
     visited: set[Path] = set()
-    node_stack: list[CmdGraphNode] = cmd_graph.roots if isinstance(cmd_graph, CmdGraph) else [cmd_graph]
+    node_stack: list[CmdGraphNode] = cmd_graph.roots.copy() if isinstance(cmd_graph, CmdGraph) else [cmd_graph]
     while len(node_stack) > 0:
         node = node_stack.pop(0)
         if node.absolute_path in visited:

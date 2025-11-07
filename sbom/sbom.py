@@ -18,8 +18,10 @@ LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-import sbom.spdx as spdx  # noqa: E402
-from sbom.cmd.cmd_graph import CmdGraph, build_cmd_graph, iter_cmd_graph  # noqa: E402
+from sbom.spdx.spdxId import set_spdx_uri_prefix  # noqa: E402
+from sbom.spdx_graph import build_spdx_graph  # noqa: E402
+from sbom.spdx.serialization import JsonLdDocument  # noqa: E402
+from sbom.cmd.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
 import time  # noqa: E402
 import sbom.errors as sbom_errors  # noqa: E402
 
@@ -30,7 +32,12 @@ class Args:
     output_tree: Path
     root_paths: list[Path]
     spdx: Path | None
+    prettify_json: bool
     used_files: Path | None
+    spdx_uri_prefix: str
+    package_name: str
+    package_license: str
+    build_version: str
     debug: bool
 
 
@@ -65,9 +72,35 @@ def _parse_args() -> Args:
         help="Path to create the SPDX document, or 'none' to disable (default: sbom.spdx.json)",
     )
     parser.add_argument(
+        "--prettify-json",
+        action="store_true",
+        default=False,
+        help="Whether to pretty print the gnerated spdx json document (default: False)",
+    )
+    parser.add_argument(
         "--used-files",
         default="sbom.used_files.txt",
         help="Path to create the a flat list of all source files used for the kernel build, or 'none' to disable (default: sbom.used_files.txt)",
+    )
+    parser.add_argument(
+        "--spdx-uri-prefix",
+        default="https://kernel.org/",
+        help="The uri prefix to be used for all 'spdxId' fields in the spdx document",
+    )
+    parser.add_argument(
+        "--package-name",
+        default="Linux Kernel",
+        help="The name of the Spdx Package element containing the artifacts provided in --roots. (default: Linux Kernel)",
+    )
+    parser.add_argument(
+        "--package-license",
+        default="NOASSERTION",
+        help="The license expression to use when generating the Spdx Package element. (default: NOASSERTION)",
+    )
+    parser.add_argument(
+        "--build-version",
+        default="NOASSERTION",
+        help="The version of the build that created the artifacts provided in --roots. Will be used when generating the Spdx Package element. (default: NOASSERTION)",
     )
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
 
@@ -83,6 +116,11 @@ def _parse_args() -> Args:
             root_paths = [Path(root.strip()) for root in f.readlines()]
     spdx = Path(args["spdx"]) if args["spdx"] != "none" else None
     used_files = Path(args["used_files"]) if args["used_files"] != "none" else None
+    spdx_uri_prefix = args["spdx_uri_prefix"]
+    package_name = args["package_name"]
+    package_license = args["package_license"]
+    build_version = args["build_version"]
+    prettify_json = args["prettify_json"]
     debug = args["debug"]
 
     # Validate arguments
@@ -94,70 +132,22 @@ def _parse_args() -> Args:
         if not (output_tree / root_path).exists():
             raise argparse.ArgumentTypeError(f"path to root artifact {str(output_tree / root_path)} does not exist")
 
-    return Args(src_tree, output_tree, root_paths, spdx, used_files, debug)
-
-
-def create_spdx_document(cmd_graph: CmdGraph) -> spdx.JsonLdDocument:
-    person = spdx.Person(
-        name="Luis Augenstein",
-        externalIdentifier=[
-            spdx.ExternalIdentifier(externalIdentifierType="email", identifier="luis.augenstein@tngtech.com")
-        ],
-    )
-    creation_info = spdx.CreationInfo(createdBy=[person.spdxId])
-
-    software_package = spdx.SoftwarePackage(
-        name="amazing-widget",
-        software_packageVersion="1.0",
-        software_downloadLocation="http://dl.example.com/amazing-widget_1.0.0.tar",
-        builtTime="2024-03-06T00:00:00Z",
-        originatedBy=[person.spdxId],
-        verifiedUsing=[spdx.Hash(hashValue="f3f60ce8615d1cfb3f6d7d149699ab53170ce0b8f24f841fb616faa50151082d")],
-    )
-    software_file1 = spdx.SoftwareFile(
-        name="/usr/bin/amazing-widget",
-        builtTime="2024-03-05T00:00:00Z",
-        originatedBy=[person.spdxId],
-        software_primaryPurpose="executable",
-        software_additionalPurpose=["application"],
-        software_copyrightText="Copyright 2024, Joshua Watt",
-        verifiedUsing=[spdx.Hash(hashValue="ee4f96ed470ea288be281407dacb380fd355886dbd52c8c684dfec3a90e78f45")],
-    )
-    software_file2 = spdx.SoftwareFile(
-        name="/etc/amazing-widget.cfg",
-        builtTime="2024-03-05T00:00:00Z",
-        originatedBy=[person.spdxId],
-        software_primaryPurpose="configuration",
-        verifiedUsing=[spdx.Hash(hashValue="ee4f96ed470ea288be281407dacb380fd355886dbd52c8c684dfec3a90e78f45")],
-    )
-    relationship = spdx.RelationShipContains(
-        from_=software_package.spdxId, to=[software_file1.spdxId, software_file2.spdxId], completeness="complete"
-    )
-
-    software_sbom = spdx.SoftwareSbom(
-        software_sbomType=["build"],
-        rootElement=[software_package.spdxId],
-        element=[software_file1.spdxId, software_file2.spdxId],
-    )
-    spdx_document = spdx.SpdxDocument(
-        profileConformance=["core", "software", "licensing", "build"], rootElement=[software_sbom.spdxId]
-    )
-    return spdx.JsonLdDocument(
-        graph=[
-            person,
-            creation_info,
-            software_package,
-            software_file1,
-            software_file2,
-            relationship,
-            software_sbom,
-            spdx_document,
-        ]
+    return Args(
+        src_tree,
+        output_tree,
+        root_paths,
+        spdx,
+        prettify_json,
+        used_files,
+        spdx_uri_prefix,
+        package_name,
+        package_license,
+        build_version,
+        debug,
     )
 
 
 def main():
-    """Main program"""
     # Parse cli arguments
     args = _parse_args()
 
@@ -174,18 +164,17 @@ def main():
     if args.used_files is not None:
         if args.src_tree == args.output_tree:
             logging.warning(
-                "Cannot distinguish source and output files because source and output tree are equal. Extracting all files from cmd graph"
+                "Cannot distinguish source and output files because source and output trees are equal. Extracting all files from cmd graph"
             )
             used_files = [os.path.relpath(node.absolute_path, args.src_tree) for node in iter_cmd_graph(cmd_graph)]
             logging.info(f"Found {len(used_files)} files in cmd graph.")
         else:
-            logging.info("Extracting source files from cmd graph")
             used_files = [
                 os.path.relpath(node.absolute_path, args.src_tree)
                 for node in iter_cmd_graph(cmd_graph)
                 if not node.absolute_path.is_relative_to(args.output_tree)
             ]
-            logging.info(f"Found {len(used_files)} source files in cmd graph.")
+            logging.info(f"Found {len(used_files)} source files in cmd graph")
         with open(args.used_files, "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
         logging.info(f"Saved {args.used_files} successfully")
@@ -193,14 +182,24 @@ def main():
     if args.spdx is None:
         return
 
-    # Fill SPDX Document
-    logging.info("Generating SPDX Document based on cmd graph")
-    spdx_doc = create_spdx_document(cmd_graph)
+    # Build SPDX Document
+    logging.info("Start generating Spdx document based on cmd graph")
+    start_time = time.time()
+    set_spdx_uri_prefix(args.spdx_uri_prefix)
+    spdx_graph = build_spdx_graph(
+        cmd_graph,
+        args.output_tree,
+        args.src_tree,
+        args.spdx_uri_prefix,
+        args.package_name,
+        args.package_license,
+        args.build_version,
+    )
+    spdx_doc = JsonLdDocument(graph=spdx_graph)
+    logging.info(f"Generated Spdx document in {time.time() - start_time} seconds")
 
     # Save SPDX Document
-    spdx_json = spdx_doc.to_json()
-    with open(args.spdx, "w", encoding="utf-8") as f:
-        f.write(spdx_json)
+    spdx_doc.save(args.spdx, args.prettify_json)
     logging.info(f"Saved {str(args.spdx)} successfully")
 
     # report collected errors in case of failure

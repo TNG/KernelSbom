@@ -396,56 +396,71 @@ def _parse_bindgen_command(command: str) -> list[Path]:
     return [Path(p) for p in header_file_input_paths]
 
 
+def _parse_gen_header(command: str) -> list[Path]:
+    command_parts = shlex.split(command)
+    # expect command parts to be ["python3", path/to/gen_headers.py, ..., "--xml", input]
+    i = next(i for i, token in enumerate(command_parts) if token == "--xml")
+    return [Path(command_parts[i + 1])]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
+    # Compound commands
     (re.compile(r"\(.*?\)\s*>", re.DOTALL), _parse_compound_command),
     (re.compile(r"\{.*?\}\s*>", re.DOTALL), _parse_compound_command),
-    (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
-    (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
+    # Standard Unix utilities and system tools
     (re.compile(r"^rm\b"), _parse_noop),
     (re.compile(r"^mkdir\b"), _parse_noop),
+    (re.compile(r"^cat\b.*?[\|>]"), lambda c: _parse_cat_command(c.split("|")[0].split(">")[0])),
     (re.compile(r"^echo[^|]*$"), _parse_noop),
+    (re.compile(r"^printf\b.*\| xargs (llvm-)?ar\b"), _parse_ar_piped_xargs_command),
+    (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
+    (re.compile(r"^sed\b"), _parse_noop),
+    (re.compile(r"^awk.*?<.*?>"), lambda c: [Path(c.split("<")[1].split(">")[0].strip())]),
     (re.compile(r"^(/bin/)?true\b"), _parse_noop),
     (re.compile(r"^(/bin/)?false\b"), _parse_noop),
-    (re.compile(r"^(llvm-)?ar\b"), _parse_ar_command),
-    (re.compile(r"^printf\b.*\| xargs (llvm-)?ar\b"), _parse_ar_piped_xargs_command),
+    (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
+    # Compilers and code generators
+    # (C/LLVM toolchain, Rust, Flex/Bison, Bindgen, Perl, etc.)
     (re.compile(r"^(gcc|clang)\b"), _parse_gcc_or_clang_command),
+    (re.compile(r"^ld\b"), _parse_ld_command),
+    (re.compile(r"^(llvm-)?ar\b"), _parse_ar_command),
+    (re.compile(r"^(llvm-)?nm\b.*?\|"), _parse_nm_piped_command),
+    (re.compile(r"^(llvm-)?objcopy\b"), _parse_objcopy_command),
+    (re.compile(r"^(llvm-)?strip\b"), _parse_strip_command),
     (re.compile(r".*rustc\b"), _parse_rustc_command),
+    (re.compile(r"^flex\b"), _parse_flex_command),
+    (re.compile(r"^bison\b"), _parse_bison_command),
+    (re.compile(r"^bindgen\b"), _parse_bindgen_command),
+    (re.compile(r"^perl\b"), _parse_perl_command),
+    # Kernel-specific build scripts and tools
+    (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
     (re.compile(r"sh (.*/)?syscallhdr\.sh\b"), _parse_syscallhdr_command),
     (re.compile(r"sh (.*/)?syscalltbl\.sh\b"), _parse_syscalltbl_command),
     (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
     (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
     (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
     (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
+    (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
     (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
-    (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
-    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
-    (re.compile(r"^ld\b"), _parse_ld_command),
-    (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
-    (re.compile(r"^sed\b"), _parse_noop),
-    (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
-    (re.compile(r"^(llvm-)?nm\b.*?\|"), _parse_nm_piped_command),
-    (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
-    (re.compile(r"^perl\b"), _parse_perl_command),
-    (re.compile(r"^(.*/)polgen\b"), _parse_noop),
-    (re.compile(r"^(llvm-)?strip\b"), _parse_strip_command),
     (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
-    (re.compile(r"^cat\b.*?[\|>]"), lambda c: _parse_cat_command(c.split("|")[0].split(">")[0])),
     (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
     (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
-    (re.compile(r"^flex\b"), _parse_flex_command),
-    (re.compile(r"^bison\b"), _parse_bison_command),
     (re.compile(r"^(.*/)?tools/build\b"), _parse_tools_build_command),
-    (re.compile(r"make -f .*/arch/x86/Makefile\.postlink"), _parse_noop),
-    (re.compile(r"^(.*/)?raid6/mktables\s+>"), _parse_noop),
-    (re.compile(r"^awk.*?<.*?>"), lambda c: [Path(c.split("<")[1].split(">")[0].strip())]),
-    (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [Path(c.split(" ")[1].strip())]),
     (re.compile(r"^(.*/)?certs/extract-cert"), _parse_extract_cert_command),
     (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
+    (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
+    (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [Path(c.split(" ")[1].strip())]),
+    (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
+    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
+    (re.compile(r"^(.*/)polgen\b"), _parse_noop),
+    (re.compile(r"make -f .*/arch/x86/Makefile\.postlink"), _parse_noop),
+    (re.compile(r"^(.*/)?raid6/mktables\s+>"), _parse_noop),
+    (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
     (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
-    (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
-    (re.compile(r"bindgen\b"), _parse_bindgen_command),
+    (re.compile(r"^(.*/)?gen_header.py"), _parse_gen_header),
 ]
+
 
 # If Block pattern to match a simple, single-level if-then-fi block. Nested If blocks are not supported.
 IF_BLOCK_PATTERN = re.compile(
@@ -483,7 +498,9 @@ def _unwrap_outer_parentheses(s: str) -> str:
     return _unwrap_outer_parentheses(s[1:-1])
 
 
-def _find_first_top_level_semicolon_position(commands: str) -> int | None:
+def _find_first_top_level_command_separator(
+    commands: str, separators: list[str] = [";", "&&"]
+) -> tuple[int | None, int | None]:
     in_single_quote = False
     in_double_quote = False
     in_curly_braces = 0
@@ -510,11 +527,15 @@ def _find_first_top_level_semicolon_position(commands: str) -> int | None:
         if char == ")":
             in_braces -= 1
 
-        elif char == ";" and in_curly_braces == 0 and in_braces == 0:
-            # Found top level semicolon
-            return i
+        if in_curly_braces > 0 or in_braces > 0:
+            continue
 
-    return None
+        # return found separator position and separator length
+        for separator in separators:
+            if commands[i : i + len(separator)] == separator:
+                return i, len(separator)
+
+    return None, None
 
 
 def _split_commands(commands: str) -> list[str | IfBlock]:
@@ -532,11 +553,11 @@ def _split_commands(commands: str) -> list[str | IfBlock]:
             remaining_commands = remaining_commands.removeprefix(full_matched).lstrip("; \n")
             continue
 
-        # command until next semicolon
-        found_semicolon_pos = _find_first_top_level_semicolon_position(remaining_commands)
-        if found_semicolon_pos is not None:
-            single_commands.append(remaining_commands[:found_semicolon_pos].strip())
-            remaining_commands = remaining_commands[found_semicolon_pos + 1 :].strip()
+        # command until next separator
+        separator_position, separator_length = _find_first_top_level_command_separator(remaining_commands)
+        if separator_position is not None and separator_length is not None:
+            single_commands.append(remaining_commands[:separator_position].strip())
+            remaining_commands = remaining_commands[separator_position + separator_length :].strip()
             continue
 
         # single last command
@@ -548,7 +569,7 @@ def _split_commands(commands: str) -> list[str | IfBlock]:
 
 def parse_commands(commands: str) -> list[Path]:
     """
-    Parses a collection of command line commands separated by semicolon and returns the combined input files required for these commands.
+    Parses a collection of command line commands and returns the combined input files required for these commands.
 
     Returns:
         input_files (list[str]): Input files of the commands.
