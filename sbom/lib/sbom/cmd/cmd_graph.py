@@ -79,7 +79,7 @@ def build_cmd_graph_node(
 
     if not root_path_absolute.exists():
         if root_path_absolute.is_relative_to(output_tree) or root_path_absolute.is_relative_to(src_tree):
-            sbom_errors.log(f"Skip parsing '{root_path_absolute}' because file does not exist.")
+            sbom_errors.log(f"Skip parsing '{root_path_absolute}' because file does not exist")
         else:
             logging.warning(f"Skip parsing {root_path_absolute} because file does not exist")
         return node

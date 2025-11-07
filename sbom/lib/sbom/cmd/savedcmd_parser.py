@@ -396,6 +396,13 @@ def _parse_bindgen_command(command: str) -> list[Path]:
     return [Path(p) for p in header_file_input_paths]
 
 
+def _parse_gen_header(command: str) -> list[Path]:
+    command_parts = shlex.split(command)
+    # expect command parts to be ["python3", path/to/gen_headers.py, ..., "--xml", input]
+    i = next(i for i, token in enumerate(command_parts) if token == "--xml")
+    return [Path(command_parts[i + 1])]
+
+
 # Command parser registry
 SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
     # Compound commands
@@ -451,6 +458,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(.*/)?raid6/mktables\s+>"), _parse_noop),
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
     (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
+    (re.compile(r"^(.*/)?gen_header.py"), _parse_gen_header),
 ]
 
 

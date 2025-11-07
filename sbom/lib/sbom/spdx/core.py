@@ -112,8 +112,8 @@ class Relationship(Element):
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
-        d.pop("from_")
-        d["from"] = self.from_.spdxId
+        d["from"] = d.pop("from_")
+        d["to"] = d.pop("to")
         return d
 
 

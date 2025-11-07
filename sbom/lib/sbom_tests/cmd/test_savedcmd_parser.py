@@ -379,6 +379,12 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "../rust/bindings/bindings_helper.h ../include/linux/compiler-version.h"
         self._assert_parsing(cmd, expected)
 
+    # gen_header.py tests
+    def test_gen_header(self):
+        cmd = "mkdir -p drivers/gpu/drm/msm/generated && python3 ../drivers/gpu/drm/msm/registers/gen_header.py --no-validate --rnn ../drivers/gpu/drm/msm/registers --xml ../drivers/gpu/drm/msm/registers/adreno/a2xx.xml c-defines > drivers/gpu/drm/msm/generated/a2xx.xml.h"
+        expected = "../drivers/gpu/drm/msm/registers/adreno/a2xx.xml"
+        self._assert_parsing(cmd, expected)
+
 
 if __name__ == "__main__":
     unittest.main()
