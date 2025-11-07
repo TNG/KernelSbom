@@ -57,12 +57,12 @@ def build_spdx_graph(
     src_tree_element = File(
         spdxId=generate_spdx_id("software_File", "$(src_tree)"),
         name="$(src_tree)",
-        software_FileKind="directory",
+        software_fileKind="directory",
     )
     output_tree_element = File(
         spdxId=generate_spdx_id("software_File", "$(output_tree)"),
         name="$(output_tree)",
-        software_FileKind="directory",
+        software_fileKind="directory",
     )
     src_tree_contains_relationship = Relationship(
         relationshipType="contains",

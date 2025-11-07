@@ -91,10 +91,13 @@ class SoftwareAgent(Agent):
 @dataclass(kw_only=True)
 class CreationInfo(SpdxObject):
     type: str = field(init=False, default="CreationInfo")
-    spdxId: SpdxId = "_:creationinfo"
+    id: SpdxId = "_:creationinfo"
     specVersion: str = SPDX_SPEC_VERSION
     createdBy: list[Agent]
     created: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {("@id" if k == "id" else k): v for k, v in super().to_dict().items()}
 
 
 @dataclass(kw_only=True)
@@ -111,10 +114,7 @@ class Relationship(Element):
             self.spdxId = generate_spdx_id(f"Relationship_{self.relationshipType}")
 
     def to_dict(self) -> dict[str, Any]:
-        d = super().to_dict()
-        d["from"] = d.pop("from_")
-        d["to"] = d.pop("to")
-        return d
+        return {("from" if k == "from_" else k): v for k, v in super().to_dict().items()}
 
 
 @dataclass(kw_only=True)
