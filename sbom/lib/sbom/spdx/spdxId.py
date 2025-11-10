@@ -5,9 +5,11 @@ from itertools import count
 import uuid
 
 SpdxId = str
-_spdx_uri_prefix = "https://kernel.org/"
+_spdx_uri_prefix = "https://spdx.org/spdxdocs/"
 _uuid = uuid.uuid4()
 _counter = count(0)
+
+_generated_ids: dict[str, int] = {}
 
 
 def set_spdx_uri_prefix(prefix: str) -> None:
@@ -18,4 +20,14 @@ def set_spdx_uri_prefix(prefix: str) -> None:
 def generate_spdx_id(object_type: str, object_suffix: str | None = None) -> SpdxId:
     if object_suffix is None:
         object_suffix = f"gnrtd{next(_counter)}"
-    return f"{_spdx_uri_prefix}{_uuid}/{object_type}#{object_suffix}"
+    spdxId = f"{_spdx_uri_prefix}{_uuid}/{object_type}#{object_suffix}"
+
+    # compare spdxIds case-insensitively and deduplicate if needed
+    spdxId_lower = spdxId.lower()
+    if spdxId_lower in _generated_ids:
+        _generated_ids[spdxId_lower] += 1
+        spdxId += f"-{_generated_ids[spdxId_lower]}"
+    else:
+        _generated_ids[spdxId_lower] = 0
+
+    return spdxId

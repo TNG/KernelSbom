@@ -84,7 +84,7 @@ def _parse_args() -> Args:
     )
     parser.add_argument(
         "--spdx-uri-prefix",
-        default="https://kernel.org/",
+        default="https://spdx.org/spdxdocs/",
         help="The uri prefix to be used for all 'spdxId' fields in the spdx document",
     )
     parser.add_argument(

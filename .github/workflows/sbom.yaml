@@ -23,6 +23,10 @@ on:
         description: Whether to include modules into the sbom
         default: false
         type: boolean
+      validate:
+        description: Whether to valdiate the generated spdx document using the java spdx tools
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       test_archive:
@@ -35,6 +39,9 @@ on:
         required: true
         type: string
       use_modules:
+        required: true
+        type: boolean
+      validate:
         required: true
         type: boolean
 
@@ -93,7 +100,7 @@ jobs:
           test_archive="${{ inputs.test_archive }}"
           output_dir="${test_archive%.tar.gz}"
           echo "output_dir=$output_dir" >> $GITHUB_OUTPUT
-      
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -102,3 +109,14 @@ jobs:
             sbom.spdx.json
             sbom.used_files.txt
           retention-days: 30
+        
+      - name: Validate sbom.spdx.json
+        id: validate_sbom
+        run: |
+          export SPDX_TOOLS_VERSION=2.0.2
+          curl -LO "https://github.com/spdx/tools-java/releases/download/v${SPDX_TOOLS_VERSION}/tools-java-${SPDX_TOOLS_VERSION}.zip"
+          unzip -j "tools-java-${SPDX_TOOLS_VERSION}.zip" "tools-java-${SPDX_TOOLS_VERSION}-jar-with-dependencies.jar"
+          java -Xmx15G -Xms12G -jar "tools-java-${SPDX_TOOLS_VERSION}-jar-with-dependencies.jar" Verify "sbom.spdx.json"
+        if: ${{ inputs.validate }}
+      
+     
