@@ -5,51 +5,51 @@
 import json
 import logging
 import os
+from pathlib import Path
 import re
 import shutil
 import sys
-from pathlib import Path
 from typing import Literal
-from build_kernel import build_kernel
-from ..module_roots import get_module_roots  # type: ignore # noqa: F401
 
 LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
+from build_kernel import build_kernel  # noqa: E402
+from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
 from sbom.cmd.cmd_graph import build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
 
 
-def _remove_files(base_path: Path, patterns_to_remove: list[re.Pattern[str]], ignore: set[Path]) -> list[Path]:
-    removed_files: list[Path] = []
-    for file_path in base_path.rglob("*"):
+def _remove_files(base_path: PathStr, patterns_to_remove: list[re.Pattern[str]], ignore: set[PathStr]) -> list[PathStr]:
+    removed_files: list[PathStr] = []
+    for file_path in [str(p) for p in Path(base_path).rglob("*")]:
         if (
-            not file_path.is_file()
-            or file_path.relative_to(base_path) in ignore
-            or not any(p.match(str(file_path)) for p in patterns_to_remove)
+            not os.path.isfile(file_path)
+            or os.path.relpath(file_path, base_path) in ignore
+            or not any(p.match(file_path) for p in patterns_to_remove)
         ):
             continue
 
-        file_path.unlink()
+        os.remove(file_path)
         removed_files.append(file_path)
     return removed_files
 
 
 def _create_cmd_graph_based_kernel_directory(
-    src_tree: Path,
-    output_tree: Path,
-    cmd_src_tree: Path,
-    cmd_output_tree: Path,
-    root_paths: list[Path],
-    cmd_graph_path: Path,
-    missing_sources_in_cmd_graph: list[Path],
+    src_tree: PathStr,
+    output_tree: PathStr,
+    cmd_src_tree: PathStr,
+    cmd_output_tree: PathStr,
+    root_paths: list[PathStr],
+    cmd_graph_path: PathStr,
+    missing_sources_in_cmd_graph: list[PathStr],
 ) -> None:
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
     shutil.copytree(
-        src_tree, cmd_src_tree, symlinks=True, ignore=shutil.ignore_patterns(output_tree.relative_to(src_tree))
+        src_tree, cmd_src_tree, symlinks=True, ignore=shutil.ignore_patterns(os.path.relpath(output_tree, src_tree))
     )
-    cmd_output_tree.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(output_tree / ".config", cmd_output_tree / ".config")
+    os.makedirs(cmd_output_tree, exist_ok=True)
+    shutil.copyfile(os.path.join(output_tree, ".config"), os.path.join(cmd_output_tree, ".config"))
 
     # Load cached command graph or build it from .cmd files
     cmd_graph = build_or_load_cmd_graph(root_paths, output_tree, src_tree, cmd_graph_path)
@@ -62,10 +62,12 @@ def _create_cmd_graph_based_kernel_directory(
         re.compile(r".*\.rs$"),
     ]
     logging.info("Extract source files from cmd graph")
+    src_tree_str = str(src_tree)
+    output_tree_str = str(output_tree)
     cmd_graph_sources = [
-        node.absolute_path.relative_to(src_tree)
+        os.path.relpath(node.absolute_path, src_tree_str)
         for node in iter_cmd_graph(cmd_graph)
-        if node.absolute_path.is_relative_to(src_tree) and not node.absolute_path.is_relative_to(output_tree)
+        if is_relative_to(node.absolute_path, src_tree_str) and not is_relative_to(node.absolute_path, output_tree_str)
     ]
 
     logging.info("Remove source files not in cmd graph")
@@ -76,50 +78,49 @@ def _create_cmd_graph_based_kernel_directory(
     )
 
 
-def _get_manual_missing_sources(config: Literal["tinyconfig"]) -> list[Path]:
+def _get_manual_missing_sources(config: Literal["tinyconfig"]) -> list[PathStr]:
     missing_sources = {
         "tinyconfig": [
             "tools/include/linux/types.h",
             "tools/include/linux/kernel.h",
         ]
     }
-    return [Path(p) for p in missing_sources[config]]
+    return missing_sources[config]
 
 
 if __name__ == "__main__":
     """
     cmd_graph_based_kernel_build.py <src_tree> <output_tree>
     """
-    script_path = Path(__file__).parent
+    script_path = os.path.dirname(__file__)
     src_tree = (
-        Path(sys.argv[1]).resolve()
+        os.path.normpath(sys.argv[1])
         if len(sys.argv) >= 2 and sys.argv[1]
-        else (script_path / "../../../linux").resolve()
+        else os.path.normpath(os.path.join(script_path, "../../../linux"))
     )
     output_tree = (
-        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
+        os.path.normpath(sys.argv[1]) if len(sys.argv) >= 3 and sys.argv[2] else os.path.join(src_tree, "kernel_build")
     )
     os.environ["SRCARCH"] = "x86"
     root_paths = [
-        Path("arch/x86/boot/bzImage"),
-        # *get_module_roots(Path("modules.order")), # uncomment when modules should be added to the graph
+        "arch/x86/boot/bzImage",
     ]
-    cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
+    cmd_graph_path = os.path.normpath(os.path.join(script_path, "../cmd_graph.pickle"))
 
-    cmd_src_tree = (src_tree.parent / f"{src_tree.name}_cmd").resolve()
-    cmd_output_tree = (cmd_src_tree / os.path.relpath(output_tree, src_tree)).resolve()
-    missing_sources_in_cmd_graph_path = (script_path / "missing_sources_in_cmd_graph.json").resolve()
+    cmd_src_tree = f"{src_tree}_cmd"
+    cmd_output_tree = os.path.normpath(os.path.join(cmd_src_tree, os.path.relpath(output_tree, src_tree)))
+    missing_sources_in_cmd_graph_path = os.path.join(script_path, "missing_sources_in_cmd_graph.json")
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # missing files that need to be added manually because corresponding error messages are difficult to parse:
-    missing_sources_in_cmd_graph: list[Path] = _get_manual_missing_sources(config="tinyconfig")
-    if (missing_sources_in_cmd_graph_path).exists():
+    missing_sources_in_cmd_graph: list[PathStr] = _get_manual_missing_sources(config="tinyconfig")
+    if os.path.exists(missing_sources_in_cmd_graph_path):
         with open(missing_sources_in_cmd_graph_path, "r") as f:
-            missing_sources_in_cmd_graph += [Path(p) for p in json.load(f)]
+            missing_sources_in_cmd_graph += json.load(f)
 
-    if not cmd_src_tree.exists():
+    if not os.path.exists(cmd_src_tree):
         _create_cmd_graph_based_kernel_directory(
             src_tree,
             output_tree,

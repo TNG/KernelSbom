@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-from pathlib import Path
 import re
 import sbom.errors as sbom_errors
+from sbom.path_utils import PathStr
 
 CONFIG_PATTERN = re.compile(r"\$\(wildcard (include/config/[^)]+)\)")
 WILDCARD_PATTERN = re.compile(r"\$\(wildcard (?P<path>[^)]+)\)")
 VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
 
 
-def parse_deps(deps: list[str]) -> list[Path]:
+def parse_deps(deps: list[str]) -> list[PathStr]:
     """
     Parse dependency strings of a .cmd file and return valid input file paths.
     Args:
@@ -18,7 +18,7 @@ def parse_deps(deps: list[str]) -> list[Path]:
     Returns:
         input_files: List of input file paths
     """
-    input_files: list[Path] = []
+    input_files: list[PathStr] = []
     for dep in deps:
         dep = dep.strip()
         match dep:
@@ -26,10 +26,10 @@ def parse_deps(deps: list[str]) -> list[Path]:
                 # config paths like include/config/<CONFIG_NAME> are not included in the graph
                 continue
             case _ if match := WILDCARD_PATTERN.match(dep):
-                path = Path(match.group("path"))
+                path = match.group("path")
                 input_files.append(path)
             case _ if VALID_PATH_PATTERN.match(dep):
-                input_files.append(Path(dep))
+                input_files.append(dep)
 
             case _:
                 sbom_errors.log(f"Skip parsing dependency {dep} because of unrecognized format")

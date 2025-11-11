@@ -4,8 +4,8 @@
 
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
+from sbom.path_utils import PathStr
 from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxObject
 
 
@@ -20,7 +20,7 @@ class JsonLdDocument:
             "@graph": [item.to_dict() for item in self.graph],
         }
 
-    def save(self, path: Path, prettify: bool) -> None:
+    def save(self, path: PathStr, prettify: bool) -> None:
         with open(path, "w", encoding="utf-8") as f:
             if prettify:
                 json.dump(self.to_dict(), f, indent=2)

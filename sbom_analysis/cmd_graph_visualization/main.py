@@ -3,20 +3,19 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from dataclasses import asdict, dataclass
-from itertools import chain
 import json
 import logging
 import os
-import sys
 from pathlib import Path
+import sys
 import gzip
 import re
-from ..module_roots import get_module_roots  # type: ignore # noqa: F401
 
 LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
+from sbom.path_utils import PathStr  # noqa: E402
 from sbom.cmd.cmd_graph import build_cmd_graph_node, CmdGraphNode, CmdGraph, build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
 
 ForceGraphNodeId = str
@@ -45,7 +44,7 @@ class ForceGraph:
 def _to_force_graph(
     cmd_graph: CmdGraph,
     filter_patterns: list[re.Pattern[str]] = [],
-    missing_files: set[Path] = set(),
+    missing_files: set[PathStr] = set(),
 ) -> ForceGraph:
     nodes: list[ForceGraphNode] = []
     links: list[ForceGraphLink] = []
@@ -83,7 +82,7 @@ def _to_force_graph(
 
 
 def _to_sparse_cmd_graph(
-    cmd_graph: CmdGraphNode, include: set[Path], added_before: dict[Path, bool] = {}
+    cmd_graph: CmdGraphNode, include: set[PathStr], added_before: dict[PathStr, bool] = {}
 ) -> CmdGraphNode | None:
     """Returns a thinned out cmd graph where all nodes are removed that contain none of the include files below"""
     if cmd_graph.absolute_path in added_before.keys():
@@ -105,27 +104,28 @@ def _to_sparse_cmd_graph(
 
 def _extend_cmd_graph_with_missing_files(
     cmd_graph: CmdGraph,
-    output_tree: Path,
-    missing_files: set[Path],
-    cmd_patterns_to_check: list[str] = ["*.cmd"],
+    output_tree: PathStr,
+    missing_files: set[PathStr],
 ) -> CmdGraph:
     """
     Extends an existing cmd graph based on all cmd files in the output tree that are not already present in the cmd graph
     A new graph is spanned.
     """
-    cmd_graph_node_cache: dict[Path, CmdGraphNode] = {}
+    cmd_graph_node_cache: dict[PathStr, CmdGraphNode] = {}
     for node in iter_cmd_graph(cmd_graph):
         cmd_graph_node_cache[node.absolute_path] = node
 
     # remove children of original cmd graph roots since those are definitely no missing files
     root_nodes = [CmdGraphNode(root.absolute_path, root.cmd_file) for root in cmd_graph.roots]
 
-    for cmd_file_path in chain.from_iterable(output_tree.rglob(pattern) for pattern in cmd_patterns_to_check):
-        file_path_abs = cmd_file_path.parent / cmd_file_path.name.removeprefix(".").removesuffix(".cmd")
+    for cmd_file_path in [str(p) for p in Path(output_tree).rglob("*.cmd")]:
+        file_path_abs = os.path.join(
+            os.path.dirname(cmd_file_path), os.path.basename(cmd_file_path).removeprefix(".").removesuffix(".cmd")
+        )
         if file_path_abs in cmd_graph_node_cache.keys():
             continue
         potential_new_root = build_cmd_graph_node(
-            root_path=file_path_abs.relative_to(output_tree),
+            root_path=os.path.relpath(file_path_abs, output_tree),
             output_tree=output_tree,
             src_tree=src_tree,
             cache=cmd_graph_node_cache,
@@ -147,13 +147,15 @@ def _extend_cmd_graph_with_missing_files(
 
 
 def _to_missing_files_graph(
-    cmd_graph: CmdGraph, output_tree: Path, script_path: Path, config: str
-) -> tuple[CmdGraph, set[Path]]:
+    cmd_graph: CmdGraph, output_tree: PathStr, script_path: PathStr, config: str
+) -> tuple[CmdGraph, set[PathStr]]:
     with open(
-        script_path / f"../cmd_graph_based_kernel_build/missing_sources/missing_sources_in_cmd_graph.{config}.json",
+        os.path.join(
+            script_path, f"../cmd_graph_based_kernel_build/missing_sources/missing_sources_in_cmd_graph.{config}.json"
+        ),
         "rt",
     ) as f:
-        missing_files: set[Path] = set(src_tree / path for path in json.load(f))
+        missing_files: set[PathStr] = set(os.path.join(src_tree, path) for path in json.load(f))  # type: ignore
 
     logging.info("Extend Graph based on missing files")
     cmd_graph_with_missing_files = _extend_cmd_graph_with_missing_files(cmd_graph, output_tree, missing_files)
@@ -164,11 +166,10 @@ def _to_missing_files_graph(
         for node in iter_cmd_graph(cmd_graph_with_missing_files)
         if node.absolute_path in missing_files
     }
-    # print("missing files: ", ",\n".join([str(f) for f in found_files]))
     logging.info(f"Found {len(found_files)} of {len(missing_files)} missing files")
     if len(found_files) < len(missing_files):
         remaining_missing_files = sorted([str(f) for f in missing_files if f not in found_files])
-        remaining_missing_files_path = script_path / "remaining_missing_files.json"
+        remaining_missing_files_path = os.path.join(script_path, "remaining_missing_files.json")
         with open(remaining_missing_files_path, "wt") as f:
             json.dump(remaining_missing_files, f, indent=2)
         logging.info(f"Saved remaining missing files in {remaining_missing_files_path}")
@@ -188,21 +189,20 @@ if __name__ == "__main__":
     """
     cmd_graph_visualization.py <src_tree> <output_tree>
     """
-    script_path = Path(__file__).parent
+    script_path = os.path.dirname(__file__)
     src_tree = (
-        Path(sys.argv[1]).resolve()
+        os.path.normpath(sys.argv[1])
         if len(sys.argv) >= 2 and sys.argv[1]
-        else (script_path / "../../../linux").resolve()
+        else os.path.normpath(os.path.join(script_path, "../../../linux"))
     )
     output_tree = (
-        Path(sys.argv[1]).resolve() if len(sys.argv) >= 3 and sys.argv[2] else (src_tree / "kernel_build").resolve()
+        os.path.normpath(sys.argv[1]) if len(sys.argv) >= 3 and sys.argv[2] else os.path.join(src_tree, "kernel_build")
     )
     os.environ["SRCARCH"] = "x86"
     root_paths = [
-        Path("arch/x86/boot/bzImage"),
-        # *get_module_roots(Path("modules.order")), # uncomment when modules should be added to the graph
+        "arch/x86/boot/bzImage",
     ]
-    cmd_graph_path = (script_path / "../cmd_graph.pickle").resolve()
+    cmd_graph_path = os.path.normpath(os.path.join(script_path, "../cmd_graph.pickle"))
 
     # missing file graph options
     visualize_missing_files = True
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     cmd_graph = build_or_load_cmd_graph(root_paths, output_tree, src_tree, cmd_graph_path)
 
     # Extend cmd graph with missing files
-    missing_files: set[Path] = set()
+    missing_files: set[PathStr] = set()
     if visualize_missing_files:
         cmd_graph, missing_files = _to_missing_files_graph(cmd_graph, output_tree, script_path, config)
 
@@ -231,8 +231,8 @@ if __name__ == "__main__":
 
     # Save json data
     data_dict = asdict(force_graph)
-    cmd_graph_json_path = (
-        script_path / "web" / ("cmd_graph" if not visualize_missing_files else "missing_files_graph") / "cmd_graph.json"
+    cmd_graph_json_path = os.path.join(
+        script_path, "web", ("cmd_graph" if not visualize_missing_files else "missing_files_graph"), "cmd_graph.json"
     )
     if len(data_dict) < 100000:
         with open(cmd_graph_json_path, "wt") as f:

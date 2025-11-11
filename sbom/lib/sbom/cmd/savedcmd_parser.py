@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-from pathlib import Path
 import re
 import shlex
 from dataclasses import dataclass
 from typing import Callable, Optional, Union
 import sbom.errors as sbom_errors
+from sbom.path_utils import PathStr
 
 
 class CmdParsingError(Exception):
@@ -96,21 +96,21 @@ def _tokenize_single_command_positionals_only(command: str) -> list[str]:
     return positionals
 
 
-def _parse_dd_command(command: str) -> list[Path]:
+def _parse_dd_command(command: str) -> list[PathStr]:
     match = re.match(r"dd.*?if=(\S+)", command)
     if match:
-        return [Path(match.group(1))]
+        return [match.group(1)]
     return []
 
 
-def _parse_cat_command(command: str) -> list[Path]:
+def _parse_cat_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["cat", input1, input2, ...]
-    return [Path(p) for p in positionals[1:]]
+    return [p for p in positionals[1:]]
 
 
-def _parse_compound_command(command: str) -> list[Path]:
-    compound_command_parsers: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
+def _parse_compound_command(command: str) -> list[PathStr]:
+    compound_command_parsers: list[tuple[re.Pattern[str], Callable[[str], list[PathStr]]]] = [
         (re.compile(r"dd\b"), _parse_dd_command),
         (re.compile(r"cat.*?\|"), lambda c: _parse_cat_command(c.split("|")[0])),
         (re.compile(r"cat\b[^|>]*$"), _parse_cat_command),
@@ -120,7 +120,7 @@ def _parse_compound_command(command: str) -> list[Path]:
         (re.compile(r"sed\b"), _parse_sed_command),
         (
             re.compile(r"(.*/)scripts/bin2c\s*<"),
-            lambda c: [Path(input)] if (input := c.split("<")[1].strip()) != "/dev/null" else [],
+            lambda c: [input] if (input := c.split("<")[1].strip()) != "/dev/null" else [],
         ),
         (re.compile(r"^:$"), _parse_noop),
     ]
@@ -128,7 +128,7 @@ def _parse_compound_command(command: str) -> list[Path]:
     match = re.match(r"\s*[\(\{](.*)[\)\}]\s*>", command, re.DOTALL)
     if match is None:
         raise CmdParsingError("No inner commands found for compound command")
-    input_files: list[Path] = []
+    input_files: list[PathStr] = []
     inner_commands = _split_commands(match.group(1))
     for inner_command in inner_commands:
         if isinstance(inner_command, IfBlock):
@@ -152,7 +152,7 @@ def _parse_compound_command(command: str) -> list[Path]:
     return input_files
 
 
-def _parse_objcopy_command(command: str) -> list[Path]:
+def _parse_objcopy_command(command: str) -> list[PathStr]:
     command_parts = _tokenize_single_command(command, flag_options=["-S", "-w"])
     positionals = [part.value for part in command_parts if isinstance(part, Positional)]
     # expect positionals to be ['objcopy', input_file] or ['objcopy', input_file, output_file]
@@ -160,18 +160,18 @@ def _parse_objcopy_command(command: str) -> list[Path]:
         raise CmdParsingError(
             f"Invalid objcopy command format: expected 2 or 3 positional arguments, got {len(positionals)} ({positionals})"
         )
-    return [Path(positionals[1])]
+    return [positionals[1]]
 
 
-def _parse_link_vmlinux_command(command: str) -> list[Path]:
+def _parse_link_vmlinux_command(command: str) -> list[PathStr]:
     """
     For simplicity we do not parse the `scripts/link-vmlinux.sh` script.
     Instead the `vmlinux.a` dependency is just hardcoded for now.
     """
-    return [Path("vmlinux.a")]
+    return ["vmlinux.a"]
 
 
-def _parse_noop(command: str) -> list[Path]:
+def _parse_noop(command: str) -> list[PathStr]:
     """
     No-op parser for commands with no input files (e.g., 'rm', 'true').
     Returns an empty list.
@@ -179,7 +179,7 @@ def _parse_noop(command: str) -> list[Path]:
     return []
 
 
-def _parse_ar_command(command: str) -> list[Path]:
+def _parse_ar_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ['ar', flags, output, input1, input2, ...]
     flags = positionals[1]
@@ -187,82 +187,82 @@ def _parse_ar_command(command: str) -> list[Path]:
         # 'r' option indicates that new files are added to the archive.
         # If this option is missing we won't find any relevant input files.
         return []
-    return [Path(p) for p in positionals[3:]]
+    return positionals[3:]
 
 
-def _parse_ar_piped_xargs_command(command: str) -> list[Path]:
+def _parse_ar_piped_xargs_command(command: str) -> list[PathStr]:
     printf_command, _ = command.split("|", 1)
     positionals = _tokenize_single_command_positionals_only(printf_command.strip())
     # expect positionals to be ['printf', '{prefix_path}%s ', input1, input2, ...]
-    return [Path(p) for p in positionals[2:]]
+    return positionals[2:]
 
 
-def _parse_gcc_or_clang_command(command: str) -> list[Path]:
+def _parse_gcc_or_clang_command(command: str) -> list[PathStr]:
     parts = shlex.split(command)
     # compile mode: expect last positional argument ending in `.c` or `.S` to be the input file
     for part in reversed(parts):
-        if not part.startswith("-") and Path(part).suffix in [".c", ".S"]:
-            return [Path(part)]
+        if not part.startswith("-") and any(part.endswith(suffix) for suffix in [".c", ".S"]):
+            return [part]
 
     # linking mode: expect all .o files to be the inputs
-    return [Path(p) for p in parts if p.endswith(".o")]
+    return [p for p in parts if p.endswith(".o")]
 
 
-def _parse_rustc_command(command: str) -> list[Path]:
+def _parse_rustc_command(command: str) -> list[PathStr]:
     parts = shlex.split(command)
     # expect last positional argument ending in `.rs` to be the input file
     for part in reversed(parts):
-        if not part.startswith("-") and Path(part).suffix == ".rs":
-            return [Path(part)]
+        if not part.startswith("-") and part.endswith(".rs"):
+            return [part]
     raise CmdParsingError("Could not find .rs input source file")
 
 
-def _parse_syscallhdr_command(command: str) -> list[Path]:
+def _parse_syscallhdr_command(command: str) -> list[PathStr]:
     command_parts = _tokenize_single_command(command.strip(), flag_options=["--emit-nr"])
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["sh", path/to/syscallhdr.sh, input, output]
-    return [Path(positionals[2])]
+    return [positionals[2]]
 
 
-def _parse_syscalltbl_command(command: str) -> list[Path]:
+def _parse_syscalltbl_command(command: str) -> list[PathStr]:
     command_parts = _tokenize_single_command(command.strip())
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["sh", path/to/syscalltbl.sh, input, output]
-    return [Path(positionals[2])]
+    return [positionals[2]]
 
 
-def _parse_mkcapflags_command(command: str) -> list[Path]:
+def _parse_mkcapflags_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["sh", path/to/mkcapflags.sh, output, input1, input2]
-    return [Path(positionals[3]), Path(positionals[4])]
+    return [positionals[3], positionals[4]]
 
 
-def _parse_orc_hash_command(command: str) -> list[Path]:
+def _parse_orc_hash_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["sh", path/to/orc_hash.sh, '<', input, '>', output]
-    return [Path(positionals[3])]
+    return [positionals[3]]
 
 
-def _parse_xen_hypercalls_command(command: str) -> list[Path]:
+def _parse_xen_hypercalls_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["sh", path/to/xen-hypercalls.sh, output, input1, input2, ...]
-    return [Path(p) for p in positionals[3:]]
+    return positionals[3:]
 
 
-def _parse_gen_initramfs_command(command: str) -> list[Path]:
+def _parse_gen_initramfs_command(command: str) -> list[PathStr]:
     command_parts = _tokenize_single_command(command)
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["sh", path/to/gen_initramfs.sh, input1, input2, ...]
-    return [Path(p) for p in positionals[2:]]
+    return positionals[2:]
 
 
-def _parse_vdso2c_command(command: str) -> list[Path]:
+def _parse_vdso2c_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ['vdso2c', raw_input, stripped_input, output]
-    return [Path(positionals[1]), Path(positionals[2])]
+    return [positionals[1], positionals[2]]
 
 
-def _parse_ld_command(command: str) -> list[Path]:
+def _parse_ld_command(command: str) -> list[PathStr]:
     command_parts = _tokenize_single_command(
         command=command.strip(),
         flag_options=[
@@ -283,19 +283,19 @@ def _parse_ld_command(command: str) -> list[Path]:
     )
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["ld", input1, input2, ...]
-    return [Path(p) for p in positionals[1:]]
+    return positionals[1:]
 
 
-def _parse_sed_command(command: str) -> list[Path]:
+def _parse_sed_command(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     # expect command parts to be ["sed", *, input]
     input = command_parts[-1]
     if input == "/dev/null":
         return []
-    return [Path(input)]
+    return [input]
 
 
-def _parse_nm_piped_command(command: str) -> list[Path]:
+def _parse_nm_piped_command(command: str) -> list[PathStr]:
     nm_command, _ = command.split("|", 1)
     command_parts = _tokenize_single_command(
         command=nm_command.strip(),
@@ -303,36 +303,36 @@ def _parse_nm_piped_command(command: str) -> list[Path]:
     )
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["nm", input1, input2, ...]
-    return [Path(p) for p in positionals[1:]]
+    return [p for p in positionals[1:]]
 
 
-def _parse_pnm_to_logo_command(command: str) -> list[Path]:
+def _parse_pnm_to_logo_command(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     # expect command parts to be ["pnmtologo", <options>, input]
-    return [Path(command_parts[-1])]
+    return [command_parts[-1]]
 
 
-def _parse_perl_command(command: str) -> list[Path]:
+def _parse_perl_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command.strip())
     # expect positionals to be ["perl", input]
-    return [Path(positionals[1])]
+    return [positionals[1]]
 
 
-def _parse_strip_command(command: str) -> list[Path]:
+def _parse_strip_command(command: str) -> list[PathStr]:
     command_parts = _tokenize_single_command(command, flag_options=["--strip-debug"])
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["strip", input1, input2, ...]
-    return [Path(p) for p in positionals[1:]]
+    return positionals[1:]
 
 
-def _parse_mkpiggy_command(command: str) -> list[Path]:
+def _parse_mkpiggy_command(command: str) -> list[PathStr]:
     mkpiggy_command, _ = command.split(">", 1)
     positionals = _tokenize_single_command_positionals_only(mkpiggy_command)
     # expect positionals to be ["mkpiggy", input]
-    return [Path(positionals[1])]
+    return [positionals[1]]
 
 
-def _parse_relocs_command(command: str) -> list[Path]:
+def _parse_relocs_command(command: str) -> list[PathStr]:
     if ">" not in command:
         # Only consider relocs commands that redirect output to a file.
         # If there's no redirection, we assume it produces no output file and therefore has no input we care about.
@@ -340,71 +340,71 @@ def _parse_relocs_command(command: str) -> list[Path]:
     relocs_command, _ = command.split(">", 1)
     command_parts = shlex.split(relocs_command)
     # expect command_parts to be ["relocs", options, input]
-    return [Path(command_parts[-1])]
+    return [command_parts[-1]]
 
 
-def _parse_mk_elfconfig_command(command: str) -> list[Path]:
+def _parse_mk_elfconfig_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["mk_elfconfig", "<", input, ">", output]
-    return [Path(positionals[2])]
+    return [positionals[2]]
 
 
-def _parse_flex_command(command: str) -> list[Path]:
+def _parse_flex_command(command: str) -> list[PathStr]:
     parts = shlex.split(command)
     # expect last positional argument ending in `.l` to be the input file
     for part in reversed(parts):
-        if not part.startswith("-") and Path(part).suffix in [".l"]:
-            return [Path(part)]
+        if not part.startswith("-") and part.endswith(".l"):
+            return [part]
     raise CmdParsingError("Could not find .l input source file in command")
 
 
-def _parse_bison_command(command: str) -> list[Path]:
+def _parse_bison_command(command: str) -> list[PathStr]:
     parts = shlex.split(command)
     # expect last positional argument ending in `.y` to be the input file
     for part in reversed(parts):
-        if not part.startswith("-") and Path(part).suffix in [".y"]:
-            return [Path(part)]
+        if not part.startswith("-") and part.endswith(".y"):
+            return [part]
     raise CmdParsingError("Could not find input .y input source file in command")
 
 
-def _parse_tools_build_command(command: str) -> list[Path]:
+def _parse_tools_build_command(command: str) -> list[PathStr]:
     positionals = _tokenize_single_command_positionals_only(command)
     # expect positionals to be ["tools/build", "input1", "input2", "input3", "output"]
-    return [Path(p) for p in positionals[1:-1]]
+    return positionals[1:-1]
 
 
-def _parse_extract_cert_command(command: str) -> list[Path]:
+def _parse_extract_cert_command(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     # expect command parts to be [path/to/extract-cert, input, output]
     input = command_parts[1]
     if not input:
         return []
-    return [Path(input)]
+    return [input]
 
 
-def _parse_dtc_command(command: str) -> list[Path]:
+def _parse_dtc_command(command: str) -> list[PathStr]:
     wno_flags = [command_part for command_part in shlex.split(command) if command_part.startswith("-Wno-")]
     command_parts = _tokenize_single_command(command, flag_options=wno_flags)
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be [path/to/dtc, input]
-    return [Path(positionals[1])]
+    return [positionals[1]]
 
 
-def _parse_bindgen_command(command: str) -> list[Path]:
+def _parse_bindgen_command(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     header_file_input_paths = [part for part in command_parts if part.endswith(".h")]
-    return [Path(p) for p in header_file_input_paths]
+    return header_file_input_paths
 
 
-def _parse_gen_header(command: str) -> list[Path]:
+def _parse_gen_header(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     # expect command parts to be ["python3", path/to/gen_headers.py, ..., "--xml", input]
     i = next(i for i, token in enumerate(command_parts) if token == "--xml")
-    return [Path(command_parts[i + 1])]
+    return [command_parts[i + 1]]
 
 
 # Command parser registry
-SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]] = [
+SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr]]]] = [
     # Compound commands
     (re.compile(r"\(.*?\)\s*>", re.DOTALL), _parse_compound_command),
     (re.compile(r"\{.*?\}\s*>", re.DOTALL), _parse_compound_command),
@@ -416,7 +416,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^printf\b.*\| xargs (llvm-)?ar\b"), _parse_ar_piped_xargs_command),
     (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
     (re.compile(r"^sed\b"), _parse_noop),
-    (re.compile(r"^awk.*?<.*?>"), lambda c: [Path(c.split("<")[1].split(">")[0].strip())]),
+    (re.compile(r"^awk.*?<.*?>"), lambda c: [c.split("<")[1].split(">")[0]]),
     (re.compile(r"^(/bin/)?true\b"), _parse_noop),
     (re.compile(r"^(/bin/)?false\b"), _parse_noop),
     (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
@@ -450,7 +450,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[Path]]]
     (re.compile(r"^(.*/)?certs/extract-cert"), _parse_extract_cert_command),
     (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
     (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
-    (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [Path(c.split(" ")[1].strip())]),
+    (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [c.split(" ")[1]]),
     (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
     (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
     (re.compile(r"^(.*/)polgen\b"), _parse_noop),
@@ -567,14 +567,14 @@ def _split_commands(commands: str) -> list[str | IfBlock]:
     return single_commands
 
 
-def parse_commands(commands: str) -> list[Path]:
+def parse_commands(commands: str) -> list[PathStr]:
     """
     Parses a collection of command line commands and returns the combined input files required for these commands.
 
     Returns:
         input_files (list[str]): Input files of the commands.
     """
-    input_files: list[Path] = []
+    input_files: list[PathStr] = []
     for single_command in _split_commands(commands):
         if isinstance(single_command, IfBlock):
             inputs = parse_commands(single_command.then_statement)
@@ -595,4 +595,5 @@ def parse_commands(commands: str) -> list[Path]:
             input_files.extend(inputs)
         except CmdParsingError as e:
             sbom_errors.log(f"Skip parsing command {single_command} because of command parsing error: {e.message}")
-    return input_files
+
+    return [input.strip().rstrip("/") for input in input_files]

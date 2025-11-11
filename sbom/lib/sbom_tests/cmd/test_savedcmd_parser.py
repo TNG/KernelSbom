@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-from pathlib import Path
 import unittest
 
 from sbom.cmd.savedcmd_parser import parse_commands
@@ -12,7 +11,7 @@ class TestSavedCmdParser(unittest.TestCase):
     def _assert_parsing(self, cmd: str, expected: str) -> None:
         sbom_errors.clear()
         parsed = parse_commands(cmd)
-        target = [] if expected == "" else [Path(p) for p in expected.split(" ")]
+        target = [] if expected == "" else expected.split(" ")
         self.assertEqual(parsed, target)
         errors = sbom_errors.get()
         self.assertEqual(errors, [])
