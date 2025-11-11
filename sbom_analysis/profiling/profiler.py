@@ -11,7 +11,7 @@ LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-from sbom.cmd.cmd_graph import build_cmd_graph  # noqa: E402
+from sbom.cmd_graph.cmd_graph import build_cmd_graph  # noqa: E402
 
 
 root_paths = ["arch/x86/boot/bzImage"]

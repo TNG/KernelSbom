@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
 from build_kernel import build_kernel  # noqa: E402
 from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
-from sbom.cmd.cmd_graph import build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
+from sbom.cmd_graph.cmd_graph import build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
 
 
 def _remove_files(base_path: PathStr, patterns_to_remove: list[re.Pattern[str]], ignore: set[PathStr]) -> list[PathStr]:
