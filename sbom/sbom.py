@@ -12,18 +12,17 @@ from dataclasses import dataclass
 import logging
 import os
 import sys
+import time
 
 LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
-from sbom.spdx.spdxId import set_spdx_uri_prefix  # noqa: E402
-from sbom.spdx_graph.spdx_graph import build_spdx_graph  # noqa: E402
-from sbom.spdx.serialization import JsonLdDocument  # noqa: E402
-from sbom.cmd_graph.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
-import time  # noqa: E402
 import sbom.errors as sbom_errors  # noqa: E402
+from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
+from sbom.spdx import JsonLdDocument, set_spdx_uri_prefix  # noqa: E402
+from sbom.spdx_graph import build_spdx_graph  # noqa: E402
+from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
 
 
 @dataclass
