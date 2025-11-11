@@ -12,12 +12,12 @@ from dataclasses import dataclass
 import logging
 import os
 import sys
-from pathlib import Path
 
 LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
+from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
 from sbom.spdx.spdxId import set_spdx_uri_prefix  # noqa: E402
 from sbom.spdx_graph import build_spdx_graph  # noqa: E402
 from sbom.spdx.serialization import JsonLdDocument  # noqa: E402
@@ -28,12 +28,12 @@ import sbom.errors as sbom_errors  # noqa: E402
 
 @dataclass
 class Args:
-    src_tree: Path
-    output_tree: Path
-    root_paths: list[Path]
-    spdx: Path | None
+    src_tree: PathStr
+    output_tree: PathStr
+    root_paths: list[PathStr]
+    spdx: PathStr | None
     prettify_json: bool
-    used_files: Path | None
+    used_files: PathStr | None
     spdx_uri_prefix: str
     package_name: str
     package_license: str
@@ -106,16 +106,16 @@ def _parse_args() -> Args:
 
     # Extract arguments
     args = vars(parser.parse_args())
-    src_tree = Path(os.path.realpath(args["src_tree"]))
-    output_tree = Path(os.path.realpath(args["output_tree"]))
+    src_tree = os.path.realpath(args["src_tree"])
+    output_tree = os.path.realpath(args["output_tree"])
     root_paths = []
     if args["roots"]:
-        root_paths = [Path(root) for root in args["roots"]]
+        root_paths = args["roots"]
     elif args["roots_file"]:
         with open(args["roots_file"], "rt") as f:
-            root_paths = [Path(root.strip()) for root in f.readlines()]
-    spdx = Path(args["spdx"]) if args["spdx"] != "none" else None
-    used_files = Path(args["used_files"]) if args["used_files"] != "none" else None
+            root_paths = [root.strip() for root in f.readlines()]
+    spdx = args["spdx"] if args["spdx"] != "none" else None
+    used_files = args["used_files"] if args["used_files"] != "none" else None
     spdx_uri_prefix = args["spdx_uri_prefix"]
     package_name = args["package_name"]
     package_license = args["package_license"]
@@ -124,13 +124,13 @@ def _parse_args() -> Args:
     debug = args["debug"]
 
     # Validate arguments
-    if not src_tree.exists():
-        raise argparse.ArgumentTypeError(f"--src-tree {str(src_tree)} does not exist")
-    if not output_tree.exists():
-        raise argparse.ArgumentTypeError(f"--output-tree {str(output_tree)} does not exist")
+    if not os.path.exists(src_tree):
+        raise argparse.ArgumentTypeError(f"--src-tree {src_tree} does not exist")
+    if not os.path.exists(output_tree):
+        raise argparse.ArgumentTypeError(f"--output-tree {output_tree} does not exist")
     for root_path in root_paths:
-        if not (output_tree / root_path).exists():
-            raise argparse.ArgumentTypeError(f"path to root artifact {str(output_tree / root_path)} does not exist")
+        if not os.path.exists(os.path.join(output_tree, root_path)):
+            raise argparse.ArgumentTypeError(f"path to root artifact {output_tree / root_path} does not exist")
 
     return Args(
         src_tree,
@@ -172,7 +172,7 @@ def main():
             used_files = [
                 os.path.relpath(node.absolute_path, args.src_tree)
                 for node in iter_cmd_graph(cmd_graph)
-                if not node.absolute_path.is_relative_to(args.output_tree)
+                if not is_relative_to(node.absolute_path, args.output_tree)
             ]
             logging.info(f"Found {len(used_files)} source files in cmd graph")
         with open(args.used_files, "w", encoding="utf-8") as f:
@@ -188,8 +188,8 @@ def main():
     set_spdx_uri_prefix(args.spdx_uri_prefix)
     spdx_graph = build_spdx_graph(
         cmd_graph,
-        args.output_tree,
-        args.src_tree,
+        str(args.output_tree),
+        str(args.src_tree),
         args.spdx_uri_prefix,
         args.package_name,
         args.package_license,

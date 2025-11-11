@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-from pathlib import Path
 import os
 from typing import Callable
 import sbom.errors as sbom_errors
+from sbom.path_utils import PathStr, is_relative_to
 
 HARDCODED_DEPENDENCIES: dict[str, list[str]] = {
     # defined in linux/Kbuild
@@ -15,7 +15,7 @@ HARDCODED_DEPENDENCIES: dict[str, list[str]] = {
 }
 
 
-def get_hardcoded_dependencies(path: Path, output_tree: Path, src_tree: Path) -> list[Path]:
+def get_hardcoded_dependencies(path: PathStr, output_tree: PathStr, src_tree: PathStr) -> list[PathStr]:
     """
     Some files in the Linux kernel build process are not tracked by the .cmd dependency mechanism.
     This function provides a temporary workaround by manually specifying known missing dependencies required to correctly model the build graph.
@@ -29,10 +29,10 @@ def get_hardcoded_dependencies(path: Path, output_tree: Path, src_tree: Path) ->
         list[Path]: A list of dependency file paths (relative to the output tree) required to build the file at the given path.
     """
     key: str | None = None
-    if path.is_relative_to(output_tree):
-        key = str(path.relative_to(output_tree))
-    elif path.is_relative_to(src_tree):
-        key = str(path.relative_to(src_tree))
+    if is_relative_to(path, output_tree):
+        key = os.path.relpath(path, output_tree)
+    elif is_relative_to(path, src_tree):
+        key = os.path.relpath(path, src_tree)
 
     if key is None or key not in HARDCODED_DEPENDENCIES:
         return []
@@ -41,15 +41,15 @@ def get_hardcoded_dependencies(path: Path, output_tree: Path, src_tree: Path) ->
         "arch": lambda: _get_arch(path),
     }
 
-    dependencies: list[Path] = []
+    dependencies: list[PathStr] = []
     for template in HARDCODED_DEPENDENCIES[key]:
         dependency = _evaluate_template(template, template_variables)
         if dependency is None:
             continue
-        if (output_tree / dependency).exists():
-            dependencies.append(Path(dependency))
-        elif (src_tree / dependency).exists():
-            dependencies.append(Path(os.path.relpath(dependency, output_tree)))
+        if os.path.exists(os.path.join(output_tree, dependency)):
+            dependencies.append(dependency)
+        elif os.path.exists(os.path.join(src_tree, dependency)):
+            dependencies.append(os.path.relpath(dependency, output_tree))
         else:
             sbom_errors.log(
                 f"Skip hardcoded dependency '{dependency}' for '{path}' because the dependency lies neither in the src tree nor the output tree."
@@ -69,7 +69,7 @@ def _evaluate_template(template: str, variables: dict[str, Callable[[], str | No
     return template
 
 
-def _get_arch(path: Path):
+def _get_arch(path: PathStr):
     srcarch = os.environ.get("SRCARCH")
     if srcarch is None:
         sbom_errors.log(

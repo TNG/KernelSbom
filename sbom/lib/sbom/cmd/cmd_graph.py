@@ -4,7 +4,6 @@
 
 import logging
 import os
-from pathlib import Path
 from dataclasses import dataclass, field
 import pickle
 from typing import Iterator
@@ -14,12 +13,13 @@ from sbom.cmd.savedcmd_parser import parse_commands
 from sbom.cmd.incbin_parser import parse_incbin
 from sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
 import sbom.errors as sbom_errors
+from sbom.path_utils import PathStr, is_relative_to
 from .hardcoded_dependencies import get_hardcoded_dependencies
 
 
 @dataclass
 class CmdGraphNode:
-    absolute_path: Path
+    absolute_path: PathStr
     cmd_file: CmdFile | None = None
     children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
@@ -29,20 +29,20 @@ class CmdGraph:
     roots: list[CmdGraphNode] = field(default_factory=list[CmdGraphNode])
 
 
-def build_cmd_graph(root_paths: list[Path], output_tree: Path, src_tree: Path, log_depth: int = 0) -> CmdGraph:
-    node_cache: dict[Path, CmdGraphNode] = {}
+def build_cmd_graph(root_paths: list[PathStr], output_tree: PathStr, src_tree: PathStr, log_depth: int = 0) -> CmdGraph:
+    node_cache: dict[PathStr, CmdGraphNode] = {}
     root_nodes = [
-        build_cmd_graph_node(root_path, output_tree, src_tree, node_cache, log_depth=log_depth)
+        build_cmd_graph_node(str(root_path), str(output_tree), str(src_tree), node_cache, log_depth=log_depth)
         for root_path in root_paths
     ]
     return CmdGraph(root_nodes)
 
 
 def build_cmd_graph_node(
-    root_path: Path,
-    output_tree: Path,
-    src_tree: Path,
-    cache: dict[Path, CmdGraphNode] | None = None,
+    root_path: PathStr,
+    output_tree: PathStr,
+    src_tree: PathStr,
+    cache: dict[PathStr, CmdGraphNode] | None = None,
     depth: int = 0,
     log_depth: int = 0,
 ) -> CmdGraphNode:
@@ -64,7 +64,7 @@ def build_cmd_graph_node(
     if cache is None:
         cache = {}
 
-    root_path_absolute = Path(os.path.normpath(output_tree / root_path))
+    root_path_absolute = os.path.normpath(os.path.join(output_tree, root_path))
     if root_path_absolute in cache.keys():
         if depth <= log_depth:
             logging.info(f"Reuse Node: {'  ' * depth}{root_path}")
@@ -73,12 +73,12 @@ def build_cmd_graph_node(
     if depth <= log_depth:
         logging.info(f"Build Node: {'  ' * depth}{root_path}")
     cmd_path = _to_cmd_path(root_path_absolute)
-    cmd_file = parse_cmd_file(cmd_path) if cmd_path.exists() else None
+    cmd_file = parse_cmd_file(cmd_path) if os.path.exists(cmd_path) else None
     node = CmdGraphNode(root_path_absolute, cmd_file)
     cache[root_path_absolute] = node
 
-    if not root_path_absolute.exists():
-        if root_path_absolute.is_relative_to(output_tree) or root_path_absolute.is_relative_to(src_tree):
+    if not os.path.exists(root_path_absolute):
+        if is_relative_to(root_path_absolute, output_tree) or is_relative_to(root_path_absolute, src_tree):
             sbom_errors.log(f"Skip parsing '{root_path_absolute}' because file does not exist")
         else:
             logging.warning(f"Skip parsing {root_path_absolute} because file does not exist")
@@ -88,7 +88,7 @@ def build_cmd_graph_node(
     child_paths = get_hardcoded_dependencies(root_path_absolute, output_tree, src_tree)
     if cmd_file is not None:
         child_paths += _parse_cmd_file(cmd_file, output_tree, src_tree, root_path)
-    if node.absolute_path.suffix == ".S":
+    if node.absolute_path.endswith(".S"):
         child_paths += _parse_incbin(node.absolute_path, output_tree, src_tree, root_path)
 
     # Create child nodes
@@ -99,17 +99,19 @@ def build_cmd_graph_node(
     return node
 
 
-def _parse_cmd_file(cmd_file: CmdFile, output_tree: Path, src_tree: Path, root_artifact: Path) -> list[Path]:
-    input_files = parse_commands(cmd_file.savedcmd)
+def _parse_cmd_file(
+    cmd_file: CmdFile, output_tree: PathStr, src_tree: PathStr, root_artifact: PathStr
+) -> list[PathStr]:
+    input_files: list[PathStr] = [str(p) for p in parse_commands(cmd_file.savedcmd)]
     if cmd_file.deps:
-        input_files += parse_deps(cmd_file.deps)
+        input_files += [str(p) for p in parse_deps(cmd_file.deps)]
     input_files = _expand_resolve_files(input_files, output_tree)
 
-    child_paths: list[Path] = []
-    working_directory: Path | None = None
+    child_paths: list[PathStr] = []
+    working_directory: PathStr | None = None
     for input_file in input_files:
         if os.path.isabs(input_file):
-            child_paths.append(Path(os.path.relpath(input_file, output_tree)))
+            child_paths.append(os.path.relpath(input_file, output_tree))
             continue
 
         if working_directory is None:
@@ -122,7 +124,7 @@ def _parse_cmd_file(cmd_file: CmdFile, output_tree: Path, src_tree: Path, root_a
                 )
                 return []
 
-        child_paths.append(Path(os.path.normpath(working_directory / input_file)))
+        child_paths.append(os.path.normpath(os.path.join(working_directory, input_file)))
 
     # Remove root output from the input_files to prevent cycles.
     # Some multi stage commands create an output and pass it as input to the next command, e.g., objcopy.
@@ -130,7 +132,9 @@ def _parse_cmd_file(cmd_file: CmdFile, output_tree: Path, src_tree: Path, root_a
     return child_paths
 
 
-def _parse_incbin(assembly_path: Path, output_tree: Path, src_tree: Path, root_output_in_tree: Path) -> list[Path]:
+def _parse_incbin(
+    assembly_path: PathStr, output_tree: PathStr, src_tree: PathStr, root_output_in_tree: PathStr
+) -> list[PathStr]:
     incbin_paths = parse_incbin(assembly_path)
     if len(incbin_paths) == 0:
         return []
@@ -140,11 +144,11 @@ def _parse_incbin(assembly_path: Path, output_tree: Path, src_tree: Path, root_o
             f"Skip children of node {root_output_in_tree} because no working directory for {incbin_paths[0]} could be found"
         )
         return []
-    return [Path(os.path.normpath(working_directory / incbin_path)) for incbin_path in incbin_paths]
+    return [os.path.normpath(os.path.join(working_directory, incbin_path)) for incbin_path in incbin_paths]
 
 
 def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]:
-    visited: set[Path] = set()
+    visited: set[PathStr] = set()
     node_stack: list[CmdGraphNode] = cmd_graph.roots.copy() if isinstance(cmd_graph, CmdGraph) else [cmd_graph]
     while len(node_stack) > 0:
         node = node_stack.pop(0)
@@ -156,20 +160,20 @@ def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]
         yield node
 
 
-def save_cmd_graph(node: CmdGraph, path: Path) -> None:
+def save_cmd_graph(node: CmdGraph, path: PathStr) -> None:
     with open(path, "wb") as f:
         pickle.dump(node, f)
 
 
-def load_cmd_graph(path: Path) -> CmdGraph:
+def load_cmd_graph(path: PathStr) -> CmdGraph:
     with open(path, "rb") as f:
         return pickle.load(f)
 
 
 def build_or_load_cmd_graph(
-    root_paths: list[Path], output_tree: Path, src_tree: Path, cmd_graph_path: Path
+    root_paths: list[PathStr], output_tree: PathStr, src_tree: PathStr, cmd_graph_path: PathStr
 ) -> CmdGraph:
-    if cmd_graph_path.exists():
+    if os.path.exists(cmd_graph_path):
         logging.info("Load cmd graph")
         cmd_graph = load_cmd_graph(cmd_graph_path)
     else:
@@ -179,43 +183,46 @@ def build_or_load_cmd_graph(
     return cmd_graph
 
 
-def _to_cmd_path(path: Path) -> Path:
-    return path.parent / f".{path.name}.cmd"
+def _to_cmd_path(path: PathStr) -> PathStr:
+    name = os.path.basename(path)
+    return path.removesuffix(name) + f".{name}.cmd"
 
 
-def _get_working_directory(input_file: Path, output_tree: Path, src_tree: Path, root_artifact: Path) -> Path | None:
+def _get_working_directory(
+    input_file: PathStr, output_tree: PathStr, src_tree: PathStr, root_artifact: PathStr
+) -> PathStr | None:
     """
     Input paths in .cmd files are often relative paths but it is unclear to which original working directory these paths are relative to.
     This function heuristically estimates the working directory for a given input_file and returns the working directory relative to the output tree.
     """
 
-    relative_to_cmd_file = (output_tree / root_artifact.parent / input_file).exists()
-    relative_to_output_tree = (output_tree / input_file).exists()
-    relative_to_tools_objtool = str(root_artifact).startswith("tools/objtool/arch/x86")
-    relative_to_tools_lib_subcmd = str(root_artifact).startswith("tools/objtool/libsubcmd")
+    relative_to_cmd_file = os.path.exists(os.path.join(output_tree, os.path.dirname(root_artifact), input_file))
+    relative_to_output_tree = os.path.exists(os.path.join(output_tree, input_file))
+    relative_to_tools_objtool = root_artifact.startswith("tools/objtool/arch/x86")
+    relative_to_tools_lib_subcmd = root_artifact.startswith("tools/objtool/libsubcmd")
 
     if relative_to_cmd_file:
-        return root_artifact.parent
+        return os.path.dirname(root_artifact)
     elif relative_to_output_tree:
-        return Path(".")
+        return "."
     elif relative_to_tools_objtool:
         # Input path relative to `tools/objtool` (e.g., `tools/objtool/arch/x86/special.o` has input `arch/x86/special.c`)
-        return Path(os.path.relpath(src_tree, output_tree)) / "tools/objtool"
+        return os.path.join(os.path.relpath(src_tree, output_tree), "tools/objtool")
     elif relative_to_tools_lib_subcmd:
         # Input path relative to `tools/lib/subcmd` (e.g., `tools/objtool/libsubcmd/.sigchain.o` has input `subcmd-util.h` which lives in `tools/lib/subcmd/subcmd-util.h`)
-        return Path(os.path.relpath(src_tree, output_tree)) / "tools/lib/subcmd"
+        return os.path.join(os.path.relpath(src_tree, output_tree), "tools/lib/subcmd")
 
     return None
 
 
-def _expand_resolve_files(input_files: list[Path], output_tree: Path) -> list[Path]:
-    expanded_input_files: list[Path] = []
+def _expand_resolve_files(input_files: list[PathStr], output_tree: PathStr) -> list[PathStr]:
+    expanded_input_files: list[PathStr] = []
     for input_file in input_files:
         input_file_str = str(input_file)
         if not input_file_str.startswith("@"):
             expanded_input_files.append(input_file)
             continue
-        with open(output_tree / input_file_str[1:], "r") as f:
-            resolve_file_content = [Path(line.strip()) for line in f.readlines() if line.strip()]
+        with open(os.path.join(output_tree, input_file_str[1:]), "r") as f:
+            resolve_file_content = [line.strip() for line in f.readlines() if line.strip()]
         expanded_input_files += _expand_resolve_files(resolve_file_content, output_tree)
     return expanded_input_files

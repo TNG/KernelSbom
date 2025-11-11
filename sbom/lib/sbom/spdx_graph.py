@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal
 from sbom.cmd.cmd_graph import CmdGraph, iter_cmd_graph
+from sbom.path_utils import PathStr, is_relative_to
 from sbom.spdx.build import Build
 from sbom.spdx.core import (
     Element,
@@ -41,8 +41,8 @@ class KernelFile(File):
 
 def build_spdx_graph(
     cmd_graph: CmdGraph,
-    output_tree: Path,
-    src_tree: Path,
+    output_tree: PathStr,
+    src_tree: PathStr,
     spdx_uri_prefix: str,
     package_name: str,
     package_license: str,
@@ -137,13 +137,13 @@ def build_spdx_graph(
 
 def _build_kernel_file_graph(
     cmd_graph: CmdGraph,
-    output_tree: Path,
-    src_tree: Path,
+    output_tree: PathStr,
+    src_tree: PathStr,
     spdx_uri_prefix: str,
 ) -> tuple[list[KernelFile], list[Build | Relationship]]:
     # First cmd graph traversal: create a file element for each node
     root_paths = {node.absolute_path for node in cmd_graph.roots}
-    file_elements: dict[Path, KernelFile] = {
+    file_elements: dict[PathStr, KernelFile] = {
         node.absolute_path: _build_kernel_file_element(node.absolute_path, output_tree, src_tree, root_paths)
         for node in iter_cmd_graph(cmd_graph)
     }
@@ -177,10 +177,10 @@ def _build_kernel_file_graph(
 
 
 def _build_kernel_file_element(
-    absolute_path: Path, output_tree: Path, src_tree: Path, root_paths: set[Path]
+    absolute_path: PathStr, output_tree: PathStr, src_tree: PathStr, root_paths: set[PathStr]
 ) -> KernelFile:
-    is_in_output_tree = absolute_path.is_relative_to(output_tree)
-    is_in_src_tree = absolute_path.is_relative_to(src_tree)
+    is_in_output_tree = is_relative_to(absolute_path, output_tree)
+    is_in_src_tree = is_relative_to(absolute_path, src_tree)
 
     # file element name should be relative to output or src tree if possible
     if is_in_output_tree:
@@ -195,7 +195,7 @@ def _build_kernel_file_element(
 
     # Create file hash if possible. Hashes for files outside the src and output trees are optional.
     verifiedUsing: list[Hash] = []
-    if absolute_path.exists():
+    if os.path.exists(absolute_path):
         verifiedUsing = [Hash(algorithm="sha256", hashValue=_sha256(absolute_path))]
     elif is_in_output_tree or is_in_src_tree:
         sbom_errors.log(f"Cannot compute hash for {absolute_path} because file does not exist.")
@@ -213,7 +213,7 @@ def _build_kernel_file_element(
     return file_element
 
 
-def _sha256(path: Path) -> str:
+def _sha256(path: PathStr) -> str:
     """Compute the SHA-256 hash of a file."""
     with open(path, "rb") as f:
         data = f.read()

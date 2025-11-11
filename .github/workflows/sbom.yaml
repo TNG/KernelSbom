@@ -8,7 +8,7 @@ on:
     inputs:
       test_archive:
         description: Name of the test archive to download from https://fileshare.tngtech.com/d/e69946da808b41f88047/
-        default: linux.v6.17.tinyconfig.tar.gz
+        default: linux.v6.17.tinyconfig.x86.tar.gz
       output_tree: 
         description: Path to the output tree relative to the src tree
         default: kernel_build

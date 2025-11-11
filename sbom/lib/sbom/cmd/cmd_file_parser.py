@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 import re
-from pathlib import Path
 from dataclasses import dataclass, field
 import sbom.errors as sbom_errors
+from sbom.path_utils import PathStr
 
 SAVEDCMD_PATTERN = re.compile(r"^(saved)?cmd_.*?:=\s*(?P<full_command>.+)$")
 SOURCE_PATTERN = re.compile(r"^source.*?:=\s*(?P<source_file>.+)$")
@@ -12,14 +12,14 @@ SOURCE_PATTERN = re.compile(r"^source.*?:=\s*(?P<source_file>.+)$")
 
 @dataclass
 class CmdFile:
-    cmd_file_path: Path
+    cmd_file_path: PathStr
     savedcmd: str
-    source: Path | None = None
+    source: PathStr | None = None
     deps: list[str] = field(default_factory=list[str])
     make_rules: list[str] = field(default_factory=list[str])
 
 
-def parse_cmd_file(cmd_file_path: Path) -> CmdFile | None:
+def parse_cmd_file(cmd_file_path: PathStr) -> CmdFile | None:
     """
     Parses a .cmd file.
     .cmd files can have the following structures:
@@ -70,7 +70,7 @@ def parse_cmd_file(cmd_file_path: Path) -> CmdFile | None:
     if line1 is None:
         sbom_errors.log(f"Skip parsing '{cmd_file_path}' because no 'source_' entry was found.")
         return CmdFile(cmd_file_path, savedcmd)
-    source = Path(line1.group("source_file"))
+    source = line1.group("source_file")
 
     # deps
     deps: list[str] = []

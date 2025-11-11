@@ -11,6 +11,9 @@ import re
 import shutil
 import subprocess
 from typing import Iterator
+import os
+
+from sbom.path_utils import PathStr, is_relative_to
 
 
 MAKE_ERROR_PATTERNS = [
@@ -33,8 +36,8 @@ MAKE_ERROR_PATTERNS = [
 @dataclass
 class MakeError:
     message: str
-    missing_file_path: Path
-    reference_file: Path | None = None
+    missing_file_path: PathStr
+    reference_file: PathStr | None = None
 
     @staticmethod
     def from_log_outputs(log_outputs: list[str]) -> "MakeError":
@@ -44,36 +47,34 @@ class MakeError:
             if match:
                 return MakeError(
                     message=match.group("full_error"),
-                    missing_file_path=Path(match.group("missing_file")),
-                    reference_file=Path(match.group("reference_file"))
-                    if ("reference_file" in match.re.groupindex)
-                    else None,
+                    missing_file_path=match.group("missing_file"),
+                    reference_file=match.group("reference_file") if ("reference_file" in match.re.groupindex) else None,
                 )
         raise NotImplementedError("Build failed, but no make error could be detected.")
 
 
 def build_kernel(
-    missing_sources_in_cmd_graph: list[Path],
-    cmd_src_tree: Path,
-    cmd_output_tree: Path,
-    src_tree: Path,
-    output_tree: Path,
-    missing_sources_in_cmd_graph_path: Path,
+    missing_sources_in_cmd_graph: list[PathStr],
+    cmd_src_tree: PathStr,
+    cmd_output_tree: PathStr,
+    src_tree: PathStr,
+    output_tree: PathStr,
+    missing_sources_in_cmd_graph_path: PathStr,
 ) -> None:
-    def save_missing_file(missing_file: Path) -> None:
+    def save_missing_file(missing_file: PathStr) -> None:
         logging.info(f"Successfully fixed make error with: {missing_file}.")
         missing_sources_in_cmd_graph.append(missing_file)
         with open(missing_sources_in_cmd_graph_path, "wt") as f:
             json.dump([str(source_file) for source_file in missing_sources_in_cmd_graph], f, indent=2)
         logging.info(f"Saved {potential_missing_file} in {missing_sources_in_cmd_graph_path}")
 
-    previous_make_error_missing_file_path: Path | None = None
-    potential_missing_file: Path | None = None
-    potential_missing_files_iterator: Iterator[Path] = iter([])
+    previous_make_error_missing_file_path: PathStr | None = None
+    potential_missing_file: PathStr | None = None
+    potential_missing_files_iterator: Iterator[PathStr] = iter([])
     while True:
         logging.info("Build kernel")
         returncode, log_outputs = _run_command(
-            ["make", f"O={cmd_output_tree.relative_to(cmd_src_tree)}"], cmd_src_tree, live_output=True
+            ["make", f"O={os.path.relpath(cmd_output_tree, cmd_src_tree)}"], cmd_src_tree, live_output=True
         )
         if returncode == 0:
             if potential_missing_file is not None:
@@ -104,17 +105,17 @@ def build_kernel(
         elif potential_missing_file:
             # delete previously copied file which did not fix the make error
             logging.info(f"Failed to fix make error with: {potential_missing_file}")
-            (cmd_src_tree / potential_missing_file).unlink()
+            os.remove(os.path.join(cmd_src_tree, potential_missing_file))
 
         # copy new candidate if there are any remaining
         potential_missing_file = next(potential_missing_files_iterator, None)
         if potential_missing_file is None:
             raise RuntimeError("Found no file in the source tree that could fix the build error.")
         logging.info(f"Attempting to fix make error with: {potential_missing_file}")
-        shutil.copy2(src_tree / potential_missing_file, cmd_src_tree / potential_missing_file)
+        shutil.copy2(os.path.join(src_tree, potential_missing_file), os.path.join(cmd_src_tree, potential_missing_file))
 
 
-def _run_command(cmd: list[str], cwd: Path, live_output: bool = False) -> tuple[int, list[str]]:
+def _run_command(cmd: list[str], cwd: PathStr, live_output: bool = False) -> tuple[int, list[str]]:
     process = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     output_lines: list[str] = []
     if process.stdout is None:
@@ -129,17 +130,23 @@ def _run_command(cmd: list[str], cwd: Path, live_output: bool = False) -> tuple[
 
 def _get_potential_missing_files(
     make_error: MakeError,
-    src_tree: Path,
-    output_tree: Path,
-    cmd_src_tree: Path,
-    ignore: list[Path] = [],
-) -> list[Path]:
-    rule_based_candidates: list[Path] = []
+    src_tree: PathStr,
+    output_tree: PathStr,
+    cmd_src_tree: PathStr,
+    ignore: list[PathStr] = [],
+) -> list[PathStr]:
+    rule_based_candidates: list[PathStr] = []
     # Manual rules for cases that are difficult to infer from pure Make Error message
-    if "include/generated/uapi/asm" in str(make_error.missing_file_path) or "include/generated/asm" in str(
-        make_error.missing_file_path
+    if (
+        "include/generated/uapi/asm" in make_error.missing_file_path
+        or "include/generated/asm" in make_error.missing_file_path
     ):
-        rule_based_candidates += list(src_tree.rglob(f"include/**/asm-generic/{make_error.missing_file_path.name}"))
+        rule_based_candidates += [
+            str(p)
+            for p in Path(src_tree).rglob(
+                os.path.join("include/**/asm-generic", os.path.basename(make_error.missing_file_path))
+            )
+        ]
 
     # Automatic search for potential missing files based on make error
     suffix_replacements = [
@@ -148,37 +155,32 @@ def _get_potential_missing_files(
         (".o", ".S"),
         (".lds", ".lds.S"),
     ]
-    additional_candidates = list(src_tree.rglob(make_error.missing_file_path.name))
+    additional_candidates = [str(p) for p in Path(src_tree).rglob(os.path.basename(make_error.missing_file_path))]
     for suffix, suffix_replacement in suffix_replacements:
-        if make_error.missing_file_path.name.endswith(suffix):
-            additional_candidates += list(
-                src_tree.rglob(make_error.missing_file_path.name.replace(suffix, suffix_replacement))
-            )
+        if make_error.missing_file_path.endswith(suffix):
+            additional_candidates += [
+                str(p) for p in Path(src_tree).rglob(make_error.missing_file_path.replace(suffix, suffix_replacement))
+            ]
 
     # filter out non promising candidates
-    potential_missing_files: list[Path] = []
+    potential_missing_files: list[PathStr] = []
     for path in rule_based_candidates + additional_candidates:
-        if not path.is_absolute():
-            path = (src_tree / path).resolve()
+        if not os.path.isabs(path):
+            path = os.path.normpath(os.path.join(src_tree, path))
 
-        if (
-            not path.is_file()
-            or not path.exists()
-            or not path.is_relative_to(src_tree)
-            or path.is_relative_to(output_tree)
-        ):
+        if not os.path.isfile(path) or not is_relative_to(path, src_tree) or is_relative_to(path, output_tree):
             # skip files in that do not exist of are outside the src tree
             continue
 
-        if (cmd_src_tree / path.relative_to(src_tree)).exists():
+        if os.path.exists(os.path.join(cmd_src_tree, os.path.relpath(path, src_tree))):
             # skip files that are already in the cmd src tree
             continue
 
-        if path.relative_to(src_tree) in (ignore + potential_missing_files):
+        if os.path.relpath(path, src_tree) in (ignore + potential_missing_files):
             # skip files that are in the ignore list
             continue
 
-        potential_missing_files.append(path.relative_to(src_tree))
+        potential_missing_files.append(os.path.relpath(path, src_tree))
 
     if make_error.reference_file is None:
         return potential_missing_files
