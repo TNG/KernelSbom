@@ -16,7 +16,13 @@ SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
 from sbom.path_utils import PathStr  # noqa: E402
-from sbom.cmd.cmd_graph import build_cmd_graph_node, CmdGraphNode, CmdGraph, build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
+from sbom.cmd_graph.cmd_graph import (  # noqa: E402
+    build_cmd_graph_node,
+    CmdGraphNode,
+    CmdGraph,
+    build_or_load_cmd_graph,
+    iter_cmd_graph,
+)
 
 ForceGraphNodeId = str
 

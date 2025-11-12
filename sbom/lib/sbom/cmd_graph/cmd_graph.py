@@ -8,10 +8,10 @@ from dataclasses import dataclass, field
 import pickle
 from typing import Iterator
 
-from sbom.cmd.deps_parser import parse_deps
-from sbom.cmd.savedcmd_parser import parse_commands
-from sbom.cmd.incbin_parser import parse_incbin
-from sbom.cmd.cmd_file_parser import CmdFile, parse_cmd_file
+from sbom.cmd_graph.deps_parser import parse_deps
+from sbom.cmd_graph.savedcmd_parser import parse_commands
+from sbom.cmd_graph.incbin_parser import parse_incbin
+from sbom.cmd_graph.cmd_file_parser import CmdFile, parse_cmd_file
 import sbom.errors as sbom_errors
 from sbom.path_utils import PathStr, is_relative_to
 from .hardcoded_dependencies import get_hardcoded_dependencies

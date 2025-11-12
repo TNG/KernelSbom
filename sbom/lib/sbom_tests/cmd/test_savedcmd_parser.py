@@ -3,7 +3,7 @@
 
 import unittest
 
-from sbom.cmd.savedcmd_parser import parse_commands
+from sbom.cmd_graph.savedcmd_parser import parse_commands
 import sbom.errors as sbom_errors
 
 
