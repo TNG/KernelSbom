@@ -9,6 +9,9 @@ from sbom.spdx.core import Artifact, ElementCollection
 
 SbomType = Literal["build"]
 FileKindType = Literal["file", "directory"]
+SoftwarePurpose = Literal[
+    "source", "archive", "library", "file", "data", "configuration", "executable", "module", "other"
+]
 
 
 @dataclass(kw_only=True)
@@ -20,9 +23,9 @@ class Sbom(ElementCollection):
 @dataclass(kw_only=True)
 class SoftwareArtifact(Artifact):
     type: str = field(init=False, default="software_Artifact")
-    software_additionalPurpose: list[str] = field(default_factory=list[str])
+    software_primaryPurpose: SoftwarePurpose | None = None
+    software_additionalPurpose: list[SoftwarePurpose] = field(default_factory=list[SoftwarePurpose])
     software_copyrightText: str | None = None
-    software_primaryPurpose: str | None = None
 
 
 @dataclass(kw_only=True)

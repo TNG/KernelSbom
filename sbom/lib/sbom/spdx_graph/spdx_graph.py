@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+import logging
 from typing import Mapping
 from sbom.cmd_graph import CmdGraph, iter_cmd_graph
 from sbom.path_utils import PathStr
@@ -14,7 +15,7 @@ from sbom.spdx.core import (
 )
 from sbom.spdx.simplelicensing import LicenseExpression
 from sbom.spdx.software import Package, File, Sbom
-from sbom.spdx_graph.kernel_file import KernelFile, build_kernel_file_element
+from sbom.spdx_graph.kernel_file import KernelFile, KernelFileLocation, build_kernel_file_element
 
 
 def build_spdx_graph(
@@ -118,8 +119,16 @@ def build_spdx_graph(
             output_tree_contains_relationship,
             *sbom.element,
         ]
-        src_tree_contains_relationship.to = [file for file in files.values() if file.tree == "src_tree"]
-        output_tree_contains_relationship.to = [file for file in files.values() if file.tree == "output_tree"]
+        src_tree_contains_relationship.to = [
+            file for file in files.values() if file.file_location == KernelFileLocation.SOURCE_TREE
+        ]
+        output_tree_contains_relationship.to = [
+            file for file in files.values() if file.file_location == KernelFileLocation.OUTPUT_TREE
+        ]
+
+    for file in files.values():
+        if file.software_primaryPurpose is None:
+            logging.warning(f"{file.absolute_path} has no primary purpose")
 
     return [
         spdx_document,

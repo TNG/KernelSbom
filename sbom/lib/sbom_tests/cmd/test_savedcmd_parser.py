@@ -224,7 +224,7 @@ class TestSavedCmdParser(unittest.TestCase):
         self._assert_parsing(cmd, expected)
 
     def test_ld_with_at_symbol(self):
-        cmd = "ld -m elf_x86_64 -z noexecstack   -r -o fs/efivarfs/efivarfs.o @fs/efivarfs/efivarfs.mod"
+        cmd = "ld.lld -m elf_x86_64 -z noexecstack   -r -o fs/efivarfs/efivarfs.o @fs/efivarfs/efivarfs.mod  ; ./tools/objtool/objtool --hacks=jump_label --hacks=noinstr --hacks=skylake --ibt --orc --retpoline --rethunk --static-call --uaccess --prefix=16  --link  --module fs/efivarfs/efivarfs.o"
         expected = "@fs/efivarfs/efivarfs.mod"
         self._assert_parsing(cmd, expected)
 
