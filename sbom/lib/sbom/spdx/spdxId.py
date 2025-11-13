@@ -2,32 +2,46 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from itertools import count
-import uuid
 
 SpdxId = str
-_spdx_uri_prefix = "https://spdx.org/spdxdocs/"
-_uuid = uuid.uuid4()
-_counter = count(0)
-
-_generated_ids: dict[str, int] = {}
 
 
-def set_spdx_uri_prefix(prefix: str) -> None:
-    global _spdx_uri_prefix
-    _spdx_uri_prefix = prefix
+class SpdxIdGenerator:
+    _namespace: str | None = None
+    _prefix: str | None = None
+    _counter = count(0)
 
+    @classmethod
+    def initialize(cls, namespace: str, prefix: str | None = None) -> None:
+        """
+        Initialize the SPDX ID generator with a namespace.
 
-def generate_spdx_id(object_type: str, object_suffix: str | None = None) -> SpdxId:
-    if object_suffix is None:
-        object_suffix = f"gnrtd{next(_counter)}"
-    spdxId = f"{_spdx_uri_prefix}{_uuid}/{object_type}#{object_suffix}"
+        Args:
+            namespace: The full namespace to use for generated IDs.
+            prefix: Optional. If provided, generated IDs will use this prefix instead of the full namespace.
+        """
+        if cls._namespace is not None:
+            raise RuntimeError("Already initialized")
+        cls._namespace = namespace
+        cls._prefix = prefix
 
-    # compare spdxIds case-insensitively and deduplicate if needed
-    spdxId_lower = spdxId.lower()
-    if spdxId_lower in _generated_ids:
-        _generated_ids[spdxId_lower] += 1
-        spdxId += f"-{_generated_ids[spdxId_lower]}"
-    else:
-        _generated_ids[spdxId_lower] = 0
+    @classmethod
+    def generate(cls) -> SpdxId:
+        """generate spdxId"""
+        if cls._namespace is None:
+            raise RuntimeError("SpdxIdGenerator not initialized. Call initialize() first.")
+        return f"{f'{cls._prefix}:' if cls._prefix else cls._namespace}{next(cls._counter)}"
 
-    return spdxId
+    @classmethod
+    def prefix(cls) -> str | None:
+        """Get the current prefix."""
+        if cls._namespace is None:
+            raise RuntimeError("SpdxIdGenerator not initialized. Call initialize() first.")
+        return cls._prefix
+
+    @classmethod
+    def namespace(cls) -> str:
+        """Get the current namespace."""
+        if cls._namespace is None:
+            raise RuntimeError("SpdxIdGenerator not initialized. Call initialize() first.")
+        return cls._namespace

@@ -6,12 +6,12 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 from sbom.path_utils import PathStr
-from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxObject
+from sbom.spdx.core import SpdxObject
 
 
 @dataclass(kw_only=True)
 class JsonLdDocument:
-    context: str = f"https://spdx.org/rdf/{SPDX_SPEC_VERSION}/spdx-context.jsonld"
+    context: list[str | dict[str, str]]
     graph: list[SpdxObject] = field(default_factory=list[SpdxObject])
 
     def to_dict(self) -> dict[str, Any]:

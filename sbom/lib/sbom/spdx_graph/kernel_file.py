@@ -11,7 +11,6 @@ from sbom.path_utils import PathStr, is_relative_to
 from sbom.spdx.core import Hash
 from sbom.spdx.software import File
 import sbom.errors as sbom_errors
-from sbom.spdx import generate_spdx_id
 
 
 @dataclass(kw_only=True)
@@ -63,7 +62,6 @@ def build_kernel_file_element(absolute_path: PathStr, output_tree: PathStr, src_
     license_identifier = _parse_spdx_license_identifier(absolute_path) if tree == "src_tree" else None
 
     file_element = KernelFile(
-        spdxId=generate_spdx_id("software_File", file_element_name),
         name=file_element_name,
         verifiedUsing=verifiedUsing,
         absolute_path=absolute_path,

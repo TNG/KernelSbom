@@ -13,6 +13,8 @@ import logging
 import os
 import sys
 import time
+import uuid
+
 
 LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -20,9 +22,10 @@ sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
 import sbom.errors as sbom_errors  # noqa: E402
 from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
-from sbom.spdx import JsonLdDocument, set_spdx_uri_prefix  # noqa: E402
 from sbom.spdx_graph import build_spdx_graph  # noqa: E402
 from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
+from sbom.spdx import JsonLdDocument, SpdxIdGenerator  # noqa: E402
+from sbom.spdx.core import SPDX_SPEC_VERSION  # noqa: E402
 
 
 @dataclass
@@ -184,17 +187,23 @@ def main():
     # Build SPDX Document
     logging.info("Start generating Spdx document based on cmd graph")
     start_time = time.time()
-    set_spdx_uri_prefix(args.spdx_uri_prefix)
+    SpdxIdGenerator.initialize(prefix="p", namespace=f"{args.spdx_uri_prefix}{uuid.uuid4()}#")
     spdx_graph = build_spdx_graph(
         cmd_graph,
-        str(args.output_tree),
-        str(args.src_tree),
+        args.output_tree,
+        args.src_tree,
         args.spdx_uri_prefix,
         args.package_name,
         args.package_license,
         args.build_version,
     )
-    spdx_doc = JsonLdDocument(graph=spdx_graph)
+    spdx_doc = JsonLdDocument(
+        context=[
+            f"https://spdx.org/rdf/{SPDX_SPEC_VERSION}/spdx-context.jsonld",
+            {SpdxIdGenerator.prefix(): SpdxIdGenerator.namespace()},  # type: ignore
+        ],
+        graph=spdx_graph,
+    )
     logging.info(f"Generated Spdx document in {time.time() - start_time} seconds")
 
     # Save SPDX Document
