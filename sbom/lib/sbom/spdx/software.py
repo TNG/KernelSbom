@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from typing import Literal
-from sbom.spdx.core import Artifact, ElementCollection
+from sbom.spdx.core import Artifact, ElementCollection, IntegrityMethod
 
 
 SbomType = Literal["build"]
@@ -12,6 +12,7 @@ FileKindType = Literal["file", "directory"]
 SoftwarePurpose = Literal[
     "source", "archive", "library", "file", "data", "configuration", "executable", "module", "other"
 ]
+ContentIdentifierType = Literal["gitoid", "swhid"]
 
 
 @dataclass(kw_only=True)
@@ -21,11 +22,19 @@ class Sbom(ElementCollection):
 
 
 @dataclass(kw_only=True)
+class ContentIdentifier(IntegrityMethod):
+    type: str = field(init=False, default="software_ContentIdentifier")
+    software_contentIdentifierType: ContentIdentifierType
+    software_contentIdentifierValue: str
+
+
+@dataclass(kw_only=True)
 class SoftwareArtifact(Artifact):
     type: str = field(init=False, default="software_Artifact")
     software_primaryPurpose: SoftwarePurpose | None = None
     software_additionalPurpose: list[SoftwarePurpose] = field(default_factory=list[SoftwarePurpose])
     software_copyrightText: str | None = None
+    software_contentIdentifier: list[ContentIdentifier] = field(default_factory=list[ContentIdentifier])
 
 
 @dataclass(kw_only=True)

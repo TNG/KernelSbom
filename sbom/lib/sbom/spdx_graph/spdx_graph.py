@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-import logging
 from typing import Mapping
 from sbom.cmd_graph import CmdGraph, iter_cmd_graph
 from sbom.path_utils import PathStr
@@ -125,10 +124,6 @@ def build_spdx_graph(
         output_tree_contains_relationship.to = [
             file for file in files.values() if file.file_location == KernelFileLocation.OUTPUT_TREE
         ]
-
-    for file in files.values():
-        if file.software_primaryPurpose is None:
-            logging.warning(f"{file.absolute_path} has no primary purpose")
 
     return [
         spdx_document,

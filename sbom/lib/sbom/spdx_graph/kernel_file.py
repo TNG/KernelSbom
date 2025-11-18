@@ -10,7 +10,7 @@ import re
 from typing import Any
 from sbom.path_utils import PathStr, is_relative_to
 from sbom.spdx.core import Hash
-from sbom.spdx.software import File, SoftwarePurpose
+from sbom.spdx.software import ContentIdentifier, File, SoftwarePurpose
 import sbom.errors as sbom_errors
 
 
@@ -64,8 +64,14 @@ def build_kernel_file_element(absolute_path: PathStr, output_tree: PathStr, src_
 
     # Create file hash if possible. Hashes for files outside the src and output trees are optional.
     verifiedUsing: list[Hash] = []
+    content_identifier: list[ContentIdentifier] = []
     if os.path.exists(absolute_path):
         verifiedUsing = [Hash(algorithm="sha256", hashValue=_sha256(absolute_path))]
+        content_identifier = [
+            ContentIdentifier(
+                software_contentIdentifierType="gitoid", software_contentIdentifierValue=_git_blob_oid(absolute_path)
+            )
+        ]
     elif is_in_output_tree or is_in_src_tree:
         sbom_errors.log(f"Cannot compute hash for {absolute_path} because file does not exist.")
     else:
@@ -79,16 +85,15 @@ def build_kernel_file_element(absolute_path: PathStr, output_tree: PathStr, src_
     # primary purpose
     primary_purpose = _get_primary_purpose(absolute_path, file_location)
 
-    file_element = KernelFile(
+    return KernelFile(
         name=file_element_name,
         verifiedUsing=verifiedUsing,
         absolute_path=absolute_path,
         file_location=file_location,
         license_identifier=license_identifier,
         software_primaryPurpose=primary_purpose,
+        software_contentIdentifier=content_identifier,
     )
-
-    return file_element
 
 
 def _sha256(path: PathStr) -> str:
@@ -96,6 +101,24 @@ def _sha256(path: PathStr) -> str:
     with open(path, "rb") as f:
         data = f.read()
     return hashlib.sha256(data).hexdigest()
+
+
+def _git_blob_oid(file_path: str) -> str:
+    """
+    Compute the Git blob object ID (SHA-1) for a file, like `git hash-object`.
+
+    Args:
+        file_path: Path to the file.
+
+    Returns:
+        SHA-1 hash (hex) of the Git blob object.
+    """
+    with open(file_path, "rb") as f:
+        content = f.read()
+    header = f"blob {len(content)}\0".encode()
+    store = header + content
+    sha1_hash = hashlib.sha1(store).hexdigest()
+    return sha1_hash
 
 
 SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(
@@ -143,7 +166,7 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
         return "archive"
 
     # Executables / machine code
-    if ends_with([".bin", ".elf", "vmlinux", "bzImage", "vmlinux.unstripped", ".ro", "bpfilter_umh"]):
+    if ends_with([".bin", ".elf", "vmlinux", "bzImage", "vmlinux.unstripped", ".ro"]):
         return "executable"
 
     # Kernel modules
@@ -184,4 +207,5 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
     if ends_with([".o", ".tmp"]):
         return "other"
 
+    logging.warning(f"Could not infer primary purpose for {absolute_path}")
     return
