@@ -18,7 +18,8 @@ jobs:
     uses: ./.github/workflows/sbom.yaml
     with:
       test_archive: ${{ matrix.test_archive }}
-      output_tree: ${{ matrix.output_tree || 'kernel_build' }}
+      src_tree: $${{ matrix.src_tree || 'linux' }}
+      output_tree: ${{ matrix.output_tree || 'linux/kernel_build' }}
       arch: ${{ matrix.arch || 'x86' }}
       use_modules: ${{ matrix.use_modules != 'false' && inputs.use_modules }} # use string 'false' because boolean false and undefined are undistinguishable 
       validate: ${{ matrix.validate == 'true' }} # memory requirements on github runners are only sufficient for small configs
@@ -30,7 +31,7 @@ jobs:
           # - test_archive: linux.v6.1.y.localmodconfig.Ubuntu25.04.x86.tar.gz
           # - test_archive: linux.v6.1.y.gregkh-linux-stable.x86.tar.gz
           - test_archive: linux.v6.1.y.gregkh-linux-stable.x86.in-tree.tar.gz
-            output_tree: .
+            output_tree: linux
           # v6.6
           # - test_archive: linux.v6.6.y.gregkh-linux-stable.x86.tar.gz
           # v6.12
@@ -49,3 +50,7 @@ jobs:
           - test_archive: linux.v6.17.y.gregkh-linux-stable.x86.tar.gz
           # - test_archive: linux.v6.17.y.gregkh-linux-stable.arm64.rust.tar.gz
           #   arch: arm64
+          # yocto
+          - test_archive: linux-yocto.6.12.core-image-minimal.x86.tar.gz
+            src_tree: poky/build/tmp/work-shared/qemux86-64/kernel-source
+            output_tree: poky/build/tmp/work/qemux86_64-poky-linux/linux-yocto/6.12.47+git/linux-qemux86_64-standard-build

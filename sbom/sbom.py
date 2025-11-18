@@ -129,7 +129,9 @@ def _parse_args() -> Args:
         raise argparse.ArgumentTypeError(f"--output-tree {output_tree} does not exist")
     for root_path in root_paths:
         if not os.path.exists(os.path.join(output_tree, root_path)):
-            raise argparse.ArgumentTypeError(f"path to root artifact {output_tree / root_path} does not exist")
+            raise argparse.ArgumentTypeError(
+                f"path to root artifact {os.path.join(output_tree, root_path)} does not exist"
+            )
 
     return Args(
         src_tree,

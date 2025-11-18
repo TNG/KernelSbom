@@ -197,12 +197,12 @@ if __name__ == "__main__":
     """
     script_path = os.path.dirname(__file__)
     src_tree = (
-        os.path.normpath(sys.argv[1])
+        os.path.realpath(sys.argv[1])
         if len(sys.argv) >= 2 and sys.argv[1]
-        else os.path.normpath(os.path.join(script_path, "../../../linux"))
+        else os.path.realpath(os.path.join(script_path, "../../../linux"))
     )
     output_tree = (
-        os.path.normpath(sys.argv[1]) if len(sys.argv) >= 3 and sys.argv[2] else os.path.join(src_tree, "kernel_build")
+        os.path.realpath(sys.argv[2]) if len(sys.argv) >= 3 and sys.argv[2] else os.path.join(src_tree, "kernel_build")
     )
     os.environ["SRCARCH"] = "x86"
     root_paths = [
