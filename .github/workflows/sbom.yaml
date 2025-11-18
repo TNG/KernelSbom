@@ -113,10 +113,12 @@ jobs:
       - name: Validate sbom.spdx.json
         id: validate_sbom
         run: |
+          echo "Expand custom context"
+          .github/scripts/sbom/expand-custom-context.sh sbom.spdx.json
+
+          echo "Validate expanded sbom.spdx.json"
           export SPDX_TOOLS_VERSION=2.0.2
           curl -LO "https://github.com/spdx/tools-java/releases/download/v${SPDX_TOOLS_VERSION}/tools-java-${SPDX_TOOLS_VERSION}.zip"
           unzip -j "tools-java-${SPDX_TOOLS_VERSION}.zip" "tools-java-${SPDX_TOOLS_VERSION}-jar-with-dependencies.jar"
           java -Xmx15G -Xms12G -jar "tools-java-${SPDX_TOOLS_VERSION}-jar-with-dependencies.jar" Verify "sbom.spdx.json"
         if: ${{ inputs.validate }}
-      
-     

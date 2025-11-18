@@ -14,7 +14,6 @@ from sbom.spdx.core import (
 )
 from sbom.spdx.simplelicensing import LicenseExpression
 from sbom.spdx.software import Package, File, Sbom
-from sbom.spdx import generate_spdx_id
 from sbom.spdx_graph.kernel_file import KernelFile, build_kernel_file_element
 
 
@@ -27,20 +26,19 @@ def build_spdx_graph(
     package_license: str,
     build_version: str,
 ) -> list[SpdxObject]:
-    # Main Skeletton
-    spdx_document = SpdxDocument(profileConformance=["core", "software", "build", "simpleLicensing"])
+    spdx_document = SpdxDocument(
+        profileConformance=["core", "software", "build", "simpleLicensing"],
+    )
     agent = SoftwareAgent(name="KernelSbom")
     creation_info = CreationInfo(createdBy=[agent])
     sbom = Sbom(software_sbomType=["build"])
 
     # src and output tree elements
     src_tree_element = File(
-        spdxId=generate_spdx_id("software_File", "$(src_tree)"),
         name="$(src_tree)",
         software_fileKind="directory",
     )
     output_tree_element = File(
-        spdxId=generate_spdx_id("software_File", "$(output_tree)"),
         name="$(output_tree)",
         software_fileKind="directory",
     )
@@ -140,20 +138,16 @@ def _build_file_relationships(
     for node in iter_cmd_graph(cmd_graph):
         if len(node.children) == 0:
             continue
-        output_filename = file_elements[node.absolute_path].name
         build_element = Build(
-            spdxId=generate_spdx_id("build_Build", f"{output_filename}"),
             build_buildType=f"{spdx_uri_prefix}Kbuild",
             comment=node.cmd_file.savedcmd if node.cmd_file is not None else None,
         )
         hasInput_relationship = Relationship(
-            spdxId=generate_spdx_id("Relationship_hasInput", f"{output_filename}"),
             relationshipType="hasInput",
             from_=build_element,
             to=[file_elements[child_node.absolute_path] for child_node in node.children],
         )
         hasOutput_relationship = Relationship(
-            spdxId=generate_spdx_id("Relationship_hasOutput", f"{output_filename}"),
             relationshipType="hasOutput",
             from_=build_element,
             to=[file_elements[node.absolute_path]],
