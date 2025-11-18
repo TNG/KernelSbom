@@ -18,7 +18,7 @@ jobs:
     uses: ./.github/workflows/sbom.yaml
     with:
       test_archive: ${{ matrix.test_archive }}
-      src_tree: $${{ matrix.src_tree || 'linux' }}
+      src_tree: ${{ matrix.src_tree || 'linux' }}
       output_tree: ${{ matrix.output_tree || 'linux/kernel_build' }}
       arch: ${{ matrix.arch || 'x86' }}
       use_modules: ${{ matrix.use_modules != 'false' && inputs.use_modules }} # use string 'false' because boolean false and undefined are undistinguishable 
