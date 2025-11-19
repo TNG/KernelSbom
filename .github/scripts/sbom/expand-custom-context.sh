@@ -13,11 +13,13 @@ curl -LO https://spdx.org/rdf/3.0.1/spdx-context.jsonld
 # To properly expand/compact the document we must fix the context on our end.
 jq '
 # Remove the "@type": "@vocab" key-value pairs from object valued properties because these break compaction
-(.["@context"].verifiedUsing) |= del(.["@type"])
+(.["@context"].verifiedUsing) |= del(.["@type"]) |
+(.["@context"].software_contentIdentifier) |= del(.["@type"])
 |
 # Add "@container": "@set" to array properties to make values always be compacted as arrays
 (.["@context"].rootElement) |= (. + {"@container": "@set"}) |
 (.["@context"].verifiedUsing) |= (. + {"@container": "@set"}) |
+(.["@context"].software_contentIdentifier) |= (. + {"@container": "@set"}) |
 (.["@context"].to) |= (. + {"@container": "@set"}) |
 (.["@context"].createdBy) |= (. + {"@container": "@set"}) |
 (.["@context"].software_sbomType) |= (. + {"@container": "@set"}) |

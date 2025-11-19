@@ -37,7 +37,11 @@ class SpdxObject:
 
 
 @dataclass(kw_only=True)
-class Hash(SpdxObject):
+class IntegrityMethod(SpdxObject): ...
+
+
+@dataclass(kw_only=True)
+class Hash(IntegrityMethod):
     type: str = field(init=False, default="Hash")
     hashValue: str
     algorithm: HashAlgorithm

@@ -6,6 +6,7 @@ import sbom.errors as sbom_errors
 from sbom.path_utils import PathStr
 
 CONFIG_PATTERN = re.compile(r"\$\(wildcard (include/config/[^)]+)\)")
+OBJTOOL_PATTERN = re.compile(r"\$\(wildcard \./tools/objtool/objtool\)")
 WILDCARD_PATTERN = re.compile(r"\$\(wildcard (?P<path>[^)]+)\)")
 VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
 
@@ -22,7 +23,7 @@ def parse_deps(deps: list[str]) -> list[PathStr]:
     for dep in deps:
         dep = dep.strip()
         match dep:
-            case _ if _ := CONFIG_PATTERN.match(dep):
+            case _ if _ := CONFIG_PATTERN.match(dep) or OBJTOOL_PATTERN.match(dep):
                 # config paths like include/config/<CONFIG_NAME> are not included in the graph
                 continue
             case _ if match := WILDCARD_PATTERN.match(dep):
