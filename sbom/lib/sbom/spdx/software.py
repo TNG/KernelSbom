@@ -7,7 +7,7 @@ from typing import Literal
 from sbom.spdx.core import Artifact, ElementCollection, IntegrityMethod
 
 
-SbomType = Literal["build"]
+SbomType = Literal["source", "build"]
 FileKindType = Literal["file", "directory"]
 SoftwarePurpose = Literal[
     "source", "archive", "library", "file", "data", "configuration", "executable", "module", "other"

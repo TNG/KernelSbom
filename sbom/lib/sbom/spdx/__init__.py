@@ -2,6 +2,6 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from .spdxId import SpdxId, SpdxIdGenerator
-from .serialization import JsonLdDocument
+from .serialization import JsonLdSpdxDocument
 
-__all__ = ["JsonLdDocument", "SpdxId", "SpdxIdGenerator"]
+__all__ = ["JsonLdSpdxDocument", "SpdxId", "SpdxIdGenerator"]

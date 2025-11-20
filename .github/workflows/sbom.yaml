@@ -26,10 +26,6 @@ on:
         description: Whether to include modules into the sbom
         default: false
         type: boolean
-      validate:
-        description: Whether to valdiate the generated spdx document using the java spdx tools
-        default: false
-        type: boolean
   workflow_call:
     inputs:
       test_archive:
@@ -45,9 +41,6 @@ on:
         required: true
         type: string
       use_modules:
-        required: true
-        type: boolean
-      validate:
         required: true
         type: boolean
 
@@ -82,8 +75,7 @@ jobs:
           if [ "${{ inputs.use_modules }}" = "true" ]; then
             python3 sbom_analysis/module_roots.py \
               /workspace/${{ inputs.output_tree }}/modules.order \
-              module_roots.txt
-            cat module_roots.txt >> roots.txt
+              >> roots.txt
           fi
           
           echo "=================roots.txt=================="
@@ -98,33 +90,37 @@ jobs:
             --src-tree /workspace/${{ inputs.src_tree }} \
             --output-tree /workspace/${{ inputs.output_tree }} \
             --roots-file roots.txt \
-            --spdx sbom.spdx.json \
-            --used-files sbom.used_files.txt \
+            --spdx \
+            --used-files \
             --package-license "GPL-2.0 WITH Linux-syscall-note" \
-            --prettify-json
+            --prettify-json \
+            --debug
           
           test_archive="${{ inputs.test_archive }}"
           output_dir="${test_archive%.tar.gz}"
-          echo "output_dir=$output_dir" >> $GITHUB_OUTPUT
+          echo "output_dir=$output_dir" >> "$GITHUB_OUTPUT"
 
+          generated_sboms=(sbom-source.spdx.json sbom-build.spdx.json sbom-output.spdx.json)
+          if [[ "${{ inputs.src_tree }}" == "${{ inputs.output_tree }}" ]]; then
+            generated_sboms=(sbom-build.spdx.json sbom-output.spdx.json)
+          fi
+          {
+            echo "generated_sboms<<EOF"
+            printf "%s\n" "${generated_sboms[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-outputs-${{ steps.run_sbom.outputs.output_dir }}
+          name: sboms-${{ steps.run_sbom.outputs.output_dir }}
           path: |
-            sbom.spdx.json
-            sbom.used_files.txt
+            ${{ steps.run_sbom.outputs.generated_sboms }}
+            sbom.used-files.txt
           retention-days: 30
         
       - name: Validate sbom.spdx.json
         id: validate_sbom
         run: |
-          echo "Expand custom context"
-          .github/scripts/sbom/expand-custom-context.sh sbom.spdx.json
-
-          echo "Validate expanded sbom.spdx.json"
-          export SPDX_TOOLS_VERSION=2.0.2
-          curl -LO "https://github.com/spdx/tools-java/releases/download/v${SPDX_TOOLS_VERSION}/tools-java-${SPDX_TOOLS_VERSION}.zip"
-          unzip -j "tools-java-${SPDX_TOOLS_VERSION}.zip" "tools-java-${SPDX_TOOLS_VERSION}-jar-with-dependencies.jar"
-          java -Xmx15G -Xms12G -jar "tools-java-${SPDX_TOOLS_VERSION}-jar-with-dependencies.jar" Verify "sbom.spdx.json"
-        if: ${{ inputs.validate }}
+          mapfile -t generated_sboms <<< "${{ steps.run_sbom.outputs.generated_sboms }}"
+          .github/scripts/sbom/validate-spdx-documents.sh "${generated_sboms[@]}"

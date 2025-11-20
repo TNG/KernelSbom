@@ -3,16 +3,23 @@
 
 
 import json
-from dataclasses import dataclass, field
 from typing import Any
 from sbom.path_utils import PathStr
-from sbom.spdx.core import SpdxObject
+from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxDocument, SpdxObject
 
 
-@dataclass(kw_only=True)
-class JsonLdDocument:
+class JsonLdSpdxDocument:
     context: list[str | dict[str, str]]
-    graph: list[SpdxObject] = field(default_factory=list[SpdxObject])
+    graph: list[SpdxObject]
+
+    def __init__(self, graph: list[SpdxObject]) -> None:
+        self.graph = graph
+        spdx_document = next(element for element in graph if isinstance(element, SpdxDocument))
+        self.context = [
+            f"https://spdx.org/rdf/{SPDX_SPEC_VERSION}/spdx-context.jsonld",
+            {namespaceMap.prefix: namespaceMap.namespace for namespaceMap in spdx_document.namespaceMap},
+        ]
+        spdx_document.namespaceMap = []
 
     def to_dict(self) -> dict[str, Any]:
         return {

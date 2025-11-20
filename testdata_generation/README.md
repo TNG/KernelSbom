@@ -8,11 +8,11 @@ SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 This directory describes how the precompiled kernel builds in [KernelSbom-TestData](https://fileshare.tngtech.com/library/98e7e6f8-bffe-4a55-a8d2-817d4f3e51e8/KernelSbom-TestData/) were created.
 
 Standard preconfigured kernel builds were obtained via:
-- **linux.v6.17.tinyconfig.tar.gz** `./extract_testdata.sh tinyconfig`
-- **linux.v6.17.defconfig.tar.gz** `./extract_testdata.sh defconfig`
-- **linux.v6.17.allmodconfig.tar.gz** `./extract_testdata.sh allmodconfig`
+- **linux.v6.17.tinyconfig.x86.tar.gz** `./extract_testdata.sh tinyconfig`
+- **linux.v6.17.defconfig.x86.tar.gz** `./extract_testdata.sh defconfig`
+- **linux.v6.17.allmodconfig.x86.tar.gz** `./extract_testdata.sh allmodconfig`
 
-Additionally, distribution specific configs like **linux.v6.17.localmodconfig.Ubuntu24.04.tar.gz** were created via: 
+Additionally, distribution specific configs like **linux.v6.17.localmodconfig.Ubuntu24.04.x86.tar.gz** were created via: 
 ```bash
 git clone --depth 1 --branch v6.17 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 cd linux

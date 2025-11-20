@@ -17,6 +17,8 @@
                 "../linux/kernel_build",
                 "--roots",
                 "arch/x86/boot/bzImage",
+                "--spdx",
+                "--used-files",
                 "--package-license",
                 "GPL-2.0 WITH Linux-syscall-note",
                 "--debug",

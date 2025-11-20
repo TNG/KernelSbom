@@ -20,12 +20,12 @@ LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
+from sbom.spdx.spdxId import SpdxIdGenerator  # noqa: E402
+from sbom.spdx_graph.spdx_graph import SpdxIdGeneratorCollection, KernelSbomKind, build_spdx_graphs  # noqa: E402
 import sbom.errors as sbom_errors  # noqa: E402
 from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
-from sbom.spdx_graph import build_spdx_graph  # noqa: E402
 from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
-from sbom.spdx import JsonLdDocument, SpdxIdGenerator  # noqa: E402
-from sbom.spdx.core import SPDX_SPEC_VERSION  # noqa: E402
+from sbom.spdx import JsonLdSpdxDocument  # noqa: E402
 
 
 @dataclass
@@ -33,9 +33,9 @@ class Args:
     src_tree: PathStr
     output_tree: PathStr
     root_paths: list[PathStr]
-    spdx: PathStr | None
+    spdx: bool
     prettify_json: bool
-    used_files: PathStr | None
+    used_files: bool
     spdx_uri_prefix: str
     package_name: str
     package_license: str
@@ -49,7 +49,9 @@ def _parse_args() -> Args:
         description="Generate SPDX SBOM from kernel sources and build artifacts",
     )
     parser.add_argument(
-        "--src-tree", default="../linux", help="Path to the Linux kernel source tree (default: ../linux)"
+        "--src-tree",
+        default="../linux",
+        help="Path to the Linux kernel source tree (default: ../linux)",
     )
     parser.add_argument(
         "--output-tree",
@@ -60,7 +62,7 @@ def _parse_args() -> Args:
     group.add_argument(
         "--roots",
         nargs="+",
-        default=None,
+        default="arch/x86/boot/bzImage",
         help="Space-separated list of paths (relative to --output-tree) on which the SBOM will be based. "
         "Cannot be used together with --roots-file. (default: arch/x86/boot/bzImage)",
     )
@@ -70,29 +72,35 @@ def _parse_args() -> Args:
     )
     parser.add_argument(
         "--spdx",
-        default="sbom.spdx.json",
-        help="Path to create the SPDX document, or 'none' to disable (default: sbom.spdx.json)",
+        action="store_true",
+        default=False,
+        help="Whether to create sbom-source.spdx.json, sbom-build.spdx.json and sbom-output.spdx.json documents",
     )
+    parser.add_argument(
+        "--used-files",
+        action="store_true",
+        default=False,
+        help="Whether to create the sbom.used-files.txt file, a flat list of all source files used for the kernel build. "
+        "Note, if src-tree and output-tree are equal it is not possible to reliably classify source files. "
+        "In this case sbom.used-files.txt will contain all files used for the kernel build including all build artifacts. (default: False)",
+    )
+
+    # Spdx specific settings
     parser.add_argument(
         "--prettify-json",
         action="store_true",
         default=False,
-        help="Whether to pretty print the gnerated spdx json document (default: False)",
-    )
-    parser.add_argument(
-        "--used-files",
-        default="sbom.used_files.txt",
-        help="Path to create the a flat list of all source files used for the kernel build, or 'none' to disable (default: sbom.used_files.txt)",
+        help="Whether to pretty print the gnerated spdx.json documents (default: False)",
     )
     parser.add_argument(
         "--spdx-uri-prefix",
         default="https://spdx.org/spdxdocs/",
-        help="The uri prefix to be used for all 'spdxId' fields in the spdx document",
+        help="The uri prefix to be used for all 'spdxId' fields in the spdx document (default: https://spdx.org/spdxdocs/)",
     )
     parser.add_argument(
         "--package-name",
         default="Linux Kernel",
-        help="The name of the Spdx Package element containing the artifacts provided in --roots. (default: Linux Kernel)",
+        help="The name of the Spdx Package element in sbom-output.spdx.json containing the artifacts provided in --roots. (default: Linux Kernel)",
     )
     parser.add_argument(
         "--package-license",
@@ -104,6 +112,7 @@ def _parse_args() -> Args:
         default="NOASSERTION",
         help="The version of the build that created the artifacts provided in --roots. Will be used when generating the Spdx Package element. (default: NOASSERTION)",
     )
+
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
 
     # Extract arguments
@@ -111,13 +120,13 @@ def _parse_args() -> Args:
     src_tree = os.path.realpath(args["src_tree"])
     output_tree = os.path.realpath(args["output_tree"])
     root_paths = []
-    if args["roots"]:
-        root_paths = args["roots"]
-    elif args["roots_file"]:
+    if args["roots_file"]:
         with open(args["roots_file"], "rt") as f:
             root_paths = [root.strip() for root in f.readlines()]
-    spdx = args["spdx"] if args["spdx"] != "none" else None
-    used_files = args["used_files"] if args["used_files"] != "none" else None
+    else:
+        root_paths = args["roots"]
+    spdx = args["spdx"]
+    used_files = args["used_files"]
     spdx_uri_prefix = args["spdx_uri_prefix"]
     package_name = args["package_name"]
     package_license = args["package_license"]
@@ -152,6 +161,14 @@ def _parse_args() -> Args:
 
 
 def main():
+    # Define output filenames
+    SBOM_FILE_NAMES = {
+        KernelSbomKind.SOURCE: "sbom-source.spdx.json",
+        KernelSbomKind.BUILD: "sbom-build.spdx.json",
+        KernelSbomKind.OUTPUT: "sbom-output.spdx.json",
+    }
+    SBOM_USED_FILES_NAME = "sbom.used-files.txt"
+
     # Parse cli arguments
     args = _parse_args()
 
@@ -159,38 +176,46 @@ def main():
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Build cmd graph
-    logging.info("Start building cmd graph")
+    logging.debug("Start building cmd graph")
     start_time = time.time()
     cmd_graph = build_cmd_graph(args.root_paths, args.output_tree, args.src_tree)
-    logging.info(f"Built cmd graph in {time.time() - start_time} seconds")
+    logging.debug(f"Built cmd graph in {time.time() - start_time} seconds")
 
     # Save used files
-    if args.used_files is not None:
+    if args.used_files:
         if args.src_tree == args.output_tree:
             logging.warning(
-                "Cannot distinguish source and output files because source and output trees are equal. Extracting all files from cmd graph"
+                f"Cannot distinguish source and output files because source and output trees are equal. Extracting all files from cmd graph for {SBOM_USED_FILES_NAME}"
             )
             used_files = [os.path.relpath(node.absolute_path, args.src_tree) for node in iter_cmd_graph(cmd_graph)]
-            logging.info(f"Found {len(used_files)} files in cmd graph.")
+            logging.debug(f"Found {len(used_files)} files in cmd graph.")
         else:
             used_files = [
                 os.path.relpath(node.absolute_path, args.src_tree)
                 for node in iter_cmd_graph(cmd_graph)
                 if not is_relative_to(node.absolute_path, args.output_tree)
             ]
-            logging.info(f"Found {len(used_files)} source files in cmd graph")
-        with open(args.used_files, "w", encoding="utf-8") as f:
+            logging.debug(f"Found {len(used_files)} source files in cmd graph")
+        with open(SBOM_USED_FILES_NAME, "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
-        logging.info(f"Saved {args.used_files} successfully")
+        logging.info(f"Saved {SBOM_USED_FILES_NAME} successfully")
 
-    if args.spdx is None:
+    if args.spdx is False:
         return
 
     # Build SPDX Document
-    logging.info("Start generating Spdx document based on cmd graph")
+    logging.debug("Start generating Spdx graph based on cmd graph")
     start_time = time.time()
-    SpdxIdGenerator.initialize(prefix="p", namespace=f"{args.spdx_uri_prefix}{uuid.uuid4()}#")
-    spdx_graph = build_spdx_graph(
+
+    spdx_id_base_namespace = f"{args.spdx_uri_prefix}/{uuid.uuid4()}/"
+    spdx_id_generators = SpdxIdGeneratorCollection(
+        base=SpdxIdGenerator(prefix="p", namespace=spdx_id_base_namespace),
+        source=SpdxIdGenerator(prefix="s", namespace=f"{spdx_id_base_namespace}source/"),
+        build=SpdxIdGenerator(prefix="b", namespace=f"{spdx_id_base_namespace}build/"),
+        output=SpdxIdGenerator(prefix="o", namespace=f"{spdx_id_base_namespace}output/"),
+    )
+
+    spdx_graphs = build_spdx_graphs(
         cmd_graph,
         args.output_tree,
         args.src_tree,
@@ -198,19 +223,14 @@ def main():
         args.package_name,
         args.package_license,
         args.build_version,
+        spdx_id_generators,
     )
-    spdx_doc = JsonLdDocument(
-        context=[
-            f"https://spdx.org/rdf/{SPDX_SPEC_VERSION}/spdx-context.jsonld",
-            {SpdxIdGenerator.prefix(): SpdxIdGenerator.namespace()},  # type: ignore
-        ],
-        graph=spdx_graph,
-    )
-    logging.info(f"Generated Spdx document in {time.time() - start_time} seconds")
+    logging.debug(f"Generated Spdx graph in {time.time() - start_time} seconds")
 
-    # Save SPDX Document
-    spdx_doc.save(args.spdx, args.prettify_json)
-    logging.info(f"Saved {str(args.spdx)} successfully")
+    for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
+        spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)
+        spdx_doc.save(SBOM_FILE_NAMES[kernel_sbom_kind], args.prettify_json)
+        logging.info(f"Saved {SBOM_FILE_NAMES[kernel_sbom_kind]} successfully")
 
     # report collected errors in case of failure
     errors = sbom_errors.get()
