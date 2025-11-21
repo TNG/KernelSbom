@@ -186,7 +186,7 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
         return "archive"
 
     # Executables / machine code
-    if ends_with([".bin", ".elf", "vmlinux", "bzImage", "vmlinux.unstripped", ".ro"]):
+    if ends_with([".bin", ".elf", "vmlinux", "bzImage", "vmlinux.unstripped", "bpfilter_umh"]):
         return "executable"
 
     # Kernel modules
@@ -209,6 +209,7 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
             ".inc",
             ".dtbo",
             ".xml",
+            ".ro",
             "initramfs_inc_data",
             "default_cpio_list",
             "x509_certificate_list",

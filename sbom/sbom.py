@@ -199,7 +199,7 @@ def main():
             logging.debug(f"Found {len(used_files)} source files in cmd graph")
         with open(SBOM_USED_FILES_NAME, "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
-        logging.info(f"Saved {SBOM_USED_FILES_NAME} successfully")
+        logging.info(f"Successfully saved {SBOM_USED_FILES_NAME}")
 
     if args.spdx is False:
         return
@@ -231,7 +231,7 @@ def main():
     for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
         spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)
         spdx_doc.save(SBOM_FILE_NAMES[kernel_sbom_kind], args.prettify_json)
-        logging.info(f"Saved {SBOM_FILE_NAMES[kernel_sbom_kind]} successfully")
+        logging.info(f"Successfully saved {SBOM_FILE_NAMES[kernel_sbom_kind]}")
 
     # report collected errors in case of failure
     errors = sbom_errors.get()
