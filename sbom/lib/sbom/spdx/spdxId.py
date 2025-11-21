@@ -2,46 +2,36 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from itertools import count
+from typing import Iterator
 
 SpdxId = str
 
 
 class SpdxIdGenerator:
-    _namespace: str | None = None
+    _namespace: str
     _prefix: str | None = None
-    _counter = count(0)
+    _counter: Iterator[int]
 
-    @classmethod
-    def initialize(cls, namespace: str, prefix: str | None = None) -> None:
+    def __init__(self, namespace: str, prefix: str | None = None) -> None:
         """
         Initialize the SPDX ID generator with a namespace.
 
         Args:
             namespace: The full namespace to use for generated IDs.
             prefix: Optional. If provided, generated IDs will use this prefix instead of the full namespace.
+            default: Whether to use this namespace as the default namespace when generating
         """
-        if cls._namespace is not None:
-            raise RuntimeError("Already initialized")
-        cls._namespace = namespace
-        cls._prefix = prefix
+        self._namespace = namespace
+        self._prefix = prefix
+        self._counter = count(0)
 
-    @classmethod
-    def generate(cls) -> SpdxId:
-        """generate spdxId"""
-        if cls._namespace is None:
-            raise RuntimeError("SpdxIdGenerator not initialized. Call initialize() first.")
-        return f"{f'{cls._prefix}:' if cls._prefix else cls._namespace}{next(cls._counter)}"
+    def generate(self) -> SpdxId:
+        return f"{f'{self._prefix}:' if self._prefix else self._namespace}{next(self._counter)}"
 
-    @classmethod
-    def prefix(cls) -> str | None:
-        """Get the current prefix."""
-        if cls._namespace is None:
-            raise RuntimeError("SpdxIdGenerator not initialized. Call initialize() first.")
-        return cls._prefix
+    @property
+    def prefix(self) -> str | None:
+        return self._prefix
 
-    @classmethod
-    def namespace(cls) -> str:
-        """Get the current namespace."""
-        if cls._namespace is None:
-            raise RuntimeError("SpdxIdGenerator not initialized. Call initialize() first.")
-        return cls._namespace
+    @property
+    def namespace(self) -> str:
+        return self._namespace

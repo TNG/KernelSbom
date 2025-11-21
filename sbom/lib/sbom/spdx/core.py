@@ -4,9 +4,10 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
-from sbom.spdx import SpdxId, SpdxIdGenerator
+from sbom.spdx.spdxId import SpdxId
 
 SPDX_SPEC_VERSION = "3.0.1"
+
 ExternalIdentifierType = Literal["email", "gitoid", "urlScheme"]
 HashAlgorithm = Literal["sha256", "sha512"]
 ProfileIdentifierType = Literal["core", "software", "build", "lite", "simpleLicensing"]
@@ -50,11 +51,24 @@ class Hash(IntegrityMethod):
 @dataclass(kw_only=True)
 class Element(SpdxObject):
     type: str = field(init=False, default="Element")
-    spdxId: SpdxId = field(default_factory=lambda: SpdxIdGenerator.generate())
+    spdxId: SpdxId
     creationInfo: str = "_:creationinfo"
     name: str | None = None
     verifiedUsing: list[Hash] = field(default_factory=list[Hash])
     comment: str | None = None
+
+
+@dataclass(kw_only=True)
+class ExternalMap(SpdxObject):
+    type: str = field(init=False, default="ExternalMap")
+    externalSpdxId: SpdxId
+
+
+@dataclass(kw_only=True)
+class NamespaceMap(SpdxObject):
+    type: str = field(init=False, default="NamespaceMap")
+    prefix: str
+    namespace: str
 
 
 @dataclass(kw_only=True)
@@ -68,6 +82,11 @@ class ElementCollection(Element):
 @dataclass(kw_only=True)
 class SpdxDocument(ElementCollection):
     type: str = field(init=False, default="SpdxDocument")
+    import_: list[ExternalMap] = field(default_factory=list[ExternalMap])
+    namespaceMap: list[NamespaceMap] = field(default_factory=list[NamespaceMap])
+
+    def to_dict(self) -> dict[str, Any]:
+        return {("import" if k == "import_" else k): v for k, v in super().to_dict().items()}
 
 
 @dataclass(kw_only=True)

@@ -70,11 +70,11 @@ def build_cmd_graph_node(
 
     if root_path_absolute in cache.keys():
         if depth <= log_depth:
-            logging.info(f"Reuse Node: {'  ' * depth}{root_path}")
+            logging.debug(f"Reuse Node: {'  ' * depth}{root_path}")
         return cache[root_path_absolute]
 
     if depth <= log_depth:
-        logging.info(f"Build Node: {'  ' * depth}{root_path}")
+        logging.debug(f"Build Node: {'  ' * depth}{root_path}")
     cmd_path = _to_cmd_path(root_path_absolute)
     cmd_file = parse_cmd_file(cmd_path) if os.path.exists(cmd_path) else None
     node = CmdGraphNode(root_path_absolute, cmd_file)

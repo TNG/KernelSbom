@@ -34,6 +34,6 @@ if __name__ == "__main__":
     output_path = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.getcwd(), "module_roots.txt")
 
     module_roots = get_module_roots(modules_path)
-    with open(output_path, "wt") as f:
-        f.write("\n".join(str(module_root) for module_root in module_roots))
-    print(f"Successfully Saved module roots in '{output_path}'")
+
+    for module_root in module_roots:
+        print(module_root)

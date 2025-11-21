@@ -22,7 +22,6 @@ jobs:
       output_tree: ${{ matrix.output_tree || 'linux/kernel_build' }}
       arch: ${{ matrix.arch || 'x86' }}
       use_modules: ${{ matrix.use_modules != 'false' && inputs.use_modules }} # use string 'false' because boolean false and undefined are undistinguishable 
-      validate: ${{ matrix.validate == 'true' }} # memory requirements on github runners are only sufficient for small configs
     strategy:
       fail-fast: false 
       matrix:
@@ -41,10 +40,8 @@ jobs:
           # v6.17
           - test_archive: linux.v6.17.tinyconfig.x86.tar.gz
             use_modules: 'false'
-            validate: 'true'
           # - test_archive: linux.v6.17.defconfig.x86.tar.gz
           - test_archive: linux.v6.17.defconfig.x86.rust.tar.gz
-            validate: 'true'
           - test_archive: linux.v6.17.allmodconfig.x86.tar.gz
           # - test_archive: linux.v6.17.localmodconfig.Ubuntu24.04.x86.tar.gz
           - test_archive: linux.v6.17.y.gregkh-linux-stable.x86.tar.gz
