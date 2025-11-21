@@ -29,13 +29,12 @@ def get_hardcoded_dependencies(path: PathStr, output_tree: PathStr, src_tree: Pa
     Returns:
         list[Path]: A list of dependency file paths (relative to the output tree) required to build the file at the given path.
     """
-    key: str | None = None
     if is_relative_to(path, output_tree):
-        key = os.path.relpath(path, output_tree)
+        path = os.path.relpath(path, output_tree)
     elif is_relative_to(path, src_tree):
-        key = os.path.relpath(path, src_tree)
+        path = os.path.relpath(path, src_tree)
 
-    if key is None or key not in HARDCODED_DEPENDENCIES:
+    if path not in HARDCODED_DEPENDENCIES:
         return []
 
     template_variables: dict[str, Callable[[], str | None]] = {
@@ -43,8 +42,8 @@ def get_hardcoded_dependencies(path: PathStr, output_tree: PathStr, src_tree: Pa
     }
 
     dependencies: list[PathStr] = []
-    for template in HARDCODED_DEPENDENCIES[key]:
-        dependency = _evaluate_template(template, template_variables)
+    for dependency_template in HARDCODED_DEPENDENCIES[path]:
+        dependency = _evaluate_template(dependency_template, template_variables)
         if dependency is None:
             continue
         if os.path.exists(os.path.join(output_tree, dependency)):
