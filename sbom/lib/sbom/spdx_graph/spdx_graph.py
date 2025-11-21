@@ -12,6 +12,7 @@ from sbom.cmd_graph import CmdGraph, iter_cmd_graph
 from sbom.path_utils import PathStr
 from sbom.spdx.build import Build
 from sbom.spdx.core import (
+    Element,
     ExternalMap,
     NamespaceMap,
     SoftwareAgent,
@@ -256,9 +257,14 @@ def _create_source_build_and_output_spdx_graphs(
         )
         for node in iter_cmd_graph(cmd_graph)
     }
-    source_file_elements = [file for file in files.values() if file.file_location == KernelFileLocation.SOURCE_TREE]
-    output_file_elements = [file for file in files.values() if file.file_location == KernelFileLocation.OUTPUT_TREE]
-    root_file_elements = [files[node.absolute_path] for node in cmd_graph.roots]
+    source_file_elements: list[Element] = []
+    output_file_elements: list[Element] = []
+    for file in files.values():
+        if file.file_location == KernelFileLocation.SOURCE_TREE:
+            source_file_elements.append(file)
+        else:
+            output_file_elements.append(file)
+    root_file_elements: list[Element] = [files[node.absolute_path] for node in cmd_graph.roots]
     file_relationships = _file_relationships(cmd_graph, files, spdx_uri_prefix, spdx_id_generators.build)
 
     # source file license elements
@@ -302,9 +308,9 @@ def _create_source_build_and_output_spdx_graphs(
         *root_file_elements,
     ]
 
-    src_tree_contains_relationship.to = [*source_file_elements]
-    output_tree_contains_relationship.to = [*output_file_elements]
-    output_package_contains_roots_relationship.to = [*root_file_elements]
+    src_tree_contains_relationship.to = source_file_elements
+    output_tree_contains_relationship.to = output_file_elements
+    output_package_contains_roots_relationship.to = root_file_elements
 
     # create Spdx graphs
     source_graph = SpdxGraph(source_spdx_document, agent, creation_info, source_sbom)

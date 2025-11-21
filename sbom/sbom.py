@@ -193,7 +193,8 @@ def main():
             used_files = [
                 os.path.relpath(node.absolute_path, args.src_tree)
                 for node in iter_cmd_graph(cmd_graph)
-                if not is_relative_to(node.absolute_path, args.output_tree)
+                if is_relative_to(node.absolute_path, args.src_tree)
+                and not is_relative_to(node.absolute_path, args.output_tree)
             ]
             logging.debug(f"Found {len(used_files)} source files in cmd graph")
         with open(SBOM_USED_FILES_NAME, "w", encoding="utf-8") as f:
