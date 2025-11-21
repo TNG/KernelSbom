@@ -150,6 +150,7 @@ flowchart TD
         OUTPUT_SBOM -->|rootElement| PACKAGE
         OUTPUT_SBOM -->|element| PACKAGE
         OUTPUT_SBOM -->|element| BZIMAGE
+        OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
 
         PACKAGE -->|contains| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
@@ -215,6 +216,7 @@ flowchart TD
         OUTPUT_SBOM -->|rootElement| PACKAGE
         OUTPUT_SBOM -->|element| PACKAGE
         OUTPUT_SBOM -->|element| BZIMAGE
+        OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
 
         PACKAGE -->|contains| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
