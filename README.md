@@ -70,6 +70,160 @@ python3 sbom/sbom.py \
   --prettify-json
 ```
 
+## SPDX Graph Visualization
+
+The following diagrams illustrate the structure of the generated SPDX documents: `sbom-source.spdx.json`, `sbom-build.spdx.json`, and `sbom-output.spdx.json`.
+
+### Separate Source and Output Trees
+```mermaid
+flowchart TD
+
+    %% SHARED ELEMENTS
+    AGENT["SoftwareAgent"]
+    CREATION_INFO["CreationInfo"]
+
+    CREATION_INFO -->|createdBy| AGENT
+
+    %% SPDX DOCUMENTS
+    subgraph SOURCE_GRAPH["sbom-source.spdx.json"]
+        SOURCE_DOC["SpdxDocument"]
+        SOURCE_SBOM["Sbom"]
+        SOURCE_TREE["File (src_tree)"]
+        MAINC["File (init/main.c)"]
+        GPL2ONLY_LICENSEEXPRESSION["LicenseExpression (GPL-2.0-only)"]
+
+        SOURCE_DOC -->|rootElement| SOURCE_SBOM
+
+        SOURCE_SBOM -->|rootElement| SOURCE_TREE
+        SOURCE_SBOM -->|element| SOURCE_TREE
+        SOURCE_SBOM -->|element| MAINC
+        SOURCE_SBOM -->|element| GPL2ONLY_LICENSEEXPRESSION
+
+        SOURCE_TREE -->|contains| MAINC
+
+        MAINC -->|hasDeclaredLicense| GPL2ONLY_LICENSEEXPRESSION
+    end
+
+    subgraph BUILD_GRAPH["sbom-build.spdx.json"]
+        BUILD_DOC["SpdxDocument"]
+        BUILD_SBOM["Sbom"]
+        OUTPUT_TREE["File (output_tree)"]
+        VMLINUX_BIN["File (arch/x86/boot/vmlinux.bin)"]
+        BZIMAGE["File (arch/x86/boot/bzImage)"]
+        DOTDOT["..."]
+        MAINC_EXTERNALMAP["ExternalMap (init/main.c)"]
+        RUSTLIB["File (sources outside of src tree, e.g., rustlib/src/rust/library/core/src/lib.rs)"]
+        
+        BUILD_DOC -->|rootElement| BUILD_SBOM
+        BUILD_DOC -->|import| MAINC_EXTERNALMAP
+
+        BUILD_SBOM -->|rootElement| OUTPUT_TREE
+        BUILD_SBOM -->|element| OUTPUT_TREE
+        BUILD_SBOM -->|element| RUSTLIB
+        BUILD_SBOM -->|element| VMLINUX_BIN
+        BUILD_SBOM -->|element| BZIMAGE
+
+        OUTPUT_TREE -->|contains| VMLINUX_BIN
+        OUTPUT_TREE -->|contains| BZIMAGE
+
+        RUSTLIB -->|Build| DOTDOT
+        DOTDOT -->|Build| VMLINUX_BIN
+        VMLINUX_BIN -->|Build| BZIMAGE
+    end
+
+    MAINC -->|Build| DOTDOT
+
+    subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
+        OUTPUT_DOC["SpdxDocument"]
+        OUTPUT_SBOM["Sbom"]
+        PACKAGE["Package (Linux Kernel)"]
+        PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
+        BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
+        BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
+        
+
+        style BZIMAGE_COPY stroke-dasharray: 5 5
+
+        OUTPUT_DOC -->|rootElement| OUTPUT_SBOM
+        OUTPUT_DOC -->|import| BZIMAGE_EXTERNALMAP
+
+        OUTPUT_SBOM -->|rootElement| PACKAGE
+        OUTPUT_SBOM -->|element| PACKAGE
+        OUTPUT_SBOM -->|element| BZIMAGE
+
+        PACKAGE -->|contains| BZIMAGE
+        PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
+
+    end
+
+    PACKAGE -->|originatedBy| AGENT
+```
+
+### Equal Source and Output Trees
+
+```mermaid
+flowchart TD
+
+    %% SHARED ELEMENTS
+    AGENT["SoftwareAgent"]
+    CREATION_INFO["CreationInfo"]
+
+    CREATION_INFO -->|createdBy| AGENT
+
+    %% SPDX DOCUMENTS
+    subgraph BUILD_GRAPH["sbom-build.spdx.json"]
+        BUILD_DOC["SpdxDocument"]
+        BUILD_SBOM["Sbom"]
+        MAINC["File (init/main.c)"]
+        GPL2ONLY_LICENSEEXPRESSION["LicenseExpression (GPL-2.0-only)"]
+        VMLINUX_BIN["File (arch/x86/boot/vmlinux.bin)"]
+        BZIMAGE["File (arch/x86/boot/bzImage)"]
+        DOTDOT["..."]
+        RUSTLIB["File (sources outside of src tree, e.g., rustlib/src/rust/library/core/src/lib.rs)"]
+        
+        BUILD_DOC -->|rootElement| BUILD_SBOM
+
+        BUILD_SBOM -->|rootElement| BZIMAGE
+        BUILD_SBOM -->|element| RUSTLIB
+        BUILD_SBOM -->|element| MAINC
+        BUILD_SBOM -->|element| GPL2ONLY_LICENSEEXPRESSION
+        BUILD_SBOM -->|element| VMLINUX_BIN
+        BUILD_SBOM -->|element| BZIMAGE
+
+        RUSTLIB -->|Build| DOTDOT
+        DOTDOT -->|Build| VMLINUX_BIN
+        VMLINUX_BIN -->|Build| BZIMAGE
+        MAINC -->|hasDeclaredLicense| GPL2ONLY_LICENSEEXPRESSION
+    end
+
+    MAINC -->|Build| DOTDOT
+
+    subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
+        OUTPUT_DOC["SpdxDocument"]
+        OUTPUT_SBOM["Sbom"]
+        PACKAGE["Package (Linux Kernel)"]
+        PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
+        BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
+        BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
+        
+
+        style BZIMAGE_COPY stroke-dasharray: 5 5
+
+        OUTPUT_DOC -->|rootElement| OUTPUT_SBOM
+        OUTPUT_DOC -->|import| BZIMAGE_EXTERNALMAP
+
+        OUTPUT_SBOM -->|rootElement| PACKAGE
+        OUTPUT_SBOM -->|element| PACKAGE
+        OUTPUT_SBOM -->|element| BZIMAGE
+
+        PACKAGE -->|contains| BZIMAGE
+        PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
+
+    end
+
+    PACKAGE -->|originatedBy| AGENT
+```
+
 
 ## Directory Structure
 
