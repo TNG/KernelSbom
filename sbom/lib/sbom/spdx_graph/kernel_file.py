@@ -138,10 +138,9 @@ def _git_blob_oid(file_path: str) -> str:
     return sha1_hash
 
 
-SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(
-    r"SPDX-License-Identifier:\s*(?P<id>[^\s]+(?:\s+(?:AND|OR|WITH)\s+[^\s]+)*)",
-    re.IGNORECASE,
-)
+# REUSE-IgnoreStart
+SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(r"SPDX-License-Identifier:\s*(?P<id>.*?)(?:\s*(\*/|$))")
+# REUSE-IgnoreEnd
 
 
 def _parse_spdx_license_identifier(absolute_path: str, max_lines: int = 5) -> str | None:
@@ -229,4 +228,3 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
         return "other"
 
     logging.warning(f"Could not infer primary purpose for {absolute_path}")
-    return
