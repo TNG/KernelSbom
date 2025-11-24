@@ -411,6 +411,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr
     # Standard Unix utilities and system tools
     (re.compile(r"^rm\b"), _parse_noop),
     (re.compile(r"^mkdir\b"), _parse_noop),
+    (re.compile(r"^touch\b"), _parse_noop),
     (re.compile(r"^cat\b.*?[\|>]"), lambda c: _parse_cat_command(c.split("|")[0].split(">")[0])),
     (re.compile(r"^echo[^|]*$"), _parse_noop),
     (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
