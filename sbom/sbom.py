@@ -36,7 +36,7 @@ class Args:
     spdx: bool
     prettify_json: bool
     used_files: bool
-    spdx_uri_prefix: str
+    spdxId_prefix: str
     package_name: str
     package_license: str
     build_version: str
@@ -85,7 +85,7 @@ def _parse_args() -> Args:
         "In this case sbom.used-files.txt will contain all files used for the kernel build including all build artifacts. (default: False)",
     )
 
-    # Spdx specific settings
+    # SPDX specific settings
     parser.add_argument(
         "--prettify-json",
         action="store_true",
@@ -93,24 +93,24 @@ def _parse_args() -> Args:
         help="Whether to pretty print the gnerated spdx.json documents (default: False)",
     )
     parser.add_argument(
-        "--spdx-uri-prefix",
-        default="https://spdx.org/spdxdocs/",
-        help="The uri prefix to be used for all 'spdxId' fields in the spdx document (default: https://spdx.org/spdxdocs/)",
+        "--spdxId-prefix",
+        default="urn:spdx.dev:",
+        help="The prefix to be used for all 'spdxId' fields in the SPDX document (default: urn:spdx.dev:)",
     )
     parser.add_argument(
         "--package-name",
         default="Linux Kernel",
-        help="The name of the Spdx Package element in sbom-output.spdx.json containing the artifacts provided in --roots. (default: Linux Kernel)",
+        help="The name of the SPDX Package element in sbom-output.spdx.json containing the artifacts provided in --roots. (default: Linux Kernel)",
     )
     parser.add_argument(
         "--package-license",
         default="NOASSERTION",
-        help="The license expression to use when generating the Spdx Package element. (default: NOASSERTION)",
+        help="The license expression to use when generating the SPDX Package element. (default: NOASSERTION)",
     )
     parser.add_argument(
         "--build-version",
         default="NOASSERTION",
-        help="The version of the build that created the artifacts provided in --roots. Will be used when generating the Spdx Package element. (default: NOASSERTION)",
+        help="The version of the build that created the artifacts provided in --roots. Will be used when generating the SPDX Package element. (default: NOASSERTION)",
     )
 
     parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
@@ -127,7 +127,7 @@ def _parse_args() -> Args:
         root_paths = args["roots"]
     spdx = args["spdx"]
     used_files = args["used_files"]
-    spdx_uri_prefix = args["spdx_uri_prefix"]
+    spdxId_prefix = args["spdxId_prefix"]
     package_name = args["package_name"]
     package_license = args["package_license"]
     build_version = args["build_version"]
@@ -152,7 +152,7 @@ def _parse_args() -> Args:
         spdx,
         prettify_json,
         used_files,
-        spdx_uri_prefix,
+        spdxId_prefix,
         package_name,
         package_license,
         build_version,
@@ -205,10 +205,10 @@ def main():
         return
 
     # Build SPDX Document
-    logging.debug("Start generating Spdx graph based on cmd graph")
+    logging.debug("Start generating SPDX graph based on cmd graph")
     start_time = time.time()
 
-    spdx_id_base_namespace = f"{args.spdx_uri_prefix}/{uuid.uuid4()}/"
+    spdx_id_base_namespace = f"{args.spdxId_prefix}{uuid.uuid4()}/"
     spdx_id_generators = SpdxIdGeneratorCollection(
         base=SpdxIdGenerator(prefix="p", namespace=spdx_id_base_namespace),
         source=SpdxIdGenerator(prefix="s", namespace=f"{spdx_id_base_namespace}source/"),
@@ -220,13 +220,13 @@ def main():
         cmd_graph,
         args.output_tree,
         args.src_tree,
-        args.spdx_uri_prefix,
+        args.spdxId_prefix,
         args.package_name,
         args.package_license,
         args.build_version,
         spdx_id_generators,
     )
-    logging.debug(f"Generated Spdx graph in {time.time() - start_time} seconds")
+    logging.debug(f"Generated SPDX graph in {time.time() - start_time} seconds")
 
     for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
         spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)

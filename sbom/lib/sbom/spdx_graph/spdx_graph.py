@@ -70,7 +70,7 @@ def build_spdx_graphs(
     cmd_graph: CmdGraph,
     output_tree: PathStr,
     src_tree: PathStr,
-    spdx_uri_prefix: str,
+    spdxId_prefix: str,
     package_name: str,
     package_license: str,
     build_version: str,
@@ -84,7 +84,7 @@ def build_spdx_graphs(
             cmd_graph,
             output_tree,
             src_tree,
-            spdx_uri_prefix,
+            spdxId_prefix,
             package_name,
             package_license,
             build_version,
@@ -98,7 +98,7 @@ def build_spdx_graphs(
         cmd_graph,
         output_tree,
         src_tree,
-        spdx_uri_prefix,
+        spdxId_prefix,
         package_name,
         package_license,
         build_version,
@@ -115,7 +115,7 @@ def _create_build_and_output_spdx_graphs(
     cmd_graph: CmdGraph,
     output_tree: PathStr,
     src_tree: PathStr,
-    spdx_uri_prefix: str,
+    spdxId_prefix: str,
     package_name: str,
     package_license: str,
     build_version: str,
@@ -159,7 +159,7 @@ def _create_build_and_output_spdx_graphs(
         for node in iter_cmd_graph(cmd_graph)
     }
     root_file_elements = [files[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, files, spdx_uri_prefix, spdx_id_generators.build)
+    file_relationships = _file_relationships(cmd_graph, files, spdxId_prefix, spdx_id_generators.build)
 
     # Source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -202,7 +202,7 @@ def _create_source_build_and_output_spdx_graphs(
     cmd_graph: CmdGraph,
     output_tree: PathStr,
     src_tree: PathStr,
-    spdx_uri_prefix: str,
+    spdxId_prefix: str,
     package_name: str,
     package_license: str,
     build_version: str,
@@ -265,7 +265,7 @@ def _create_source_build_and_output_spdx_graphs(
         else:
             output_file_elements.append(file)
     root_file_elements: list[Element] = [files[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, files, spdx_uri_prefix, spdx_id_generators.build)
+    file_relationships = _file_relationships(cmd_graph, files, spdxId_prefix, spdx_id_generators.build)
 
     # source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -433,7 +433,7 @@ def _output_package_elements(
 def _file_relationships(
     cmd_graph: CmdGraph,
     file_elements: Mapping[PathStr, File],
-    spdx_uri_prefix: str,
+    spdxId_prefix: str,
     build_id_generator: SpdxIdGenerator,
 ) -> list[Build | Relationship]:
     # create a relationship between each node (output file) and its children (input files)
@@ -443,7 +443,7 @@ def _file_relationships(
             continue
         build_element = Build(
             spdxId=build_id_generator.generate(),
-            build_buildType=f"{spdx_uri_prefix}Kbuild",
+            build_buildType=f"{spdxId_prefix}Kbuild",
             comment=node.cmd_file.savedcmd if node.cmd_file is not None else None,
         )
         hasInput_relationship = Relationship(
