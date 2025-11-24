@@ -92,7 +92,7 @@ def build_kernel_file_element(
     )
 
     # primary purpose
-    primary_purpose = _get_primary_purpose(absolute_path, file_location)
+    primary_purpose = _get_primary_purpose(absolute_path)
 
     # spdxId
     spdxId = (
