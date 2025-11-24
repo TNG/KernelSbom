@@ -138,10 +138,9 @@ def _git_blob_oid(file_path: str) -> str:
     return sha1_hash
 
 
-SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(
-    r"SPDX-LICENSE-IDENTIFIER:\s*(?P<id>.*?)(?:\s*(\*/|$))",
-    re.IGNORECASE,
-)
+# REUSE-IgnoreStart
+SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(r"SPDX-License-Identifier:\s*(?P<id>.*?)(?:\s*(\*/|$))")
+# REUSE-IgnoreEnd
 
 
 def _parse_spdx_license_identifier(absolute_path: str, max_lines: int = 5) -> str | None:
