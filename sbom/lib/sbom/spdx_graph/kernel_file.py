@@ -184,8 +184,12 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
     if ends_with([".xz", ".cpio", ".gz", ".tar", ".zip"]):
         return "archive"
 
+    # Applications
+    if ends_with(["bzImage"]):
+        return "application"
+
     # Executables / machine code
-    if ends_with([".bin", ".elf", "vmlinux", "bzImage", "vmlinux.unstripped", "bpfilter_umh"]):
+    if ends_with([".bin", ".elf", "vmlinux", "vmlinux.unstripped", "bpfilter_umh"]):
         return "executable"
 
     # Kernel modules

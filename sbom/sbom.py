@@ -34,13 +34,15 @@ class Args:
     output_tree: PathStr
     root_paths: list[PathStr]
     spdx: bool
-    prettify_json: bool
     used_files: bool
-    spdxId_prefix: str
-    package_name: str
-    package_license: str
-    build_version: str
     debug: bool
+    spdxId_prefix: str
+    spdxId_uuid: uuid.UUID
+    build_type: str
+    package_license: str
+    package_version: str | None
+    package_copyright_text: str | None
+    prettify_json: bool
 
 
 def _parse_args() -> Args:
@@ -84,39 +86,54 @@ def _parse_args() -> Args:
         "Note, if src-tree and output-tree are equal it is not possible to reliably classify source files. "
         "In this case sbom.used-files.txt will contain all files used for the kernel build including all build artifacts. (default: False)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Debug level (default: False)",
+    )
 
     # SPDX specific settings
+    parser.add_argument(
+        "--spdxId-prefix",
+        default="urn:spdx.dev:",
+        help="The prefix to use for all spdxId properties. (default: urn:spdx.dev:)",
+    )
+    parser.add_argument(
+        "--spdxId-uuid",
+        default=None,
+        help="The uuid to use for all spdxId properties to make the SPDX documents reproducible. By default a random uuid is generated.",
+    )
+    parser.add_argument(
+        "--build-type",
+        default="urn:spdx.dev:Kbuild",
+        help="The SPDX buildType property to use for all Build elements. (default: urn:spdx.dev:Kbuild)",
+    )
+    parser.add_argument(
+        "--package-license",
+        default="NOASSERTION",
+        help="The SPDX licenseExpression property to use for the LicenseExpression linked to all SPDX Package elements. (default: NOASSERTION)",
+    )
+    parser.add_argument(
+        "--package-version",
+        default=None,
+        help="The SPDX packageVersion property to use for all SPDX Package elements. (default: None)",
+    )
+    parser.add_argument(
+        "--package-copyright-text",
+        default=None,
+        help="The SPDX copyrightText property to use for all SPDX Package elements. If not provided, the tool will attempt to read the top-level 'COPYING' file from the source tree.",
+    )
     parser.add_argument(
         "--prettify-json",
         action="store_true",
         default=False,
         help="Whether to pretty print the gnerated spdx.json documents (default: False)",
     )
-    parser.add_argument(
-        "--spdxId-prefix",
-        default="urn:spdx.dev:",
-        help="The prefix to be used for all 'spdxId' fields in the SPDX document (default: urn:spdx.dev:)",
-    )
-    parser.add_argument(
-        "--package-name",
-        default="Linux Kernel",
-        help="The name of the SPDX Package element in sbom-output.spdx.json containing the artifacts provided in --roots. (default: Linux Kernel)",
-    )
-    parser.add_argument(
-        "--package-license",
-        default="NOASSERTION",
-        help="The license expression to use when generating the SPDX Package element. (default: NOASSERTION)",
-    )
-    parser.add_argument(
-        "--build-version",
-        default="NOASSERTION",
-        help="The version of the build that created the artifacts provided in --roots. Will be used when generating the SPDX Package element. (default: NOASSERTION)",
-    )
 
-    parser.add_argument("-d", "--debug", action="store_true", default=False, help="Debug level (default: False)")
-
-    # Extract arguments
+    # Extract and validate arguments
     args = vars(parser.parse_args())
+
     src_tree = os.path.realpath(args["src_tree"])
     output_tree = os.path.realpath(args["output_tree"])
     root_paths = []
@@ -125,16 +142,7 @@ def _parse_args() -> Args:
             root_paths = [root.strip() for root in f.readlines()]
     else:
         root_paths = args["roots"]
-    spdx = args["spdx"]
-    used_files = args["used_files"]
-    spdxId_prefix = args["spdxId_prefix"]
-    package_name = args["package_name"]
-    package_license = args["package_license"]
-    build_version = args["build_version"]
-    prettify_json = args["prettify_json"]
-    debug = args["debug"]
 
-    # Validate arguments
     if not os.path.exists(src_tree):
         raise argparse.ArgumentTypeError(f"--src-tree {src_tree} does not exist")
     if not os.path.exists(output_tree):
@@ -145,18 +153,40 @@ def _parse_args() -> Args:
                 f"path to root artifact {os.path.join(output_tree, root_path)} does not exist"
             )
 
+    spdx = args["spdx"]
+    used_files = args["used_files"]
+    debug = args["debug"]
+
+    spdxId_prefix = args["spdxId_prefix"]
+    spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
+    build_type = args["build_type"]
+    package_license = args["package_license"]
+    package_version = args["package_version"] if args["package_version"] is not None else None
+    package_copyright_text: str | None = None
+    if args["package_copyright_text"] is not None:
+        package_copyright_text = args["package_copyright_text"]
+    elif os.path.isfile(copying_path := os.path.join(src_tree, "COPYING")):
+        with open(copying_path, "r") as f:
+            package_copyright_text = f.read()
+
+    prettify_json = args["prettify_json"]
+
+    # Validate arguments
+
     return Args(
         src_tree,
         output_tree,
         root_paths,
         spdx,
-        prettify_json,
         used_files,
-        spdxId_prefix,
-        package_name,
-        package_license,
-        build_version,
         debug,
+        spdxId_prefix,
+        spdxId_uuid,
+        build_type,
+        package_license,
+        package_version,
+        package_copyright_text,
+        prettify_json,
     )
 
 
@@ -208,7 +238,7 @@ def main():
     logging.debug("Start generating SPDX graph based on cmd graph")
     start_time = time.time()
 
-    spdx_id_base_namespace = f"{args.spdxId_prefix}{uuid.uuid4()}/"
+    spdx_id_base_namespace = f"{args.spdxId_prefix}{args.spdxId_uuid}/"
     spdx_id_generators = SpdxIdGeneratorCollection(
         base=SpdxIdGenerator(prefix="p", namespace=spdx_id_base_namespace),
         source=SpdxIdGenerator(prefix="s", namespace=f"{spdx_id_base_namespace}source/"),
@@ -220,10 +250,10 @@ def main():
         cmd_graph,
         args.output_tree,
         args.src_tree,
-        args.spdxId_prefix,
-        args.package_name,
+        args.build_type,
         args.package_license,
-        args.build_version,
+        args.package_version,
+        args.package_copyright_text,
         spdx_id_generators,
     )
     logging.debug(f"Generated SPDX graph in {time.time() - start_time} seconds")

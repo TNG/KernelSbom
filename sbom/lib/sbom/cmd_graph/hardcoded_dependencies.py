@@ -5,6 +5,7 @@ import os
 from typing import Callable
 import sbom.errors as sbom_errors
 from sbom.path_utils import PathStr, is_relative_to
+from sbom.environment import Environment
 
 HARDCODED_DEPENDENCIES: dict[str, list[str]] = {
     # defined in linux/Kbuild
@@ -70,7 +71,7 @@ def _evaluate_template(template: str, variables: dict[str, Callable[[], str | No
 
 
 def _get_arch(path: PathStr):
-    srcarch = os.environ.get("SRCARCH")
+    srcarch = Environment.SRCARCH
     if srcarch is None:
         sbom_errors.log(
             f"Skip architecture specific hardcoded dependency for '{path}' because the SRCARCH environment variable was not set."
