@@ -51,6 +51,7 @@ class SpdxGraphConfig(Protocol):
     src_tree: PathStr
     created: datetime
     build_type: str
+    build_id: str | None
     package_license: str
     package_version: str | None
     package_copyright_text: str | None
@@ -131,6 +132,11 @@ def _create_build_and_output_spdx_graphs(
         software_sbomType=["build"],
     )
 
+    # High-level build element
+    high_level_build_element, high_level_build_ancestorOf_relationship = _high_level_build_elements(
+        config.build_type, config.build_id, spdx_id_generators.build
+    )
+
     # File elements
     file_element_map: dict[PathStr, KernelFile] = {
         node.absolute_path: build_kernel_file_element(
@@ -139,7 +145,9 @@ def _create_build_and_output_spdx_graphs(
         for node in iter_cmd_graph(cmd_graph)
     }
     root_file_elements: list[File] = [file_element_map[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, file_element_map, config.build_type, spdx_id_generators.build)
+    file_relationships = _file_relationships(
+        cmd_graph, file_element_map, config.build_type, high_level_build_element.build_buildId, spdx_id_generators.build
+    )
 
     # Source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -184,6 +192,10 @@ def _create_build_and_output_spdx_graphs(
         *output_package_hasDeclaredLicense_relationships,
         output_package_license_expression,
         *root_file_elements,
+    ]
+
+    high_level_build_ancestorOf_relationship.to = [
+        element for element in file_relationships if isinstance(element, Build)
     ]
 
     build_graph = SpdxGraph(build_spdx_document, agent, creation_info, build_sbom)
@@ -231,6 +243,11 @@ def _create_source_build_and_output_spdx_graphs(
         to=[],
     )
 
+    # High-level build element
+    high_level_build_element, high_level_build_ancestorOf_relationship = _high_level_build_elements(
+        config.build_type, config.build_id, spdx_id_generators.build
+    )
+
     # File elements
     file_element_map: dict[PathStr, KernelFile] = {
         node.absolute_path: build_kernel_file_element(
@@ -246,7 +263,9 @@ def _create_source_build_and_output_spdx_graphs(
         else:
             output_file_elements.append(file_element)
     root_file_elements: list[File] = [file_element_map[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, file_element_map, config.build_type, spdx_id_generators.build)
+    file_relationships = _file_relationships(
+        cmd_graph, file_element_map, config.build_type, high_level_build_element.build_buildId, spdx_id_generators.build
+    )
 
     # Source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -290,6 +309,7 @@ def _create_source_build_and_output_spdx_graphs(
     ]
     build_sbom.rootElement = [output_tree_element]
     build_sbom.element = [
+        high_level_build_element,
         output_tree_element,
         output_tree_contains_relationship,
         *output_file_elements,
@@ -304,6 +324,9 @@ def _create_source_build_and_output_spdx_graphs(
         *root_file_elements,
     ]
 
+    high_level_build_ancestorOf_relationship.to = [
+        element for element in file_relationships if isinstance(element, Build)
+    ]
     src_tree_contains_relationship.to = source_file_elements
     output_tree_contains_relationship.to = output_file_elements
 
@@ -443,10 +466,30 @@ def _output_package_elements(
     )
 
 
+def _high_level_build_elements(
+    build_type: str, build_id: str | None, spdx_id_generator: SpdxIdGenerator
+) -> tuple[Build, Relationship]:
+    build_spdxId = spdx_id_generator.generate()
+    high_level_build_element = Build(
+        spdxId=build_spdxId,
+        build_buildType=build_type,
+        build_buildId=build_id if build_id is not None else build_spdxId,
+    )
+    high_level_build_ancestorOf_relationship = Relationship(
+        spdxId=spdx_id_generator.generate(),
+        relationshipType="ancestorOf",
+        from_=high_level_build_element,
+        completeness="complete",
+        to=[],
+    )
+    return (high_level_build_element, high_level_build_ancestorOf_relationship)
+
+
 def _file_relationships(
     cmd_graph: CmdGraph,
     file_elements: Mapping[PathStr, File],
     build_type: str,
+    build_id: str,
     build_id_generator: SpdxIdGenerator,
 ) -> list[Build | Relationship]:
     # Create a relationship between each node (output file) and its children (input files)
@@ -457,6 +500,7 @@ def _file_relationships(
         build_element = Build(
             spdxId=build_id_generator.generate(),
             build_buildType=build_type,
+            build_buildId=build_id,
             comment=node.cmd_file.savedcmd if node.cmd_file is not None else None,
         )
         hasInput_relationship = Relationship(

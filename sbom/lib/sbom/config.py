@@ -55,6 +55,9 @@ class KernelSbomConfig:
     build_type: str
     """SPDX buildType value for all Build elements."""
 
+    build_id: str | None
+    """SPDX buildId value for all Build elements."""
+
     package_license: str
     """License expression applied to all SPDX Packages."""
 
@@ -96,6 +99,7 @@ def get_config() -> KernelSbomConfig:
     spdxId_prefix = args["spdxId_prefix"]
     spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
     build_type = args["build_type"]
+    build_id = args["build_id"]
     package_license = args["package_license"]
     package_version = args["package_version"] if args["package_version"] is not None else None
     package_copyright_text: str | None = None
@@ -127,6 +131,7 @@ def get_config() -> KernelSbomConfig:
         spdxId_prefix=spdxId_prefix,
         spdxId_uuid=spdxId_uuid,
         build_type=build_type,
+        build_id=build_id,
         package_license=package_license,
         package_version=package_version,
         package_copyright_text=package_copyright_text,
@@ -202,6 +207,11 @@ def _parse_cli_arguments() -> dict[str, Any]:
         "--build-type",
         default="urn:spdx.dev:Kbuild",
         help="The SPDX buildType property to use for all Build elements. (default: urn:spdx.dev:Kbuild)",
+    )
+    parser.add_argument(
+        "--build-id",
+        default=None,
+        help="The SPDX buildId property to use for all Build elements. If not provided the spdxId of the high level Build element is used as the buildId. (default: None)",
     )
     parser.add_argument(
         "--package-license",

@@ -11,7 +11,7 @@ SPDX_SPEC_VERSION = "3.0.1"
 ExternalIdentifierType = Literal["email", "gitoid", "urlScheme"]
 HashAlgorithm = Literal["sha256", "sha512"]
 ProfileIdentifierType = Literal["core", "software", "build", "lite", "simpleLicensing"]
-RelationshipType = Literal["contains", "generates", "hasDeclaredLicense", "hasInput", "hasOutput"]
+RelationshipType = Literal["contains", "generates", "hasDeclaredLicense", "hasInput", "hasOutput", "ancestorOf"]
 RelationshipCompleteness = Literal["complete", "incomplete", "noAssertion"]
 
 

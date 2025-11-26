@@ -9,3 +9,4 @@ from sbom.spdx.core import Element
 class Build(Element):
     type: str = field(init=False, default="build_Build")
     build_buildType: str
+    build_buildId: str

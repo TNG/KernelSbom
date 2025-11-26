@@ -107,6 +107,9 @@ flowchart TD
     subgraph BUILD_GRAPH["sbom-build.spdx.json"]
         BUILD_DOC["SpdxDocument"]
         BUILD_SBOM["Sbom"]
+        HIGH_LEVEL_BUILD["Build (High Level)"]
+        LOW_LEVEL_BUILD["Build"]
+
         OUTPUT_TREE["File (output_tree)"]
         VMLINUX_BIN["File (arch/x86/boot/vmlinux.bin)"]
         BZIMAGE["File (arch/x86/boot/bzImage)"]
@@ -122,16 +125,24 @@ flowchart TD
         BUILD_SBOM -->|element| RUSTLIB
         BUILD_SBOM -->|element| VMLINUX_BIN
         BUILD_SBOM -->|element| BZIMAGE
+        BUILD_SBOM -->|element| HIGH_LEVEL_BUILD
+        BUILD_SBOM -->|element| LOW_LEVEL_BUILD
 
         OUTPUT_TREE -->|contains| VMLINUX_BIN
         OUTPUT_TREE -->|contains| BZIMAGE
 
-        RUSTLIB -->|Build| DOTDOT
-        DOTDOT -->|Build| VMLINUX_BIN
-        VMLINUX_BIN -->|Build| BZIMAGE
+        HIGH_LEVEL_BUILD -->|ancestorOf| LOW_LEVEL_BUILD
+
+        RUSTLIB -.->|Build| DOTDOT
+        DOTDOT -.->|Build| VMLINUX_BIN
+        LOW_LEVEL_BUILD -->|hasInput| VMLINUX_BIN
+        VMLINUX_BIN -.->|Build| LOW_LEVEL_BUILD
+        LOW_LEVEL_BUILD -->|hasOutput| BZIMAGE
+        LOW_LEVEL_BUILD -.->|Build| BZIMAGE
+
     end
 
-    MAINC -->|Build| DOTDOT
+    MAINC -.->|Build| DOTDOT
 
     subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
         OUTPUT_DOC["SpdxDocument"]
@@ -140,17 +151,23 @@ flowchart TD
         PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
         BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
         BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
+        HIGH_LEVEL_BUILD_COPY["Build (High Level)"]
+        HIGH_LEVEL_BUILD_EXTERNALMAP["ExternalMap<br>(Build (High Level))"]
         
-
         style BZIMAGE_COPY stroke-dasharray: 5 5
+        style HIGH_LEVEL_BUILD_COPY stroke-dasharray: 5 5
 
         OUTPUT_DOC -->|rootElement| OUTPUT_SBOM
         OUTPUT_DOC -->|import| BZIMAGE_EXTERNALMAP
+        OUTPUT_DOC -->|import| HIGH_LEVEL_BUILD_EXTERNALMAP
 
         OUTPUT_SBOM -->|rootElement| PACKAGE
         OUTPUT_SBOM -->|element| PACKAGE
         OUTPUT_SBOM -->|element| BZIMAGE
         OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
+        OUTPUT_SBOM -->|element| BZIMAGE_COPY
+        OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
+        OUTPUT_SBOM -->|element| HIGH_LEVEL_BUILD_COPY
 
         PACKAGE -->|hasDistributionArtifact| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
@@ -175,6 +192,8 @@ flowchart TD
     subgraph BUILD_GRAPH["sbom-build.spdx.json"]
         BUILD_DOC["SpdxDocument"]
         BUILD_SBOM["Sbom"]
+        HIGH_LEVEL_BUILD["Build (High Level)"]
+        LOW_LEVEL_BUILD["Build"]
         MAINC["File (init/main.c)"]
         GPL2ONLY_LICENSEEXPRESSION["LicenseExpression (GPL-2.0-only)"]
         VMLINUX_BIN["File (arch/x86/boot/vmlinux.bin)"]
@@ -190,37 +209,48 @@ flowchart TD
         BUILD_SBOM -->|element| GPL2ONLY_LICENSEEXPRESSION
         BUILD_SBOM -->|element| VMLINUX_BIN
         BUILD_SBOM -->|element| BZIMAGE
+        BUILD_SBOM -->|element| HIGH_LEVEL_BUILD
+        BUILD_SBOM -->|element| LOW_LEVEL_BUILD
 
-        RUSTLIB -->|Build| DOTDOT
-        DOTDOT -->|Build| VMLINUX_BIN
-        VMLINUX_BIN -->|Build| BZIMAGE
+        HIGH_LEVEL_BUILD -->|ancestorOf| LOW_LEVEL_BUILD
+
+        RUSTLIB -.->|Build| DOTDOT
+        DOTDOT -.->|Build| VMLINUX_BIN
+        VMLINUX_BIN -.->|Build| LOW_LEVEL_BUILD
+        LOW_LEVEL_BUILD -->|hasInput| VMLINUX_BIN
+        LOW_LEVEL_BUILD -->|hasOutput| BZIMAGE
+        LOW_LEVEL_BUILD -.->|BUILD| BZIMAGE
         MAINC -->|hasDeclaredLicense| GPL2ONLY_LICENSEEXPRESSION
     end
 
-    MAINC -->|Build| DOTDOT
+    MAINC -.->|Build| DOTDOT
 
     subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
         OUTPUT_DOC["SpdxDocument"]
         OUTPUT_SBOM["Sbom"]
         PACKAGE["Package (Linux Kernel (bzImage))"]
-        PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
         BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
         BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
-        
+        HIGH_LEVEL_BUILD_COPY["Build (High Level)"]
+        HIGH_LEVEL_BUILD_EXTERNALMAP["ExternalMap<br>(Build (High Level))"]
+        PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
 
         style BZIMAGE_COPY stroke-dasharray: 5 5
+        style HIGH_LEVEL_BUILD_COPY stroke-dasharray: 5 5
 
         OUTPUT_DOC -->|rootElement| OUTPUT_SBOM
         OUTPUT_DOC -->|import| BZIMAGE_EXTERNALMAP
+        OUTPUT_DOC -->|import| HIGH_LEVEL_BUILD_EXTERNALMAP
 
         OUTPUT_SBOM -->|rootElement| PACKAGE
         OUTPUT_SBOM -->|element| PACKAGE
         OUTPUT_SBOM -->|element| BZIMAGE
+        OUTPUT_SBOM -->|element| HIGH_LEVEL_BUILD_COPY
+        OUTPUT_SBOM -->|element| BZIMAGE_COPY
         OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
 
         PACKAGE -->|hasDistributionArtifact| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
-
     end
 
     PACKAGE -->|originatedBy| AGENT
