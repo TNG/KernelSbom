@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 import os
 from typing import Literal, Protocol
@@ -48,6 +49,7 @@ class SpdxIdGeneratorCollection:
 class SpdxGraphConfig(Protocol):
     output_tree: PathStr
     src_tree: PathStr
+    created: datetime
     build_type: str
     package_license: str
     package_version: str | None
@@ -111,7 +113,7 @@ def _create_build_and_output_spdx_graphs(
         spdxId=spdx_id_generators.base.generate(),
         name="KernelSbom",
     )
-    creation_info = CreationInfo(createdBy=[agent])
+    creation_info = CreationInfo(createdBy=[agent], created=config.created.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     # SpdxDocument elements
     _, build_spdx_document, output_spdx_document = _spdx_document_elements(spdx_id_generators)
@@ -199,7 +201,7 @@ def _create_source_build_and_output_spdx_graphs(
         spdxId=spdx_id_generators.base.generate(),
         name="KernelSbom",
     )
-    creation_info = CreationInfo(createdBy=[agent])
+    creation_info = CreationInfo(createdBy=[agent], created=config.created.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     # Spdx Document and Sbom
     source_spdx_document, build_spdx_document, output_spdx_document = _spdx_document_elements(spdx_id_generators)

@@ -3,6 +3,7 @@
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 import os
 from typing import Any
@@ -41,6 +42,9 @@ class KernelSbomConfig:
 
     debug: bool
     """Whether to enable debug logging."""
+
+    created: datetime
+    """Datetime to use for the SPDX created property of the CreationInfo element."""
 
     spdxId_prefix: str
     """Prefix to use for all SPDX element IDs."""
@@ -83,6 +87,12 @@ def get_config() -> KernelSbomConfig:
     generate_used_files = args["generate_used_files"]
     debug = args["debug"]
 
+    try:
+        created = datetime.fromisoformat(args["created"])
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid date format for argument '--created': '{args['created']}'. Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
+        )
     spdxId_prefix = args["spdxId_prefix"]
     spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
     build_type = args["build_type"]
@@ -113,6 +123,7 @@ def get_config() -> KernelSbomConfig:
         generate_used_files=generate_used_files,
         used_files_file_name=used_files_file_name,
         debug=debug,
+        created=created,
         spdxId_prefix=spdxId_prefix,
         spdxId_uuid=spdxId_uuid,
         build_type=build_type,
@@ -172,6 +183,11 @@ def _parse_cli_arguments() -> dict[str, Any]:
     )
 
     # SPDX specific settings
+    parser.add_argument(
+        "--created",
+        default=str(datetime.now()),
+        help="The SPDX created property to use for the CreationInfo element in ISO format (YYYY-MM-DD [HH:MM:SS]). (default: datetime.now())",
+    )
     parser.add_argument(
         "--spdxId-prefix",
         default="urn:spdx.dev:",
