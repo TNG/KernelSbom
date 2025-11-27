@@ -9,6 +9,7 @@ Compute software bill of materials in SPDX format describing a kernel build.
 
 import argparse
 from dataclasses import dataclass
+import json
 import logging
 import os
 import sys
@@ -21,7 +22,7 @@ SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
 from sbom.spdx.spdxId import SpdxIdGenerator  # noqa: E402
-from sbom.spdx_graph.spdx_graph import SpdxIdGeneratorCollection, KernelSbomKind, build_spdx_graphs  # noqa: E402
+from sbom.spdx_graph.spdx_graph import SpdxGraphOptions, SpdxIdGeneratorCollection, KernelSbomKind, build_spdx_graphs  # noqa: E402
 import sbom.errors as sbom_errors  # noqa: E402
 from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
 from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
@@ -39,6 +40,7 @@ class Args:
     spdxId_prefix: str
     spdxId_uuid: uuid.UUID
     build_type: str
+    package_names: dict[str, str]
     package_license: str
     package_version: str | None
     package_copyright_text: str | None
@@ -110,6 +112,11 @@ def _parse_args() -> Args:
         help="The SPDX buildType property to use for all Build elements. (default: urn:spdx.dev:Kbuild)",
     )
     parser.add_argument(
+        "--package-names",
+        default="""{"bzImage": "Linux Kernel (bzImage)"}""",
+        help="""custom mapping from file names to SPDX Package names. If not specified, the SPDX Package name will be set to the name of the file it represents. (default: {"bzImage": "Linux Kernel (bzImage)"})""",
+    )
+    parser.add_argument(
         "--package-license",
         default="NOASSERTION",
         help="The SPDX licenseExpression property to use for the LicenseExpression linked to all SPDX Package elements. (default: NOASSERTION)",
@@ -122,7 +129,7 @@ def _parse_args() -> Args:
     parser.add_argument(
         "--package-copyright-text",
         default=None,
-        help="The SPDX copyrightText property to use for all SPDX Package elements. If not provided, the tool will attempt to read the top-level 'COPYING' file from the source tree.",
+        help="The SPDX copyrightText property to use for all SPDX Package elements. If not specified, and if a COPYING file exists in the source tree, the package-copyright-text is set to the content of this file. (default: None)",
     )
     parser.add_argument(
         "--prettify-json",
@@ -160,6 +167,13 @@ def _parse_args() -> Args:
     spdxId_prefix = args["spdxId_prefix"]
     spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
     build_type = args["build_type"]
+    try:
+        package_names: dict[str, str] = json.loads(args["package_names"])
+    except json.JSONDecodeError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid format for '--package-names': {args['package_names']}."
+            + """Expected mapping of the format "{ "filename1": "package_name1", "filename2": "package_name2", ... }"."""
+        )
     package_license = args["package_license"]
     package_version = args["package_version"] if args["package_version"] is not None else None
     package_copyright_text: str | None = None
@@ -183,6 +197,7 @@ def _parse_args() -> Args:
         spdxId_prefix,
         spdxId_uuid,
         build_type,
+        package_names,
         package_license,
         package_version,
         package_copyright_text,
@@ -250,11 +265,14 @@ def main():
         cmd_graph,
         args.output_tree,
         args.src_tree,
-        args.build_type,
-        args.package_license,
-        args.package_version,
-        args.package_copyright_text,
         spdx_id_generators,
+        options=SpdxGraphOptions(
+            build_type=args.build_type,
+            package_names=args.package_names,
+            package_license=args.package_license,
+            package_version=args.package_version,
+            package_copyright_text=args.package_copyright_text,
+        ),
     )
     logging.debug(f"Generated SPDX graph in {time.time() - start_time} seconds")
 

@@ -52,6 +52,15 @@ class SpdxIdGeneratorCollection:
 
 
 @dataclass
+class SpdxGraphOptions:
+    build_type: str
+    package_names: dict[str, str]
+    package_license: str
+    package_version: str | None
+    package_copyright_text: str | None
+
+
+@dataclass
 class SpdxGraph:
     spdx_document: SpdxDocument
     agent: SoftwareAgent
@@ -72,11 +81,8 @@ def build_spdx_graphs(
     cmd_graph: CmdGraph,
     output_tree: PathStr,
     src_tree: PathStr,
-    build_type: str,
-    package_license: str,
-    package_version: str | None,
-    package_copyright_text: str | None,
     spdx_id_generators: SpdxIdGeneratorCollection,
+    options: SpdxGraphOptions,
 ) -> dict[KernelSbomKind, list[SpdxObject]]:
     if src_tree == output_tree:
         logging.warning(
@@ -86,11 +92,8 @@ def build_spdx_graphs(
             cmd_graph,
             output_tree,
             src_tree,
-            build_type,
-            package_license,
-            package_version,
-            package_copyright_text,
             spdx_id_generators,
+            options,
         )
         return {
             KernelSbomKind.BUILD: build_graph.to_list(),
@@ -100,11 +103,8 @@ def build_spdx_graphs(
         cmd_graph,
         output_tree,
         src_tree,
-        build_type,
-        package_license,
-        package_version,
-        package_copyright_text,
         spdx_id_generators,
+        options,
     )
     return {
         KernelSbomKind.SOURCE: source_graph.to_list(),
@@ -117,11 +117,8 @@ def _create_build_and_output_spdx_graphs(
     cmd_graph: CmdGraph,
     output_tree: PathStr,
     src_tree: PathStr,
-    build_type: str,
-    package_license: str,
-    package_version: str | None,
-    package_copyright_text: str | None,
     spdx_id_generators: SpdxIdGeneratorCollection,
+    options: SpdxGraphOptions,
 ) -> tuple[SpdxGraph, SpdxGraph]:
     # Create Shared spdx objects
     agent = SoftwareAgent(
@@ -154,7 +151,7 @@ def _create_build_and_output_spdx_graphs(
         for node in iter_cmd_graph(cmd_graph)
     }
     root_file_elements: list[File] = [file_element_map[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, file_element_map, build_type, spdx_id_generators.build)
+    file_relationships = _file_relationships(cmd_graph, file_element_map, options.build_type, spdx_id_generators.build)
 
     # Source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -168,7 +165,13 @@ def _create_build_and_output_spdx_graphs(
         output_package_hasDeclaredLicense_relationships,
         output_package_license_expression,
     ) = _output_package_elements(
-        root_file_elements, package_license, package_version, package_copyright_text, agent, spdx_id_generators.output
+        root_file_elements,
+        options.package_names,
+        options.package_license,
+        options.package_version,
+        options.package_copyright_text,
+        agent,
+        spdx_id_generators.output,
     )
 
     # ExternalMap elements
@@ -205,11 +208,8 @@ def _create_source_build_and_output_spdx_graphs(
     cmd_graph: CmdGraph,
     output_tree: PathStr,
     src_tree: PathStr,
-    build_type: str,
-    package_license: str,
-    package_version: str | None,
-    package_copyright_text: str | None,
     spdx_id_generators: SpdxIdGeneratorCollection,
+    options: SpdxGraphOptions,
 ) -> tuple[SpdxGraph, SpdxGraph, SpdxGraph]:
     # Create Shared spdx objects
     agent = SoftwareAgent(
@@ -261,7 +261,7 @@ def _create_source_build_and_output_spdx_graphs(
         else:
             output_file_elements.append(file_element)
     root_file_elements: list[File] = [file_element_map[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, file_element_map, build_type, spdx_id_generators.build)
+    file_relationships = _file_relationships(cmd_graph, file_element_map, options.build_type, spdx_id_generators.build)
 
     # Source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -275,7 +275,13 @@ def _create_source_build_and_output_spdx_graphs(
         output_package_hasDeclaredLicense_relationships,
         output_package_license_expression,
     ) = _output_package_elements(
-        root_file_elements, package_license, package_version, package_copyright_text, agent, spdx_id_generators.output
+        root_file_elements,
+        options.package_names,
+        options.package_license,
+        options.package_version,
+        options.package_copyright_text,
+        agent,
+        spdx_id_generators.output,
     )
 
     # External Maps
@@ -400,6 +406,7 @@ def _source_file_license_elements(
 
 def _output_package_elements(
     root_file_elements: list[File],
+    package_names: dict[str, str],
     package_license: str,
     package_version: str | None,
     package_copyright_text: str | None,
@@ -409,7 +416,7 @@ def _output_package_elements(
     package_elements = [
         Package(
             spdxId=output_id_generator.generate(),
-            name=os.path.basename(file.name),
+            name=package_names[filename] if (filename := os.path.basename(file.name)) in package_names else filename,
             software_packageVersion=package_version,
             software_copyrightText=package_copyright_text,
             originatedBy=[agent],

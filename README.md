@@ -136,7 +136,7 @@ flowchart TD
     subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
         OUTPUT_DOC["SpdxDocument"]
         OUTPUT_SBOM["Sbom"]
-        PACKAGE["Package (bzImage)"]
+        PACKAGE["Package (Linux Kernel (bzImage))"]
         PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
         BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
         BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
@@ -152,7 +152,7 @@ flowchart TD
         OUTPUT_SBOM -->|element| BZIMAGE
         OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
 
-        PACKAGE -->|contains| BZIMAGE
+        PACKAGE -->|hasDistributionArtifact| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
 
     end
@@ -202,7 +202,7 @@ flowchart TD
     subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
         OUTPUT_DOC["SpdxDocument"]
         OUTPUT_SBOM["Sbom"]
-        PACKAGE["Package (bzImage)"]
+        PACKAGE["Package (Linux Kernel (bzImage))"]
         PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
         BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
         BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
@@ -218,7 +218,7 @@ flowchart TD
         OUTPUT_SBOM -->|element| BZIMAGE
         OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
 
-        PACKAGE -->|contains| BZIMAGE
+        PACKAGE -->|hasDistributionArtifact| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
 
     end
