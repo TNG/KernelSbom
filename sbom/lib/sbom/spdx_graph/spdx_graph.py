@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
-from enum import Enum
 import logging
 import os
-from typing import Literal
+from typing import Literal, Protocol
 
 from sbom.environment import Environment
+from sbom.config import KernelSpdxDocumentKind
 from sbom.spdx.spdxId import SpdxIdGenerator
 from typing import Mapping
 from sbom.cmd_graph import CmdGraph, iter_cmd_graph
@@ -28,12 +28,6 @@ from sbom.spdx.software import Package, File, Sbom
 from sbom.spdx_graph.kernel_file import KernelFile, KernelFileLocation, build_kernel_file_element
 
 
-class KernelSbomKind(Enum):
-    SOURCE = "source"
-    BUILD = "build"
-    OUTPUT = "output"
-
-
 @dataclass
 class SpdxIdGeneratorCollection:
     base: SpdxIdGenerator
@@ -41,20 +35,20 @@ class SpdxIdGeneratorCollection:
     build: SpdxIdGenerator
     output: SpdxIdGenerator
 
-    def get(self, generator_kind: KernelSbomKind | Literal["general"]) -> SpdxIdGenerator:
-        generator_mapping: dict[KernelSbomKind | Literal["general"], SpdxIdGenerator] = {
+    def get(self, generator_kind: KernelSpdxDocumentKind | Literal["general"]) -> SpdxIdGenerator:
+        generator_mapping: dict[KernelSpdxDocumentKind | Literal["general"], SpdxIdGenerator] = {
             "general": self.base,
-            KernelSbomKind.SOURCE: self.source,
-            KernelSbomKind.BUILD: self.build,
-            KernelSbomKind.OUTPUT: self.output,
+            KernelSpdxDocumentKind.SOURCE: self.source,
+            KernelSpdxDocumentKind.BUILD: self.build,
+            KernelSpdxDocumentKind.OUTPUT: self.output,
         }
         return generator_mapping[generator_kind]
 
 
-@dataclass
-class SpdxGraphOptions:
+class SpdxGraphConfig(Protocol):
+    output_tree: PathStr
+    src_tree: PathStr
     build_type: str
-    package_names: dict[str, str]
     package_license: str
     package_version: str | None
     package_copyright_text: str | None
@@ -79,46 +73,38 @@ class SpdxGraph:
 
 def build_spdx_graphs(
     cmd_graph: CmdGraph,
-    output_tree: PathStr,
-    src_tree: PathStr,
     spdx_id_generators: SpdxIdGeneratorCollection,
-    options: SpdxGraphOptions,
-) -> dict[KernelSbomKind, list[SpdxObject]]:
-    if src_tree == output_tree:
+    config: SpdxGraphConfig,
+) -> dict[KernelSpdxDocumentKind, list[SpdxObject]]:
+    if config.src_tree == config.output_tree:
         logging.warning(
             "Skip creation of dedicated source sbom and add source files into the build sbom because source files cannot be reliably classified when src tree and output tree are equal. "
         )
         build_graph, output_graph = _create_build_and_output_spdx_graphs(
             cmd_graph,
-            output_tree,
-            src_tree,
             spdx_id_generators,
-            options,
+            config,
         )
         return {
-            KernelSbomKind.BUILD: build_graph.to_list(),
-            KernelSbomKind.OUTPUT: output_graph.to_list(),
+            KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
+            KernelSpdxDocumentKind.OUTPUT: output_graph.to_list(),
         }
     source_graph, build_graph, output_graph = _create_source_build_and_output_spdx_graphs(
         cmd_graph,
-        output_tree,
-        src_tree,
         spdx_id_generators,
-        options,
+        config,
     )
     return {
-        KernelSbomKind.SOURCE: source_graph.to_list(),
-        KernelSbomKind.BUILD: build_graph.to_list(),
-        KernelSbomKind.OUTPUT: output_graph.to_list(),
+        KernelSpdxDocumentKind.SOURCE: source_graph.to_list(),
+        KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
+        KernelSpdxDocumentKind.OUTPUT: output_graph.to_list(),
     }
 
 
 def _create_build_and_output_spdx_graphs(
     cmd_graph: CmdGraph,
-    output_tree: PathStr,
-    src_tree: PathStr,
     spdx_id_generators: SpdxIdGeneratorCollection,
-    options: SpdxGraphOptions,
+    config: SpdxGraphConfig,
 ) -> tuple[SpdxGraph, SpdxGraph]:
     # Create Shared spdx objects
     agent = SoftwareAgent(
@@ -146,12 +132,12 @@ def _create_build_and_output_spdx_graphs(
     # File elements
     file_element_map: dict[PathStr, KernelFile] = {
         node.absolute_path: build_kernel_file_element(
-            node.absolute_path, output_tree, src_tree, spdx_id_generators.build, spdx_id_generators.build
+            node.absolute_path, config.output_tree, config.src_tree, spdx_id_generators.build, spdx_id_generators.build
         )
         for node in iter_cmd_graph(cmd_graph)
     }
     root_file_elements: list[File] = [file_element_map[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, file_element_map, options.build_type, spdx_id_generators.build)
+    file_relationships = _file_relationships(cmd_graph, file_element_map, config.build_type, spdx_id_generators.build)
 
     # Source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -166,10 +152,9 @@ def _create_build_and_output_spdx_graphs(
         output_package_license_expression,
     ) = _output_package_elements(
         root_file_elements,
-        options.package_names,
-        options.package_license,
-        options.package_version,
-        options.package_copyright_text,
+        config.package_license,
+        config.package_version,
+        config.package_copyright_text,
         agent,
         spdx_id_generators.output,
     )
@@ -206,10 +191,8 @@ def _create_build_and_output_spdx_graphs(
 
 def _create_source_build_and_output_spdx_graphs(
     cmd_graph: CmdGraph,
-    output_tree: PathStr,
-    src_tree: PathStr,
     spdx_id_generators: SpdxIdGeneratorCollection,
-    options: SpdxGraphOptions,
+    config: SpdxGraphConfig,
 ) -> tuple[SpdxGraph, SpdxGraph, SpdxGraph]:
     # Create Shared spdx objects
     agent = SoftwareAgent(
@@ -249,7 +232,7 @@ def _create_source_build_and_output_spdx_graphs(
     # File elements
     file_element_map: dict[PathStr, KernelFile] = {
         node.absolute_path: build_kernel_file_element(
-            node.absolute_path, output_tree, src_tree, spdx_id_generators.source, spdx_id_generators.build
+            node.absolute_path, config.output_tree, config.src_tree, spdx_id_generators.source, spdx_id_generators.build
         )
         for node in iter_cmd_graph(cmd_graph)
     }
@@ -261,7 +244,7 @@ def _create_source_build_and_output_spdx_graphs(
         else:
             output_file_elements.append(file_element)
     root_file_elements: list[File] = [file_element_map[node.absolute_path] for node in cmd_graph.roots]
-    file_relationships = _file_relationships(cmd_graph, file_element_map, options.build_type, spdx_id_generators.build)
+    file_relationships = _file_relationships(cmd_graph, file_element_map, config.build_type, spdx_id_generators.build)
 
     # Source file license elements
     source_file_license_identifiers, source_file_license_relationships = _source_file_license_elements(
@@ -276,10 +259,9 @@ def _create_source_build_and_output_spdx_graphs(
         output_package_license_expression,
     ) = _output_package_elements(
         root_file_elements,
-        options.package_names,
-        options.package_license,
-        options.package_version,
-        options.package_copyright_text,
+        config.package_license,
+        config.package_version,
+        config.package_copyright_text,
         agent,
         spdx_id_generators.output,
     )
@@ -406,17 +388,21 @@ def _source_file_license_elements(
 
 def _output_package_elements(
     root_file_elements: list[File],
-    package_names: dict[str, str],
     package_license: str,
     package_version: str | None,
     package_copyright_text: str | None,
     agent: SoftwareAgent,
     output_id_generator: SpdxIdGenerator,
 ) -> tuple[list[Package], list[Relationship], list[Relationship], LicenseExpression]:
+    def _get_package_name(filename: str) -> str:
+        KERNEL_FILENAMES = ["bzImage", "Image"]
+        basename = os.path.basename(filename)
+        return f"Linux Kernel ({basename})" if basename in KERNEL_FILENAMES else basename
+
     package_elements = [
         Package(
             spdxId=output_id_generator.generate(),
-            name=package_names[filename] if (filename := os.path.basename(file.name)) in package_names else filename,
+            name=_get_package_name(file.name),
             software_packageVersion=package_version,
             software_copyrightText=package_copyright_text,
             originatedBy=[agent],

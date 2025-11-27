@@ -90,8 +90,8 @@ jobs:
             --src-tree /workspace/${{ inputs.src_tree }} \
             --output-tree /workspace/${{ inputs.output_tree }} \
             --roots-file roots.txt \
-            --spdx \
-            --used-files \
+            --generate-spdx \
+            --generate-used-files \
             --package-license "GPL-2.0 WITH Linux-syscall-note" \
             --prettify-json \
             --debug
