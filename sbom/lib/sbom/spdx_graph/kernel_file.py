@@ -92,7 +92,7 @@ def build_kernel_file_element(
     )
 
     # primary purpose
-    primary_purpose = _get_primary_purpose(absolute_path, file_location)
+    primary_purpose = _get_primary_purpose(absolute_path)
 
     # spdxId
     spdxId = (
@@ -165,7 +165,7 @@ def _parse_spdx_license_identifier(absolute_path: str, max_lines: int = 5) -> st
     return None
 
 
-def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocation) -> SoftwarePurpose | None:
+def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
     def ends_with(suffixes: list[str]) -> bool:
         return any(absolute_path.endswith(suffix) for suffix in suffixes)
 
@@ -173,8 +173,8 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
         return any(segment in absolute_path for segment in path_segments)
 
     # Source code
-    if ends_with([".c", ".h", ".S", ".s", ".rs", ".pl", ".dts", ".dtsi"]):
-        return "source" if file_location == KernelFileLocation.SOURCE_TREE else "other"
+    if ends_with([".c", ".h", ".S", ".s", ".rs", ".pl"]):
+        return "source"
 
     # Libraries
     if ends_with([".a", ".so"]):
@@ -210,6 +210,8 @@ def _get_primary_purpose(absolute_path: PathStr, file_location: KernelFileLocati
             ".dtb",
             ".uc",
             ".inc",
+            ".dts",
+            ".dtsi",
             ".dtbo",
             ".xml",
             ".ro",
