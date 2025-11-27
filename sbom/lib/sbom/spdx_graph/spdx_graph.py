@@ -6,12 +6,14 @@ import logging
 from typing import Protocol
 
 from sbom.config import KernelSpdxDocumentKind
+from sbom.environment import Environment
 from sbom.spdx.spdxId import SpdxIdGenerator
 from typing import Mapping
 from sbom.cmd_graph import CmdGraph, iter_cmd_graph
 from sbom.path_utils import PathStr
 from sbom.spdx.build import Build
 from sbom.spdx.core import (
+    DictionaryEntry,
     Element,
     ExternalMap,
     NamespaceMap,
@@ -321,6 +323,11 @@ def _high_level_build_elements(
         spdxId=build_spdxId,
         build_buildType=build_type,
         build_buildId=build_id if build_id is not None else build_spdxId,
+        build_environment=[
+            DictionaryEntry(key=key, value=value)
+            for key, value in Environment.kernel_build_variables.items()
+            if value is not None
+        ],
     )
     high_level_build_ancestorOf_relationship = Relationship(
         spdxId=spdx_id_generator.generate(),

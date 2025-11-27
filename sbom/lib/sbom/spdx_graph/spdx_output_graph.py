@@ -53,7 +53,7 @@ def create_output_graph(
             software_packageVersion=config.package_version,
             software_copyrightText=config.package_copyright_text,
             originatedBy=[build_graph.agent],
-            comment=f"Architecture={arch}" if (arch := Environment.ARCH or Environment.SRCARCH) else None,
+            comment=f"Architecture={arch}" if (arch := Environment.ARCH() or Environment.SRCARCH()) else None,
             software_primaryPurpose=file.software_primaryPurpose,
         )
         for file in build_graph.root_file_elements

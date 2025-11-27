@@ -70,7 +70,7 @@ def _evaluate_template(template: str, variables: dict[str, Callable[[], str | No
 
 
 def _get_arch(path: PathStr):
-    srcarch = Environment.SRCARCH
+    srcarch = Environment.SRCARCH()
     if srcarch is None:
         sbom_errors.log(
             f"Skip architecture specific hardcoded dependency for '{path}' because the SRCARCH environment variable was not set."

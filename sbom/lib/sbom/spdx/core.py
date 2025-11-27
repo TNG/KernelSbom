@@ -138,3 +138,10 @@ class Artifact(Element):
     type: str = field(init=False, default="Artifact")
     builtTime: str | None = None
     originatedBy: list[Agent] = field(default_factory=list[Agent])
+
+
+@dataclass(kw_only=True)
+class DictionaryEntry(SpdxObject):
+    type: str = field(init=False, default="DictionaryEntry")
+    key: str
+    value: str
