@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+from itertools import chain
 import logging
 import os
 from dataclasses import dataclass, field
@@ -31,12 +32,16 @@ class CmdGraphNode:
     hardcoded_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
 
     @property
-    def children(self) -> list["CmdGraphNode"]:
-        return [
-            *self.cmd_file_dependencies,
-            *[dep.node for dep in self.incbin_dependencies],
-            *self.hardcoded_dependencies,
-        ]
+    def children(self) -> Iterator["CmdGraphNode"]:
+        seen: set[PathStr] = set()
+        for node in chain(
+            self.cmd_file_dependencies,
+            (dep.node for dep in self.incbin_dependencies),
+            self.hardcoded_dependencies,
+        ):
+            if node.absolute_path not in seen:
+                seen.add(node.absolute_path)
+                yield node
 
 
 @dataclass
@@ -188,7 +193,7 @@ def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]
             continue
 
         visited.add(node.absolute_path)
-        node_stack = node.children + node_stack
+        node_stack = list(chain(node.children, node_stack))
         yield node
 
 

@@ -1,13 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-from dataclasses import dataclass
 from datetime import datetime
 import logging
-import os
-from typing import Literal, Protocol
+from typing import Protocol
 
-from sbom.environment import Environment
 from sbom.config import KernelSpdxDocumentKind
 from sbom.spdx.spdxId import SpdxIdGenerator
 from typing import Mapping
@@ -25,25 +22,10 @@ from sbom.spdx.core import (
     SpdxDocument,
 )
 from sbom.spdx.simplelicensing import LicenseExpression
-from sbom.spdx.software import Package, File, Sbom
+from sbom.spdx.software import File, Sbom
 from sbom.spdx_graph.kernel_file import KernelFile, KernelFileLocation, build_kernel_file_element
-
-
-@dataclass
-class SpdxIdGeneratorCollection:
-    base: SpdxIdGenerator
-    source: SpdxIdGenerator
-    build: SpdxIdGenerator
-    output: SpdxIdGenerator
-
-    def get(self, generator_kind: KernelSpdxDocumentKind | Literal["general"]) -> SpdxIdGenerator:
-        generator_mapping: dict[KernelSpdxDocumentKind | Literal["general"], SpdxIdGenerator] = {
-            "general": self.base,
-            KernelSpdxDocumentKind.SOURCE: self.source,
-            KernelSpdxDocumentKind.BUILD: self.build,
-            KernelSpdxDocumentKind.OUTPUT: self.output,
-        }
-        return generator_mapping[generator_kind]
+from sbom.spdx_graph.spdx_graph_model import SpdxBuildGraph, SpdxGraph, SpdxIdGeneratorCollection
+from sbom.spdx_graph.spdx_output_graph import create_output_graph
 
 
 class SpdxGraphConfig(Protocol):
@@ -57,23 +39,6 @@ class SpdxGraphConfig(Protocol):
     package_copyright_text: str | None
 
 
-@dataclass
-class SpdxGraph:
-    spdx_document: SpdxDocument
-    agent: SoftwareAgent
-    creation_info: CreationInfo
-    sbom: Sbom
-
-    def to_list(self) -> list[SpdxObject]:
-        return [
-            self.spdx_document,
-            self.agent,
-            self.creation_info,
-            self.sbom,
-            *self.sbom.element,
-        ]
-
-
 def build_spdx_graphs(
     cmd_graph: CmdGraph,
     spdx_id_generators: SpdxIdGeneratorCollection,
@@ -83,20 +48,23 @@ def build_spdx_graphs(
         logging.warning(
             "Skip creation of dedicated source sbom and add source files into the build sbom because source files cannot be reliably classified when src tree and output tree are equal. "
         )
-        build_graph, output_graph = _create_build_and_output_spdx_graphs(
+        build_graph = _create_build_spdx_graph(
             cmd_graph,
             spdx_id_generators,
             config,
         )
+        output_graph = create_output_graph(build_graph, spdx_id_generators, config)
         return {
             KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
             KernelSpdxDocumentKind.OUTPUT: output_graph.to_list(),
         }
-    source_graph, build_graph, output_graph = _create_source_build_and_output_spdx_graphs(
+
+    source_graph, build_graph = _create_source_and_build_spdx_graphs(
         cmd_graph,
         spdx_id_generators,
         config,
     )
+    output_graph = create_output_graph(build_graph, spdx_id_generators, config)
     return {
         KernelSpdxDocumentKind.SOURCE: source_graph.to_list(),
         KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
@@ -104,31 +72,23 @@ def build_spdx_graphs(
     }
 
 
-def _create_build_and_output_spdx_graphs(
+def _create_build_spdx_graph(
     cmd_graph: CmdGraph,
     spdx_id_generators: SpdxIdGeneratorCollection,
     config: SpdxGraphConfig,
-) -> tuple[SpdxGraph, SpdxGraph]:
-    # Create Shared spdx objects
-    agent = SoftwareAgent(
-        spdxId=spdx_id_generators.base.generate(),
-        name="KernelSbom",
-    )
-    creation_info = CreationInfo(createdBy=[agent], created=config.created.strftime("%Y-%m-%dT%H:%M:%SZ"))
+) -> SpdxBuildGraph:
+    # Create shared SPDX objects
+    agent, creation_info = _shared_elements(spdx_id_generators.base, config.created)
 
     # SpdxDocument elements
-    _, build_spdx_document, output_spdx_document = _spdx_document_elements(spdx_id_generators)
+    _, build_spdx_document = _spdx_document_elements(spdx_id_generators)
     build_spdx_document.namespaceMap = [
         nm for nm in build_spdx_document.namespaceMap if nm.namespace != spdx_id_generators.source.namespace
     ]
 
-    # Sbom elements
+    # Sbom element
     build_sbom = Sbom(
         spdxId=spdx_id_generators.build.generate(),
-        software_sbomType=["build"],
-    )
-    output_sbom = Sbom(
-        spdxId=spdx_id_generators.output.generate(),
         software_sbomType=["build"],
     )
 
@@ -154,70 +114,40 @@ def _create_build_and_output_spdx_graphs(
         [*file_element_map.values()], spdx_id_generators.build
     )
 
-    # Output package element
-    (
-        output_package_elements,
-        output_package_contains_roots_relationships,
-        output_package_hasDeclaredLicense_relationships,
-        output_package_license_expression,
-    ) = _output_package_elements(
-        root_file_elements,
-        config.package_license,
-        config.package_version,
-        config.package_copyright_text,
-        agent,
-        spdx_id_generators.output,
-    )
-
-    # ExternalMap elements
-    output_imports = [ExternalMap(externalSpdxId=file.spdxId) for file in root_file_elements]
-
     # Update relationships
     build_spdx_document.rootElement = [build_sbom]
-    output_spdx_document.rootElement = [output_sbom]
-
-    output_spdx_document.import_ = output_imports
 
     build_sbom.rootElement = [*root_file_elements]
     build_sbom.element = [
+        high_level_build_element,
+        high_level_build_ancestorOf_relationship,
         *file_element_map.values(),
         *source_file_license_identifiers,
         *source_file_license_relationships,
         *file_relationships,
-    ]
-    output_sbom.rootElement = [*output_package_elements]
-    output_sbom.element = [
-        *output_package_elements,
-        *output_package_contains_roots_relationships,
-        *output_package_hasDeclaredLicense_relationships,
-        output_package_license_expression,
-        *root_file_elements,
     ]
 
     high_level_build_ancestorOf_relationship.to = [
         element for element in file_relationships if isinstance(element, Build)
     ]
 
-    build_graph = SpdxGraph(build_spdx_document, agent, creation_info, build_sbom)
-    output_graph = SpdxGraph(output_spdx_document, agent, creation_info, output_sbom)
-    return build_graph, output_graph
+    build_graph = SpdxBuildGraph(
+        build_spdx_document, agent, creation_info, build_sbom, root_file_elements, high_level_build_element
+    )
+    return build_graph
 
 
-def _create_source_build_and_output_spdx_graphs(
+def _create_source_and_build_spdx_graphs(
     cmd_graph: CmdGraph,
     spdx_id_generators: SpdxIdGeneratorCollection,
     config: SpdxGraphConfig,
-) -> tuple[SpdxGraph, SpdxGraph, SpdxGraph]:
-    # Create Shared spdx objects
-    agent = SoftwareAgent(
-        spdxId=spdx_id_generators.base.generate(),
-        name="KernelSbom",
-    )
-    creation_info = CreationInfo(createdBy=[agent], created=config.created.strftime("%Y-%m-%dT%H:%M:%SZ"))
+) -> tuple[SpdxGraph, SpdxBuildGraph]:
+    # Create shared SPDX objects
+    agent, creation_info = _shared_elements(spdx_id_generators.base, config.created)
 
     # Spdx Document and Sbom
-    source_spdx_document, build_spdx_document, output_spdx_document = _spdx_document_elements(spdx_id_generators)
-    source_sbom, build_sbom, output_sbom = _sbom_elements(spdx_id_generators)
+    source_spdx_document, build_spdx_document = _spdx_document_elements(spdx_id_generators)
+    source_sbom, build_sbom = _sbom_elements(spdx_id_generators)
 
     # Src and output tree elements
     src_tree_element = File(
@@ -272,32 +202,14 @@ def _create_source_build_and_output_spdx_graphs(
         [*file_element_map.values()], spdx_id_generators.source
     )
 
-    # Output package elements
-    (
-        output_package_elements,
-        output_package_contains_roots_relationships,
-        output_package_hasDeclaredLicense_relationships,
-        output_package_license_expression,
-    ) = _output_package_elements(
-        root_file_elements,
-        config.package_license,
-        config.package_version,
-        config.package_copyright_text,
-        agent,
-        spdx_id_generators.output,
-    )
-
     # External Maps
     build_imports = [ExternalMap(externalSpdxId=file_element.spdxId) for file_element in source_file_elements]
-    output_imports = [ExternalMap(externalSpdxId=file_element.spdxId) for file_element in root_file_elements]
 
     # Update relationships
     source_spdx_document.rootElement = [source_sbom]
     build_spdx_document.rootElement = [build_sbom]
-    output_spdx_document.rootElement = [output_sbom]
 
     build_spdx_document.import_ = build_imports
-    output_spdx_document.import_ = output_imports
 
     source_sbom.rootElement = [src_tree_element]
     source_sbom.element = [
@@ -310,18 +222,11 @@ def _create_source_build_and_output_spdx_graphs(
     build_sbom.rootElement = [output_tree_element]
     build_sbom.element = [
         high_level_build_element,
+        high_level_build_ancestorOf_relationship,
         output_tree_element,
         output_tree_contains_relationship,
         *output_file_elements,
         *file_relationships,
-    ]
-    output_sbom.rootElement = [*output_package_elements]
-    output_sbom.element = [
-        *output_package_elements,
-        *output_package_contains_roots_relationships,
-        *output_package_hasDeclaredLicense_relationships,
-        output_package_license_expression,
-        *root_file_elements,
     ]
 
     high_level_build_ancestorOf_relationship.to = [
@@ -332,15 +237,25 @@ def _create_source_build_and_output_spdx_graphs(
 
     # create Spdx graphs
     source_graph = SpdxGraph(source_spdx_document, agent, creation_info, source_sbom)
-    build_graph = SpdxGraph(build_spdx_document, agent, creation_info, build_sbom)
-    output_graph = SpdxGraph(output_spdx_document, agent, creation_info, output_sbom)
+    build_graph = SpdxBuildGraph(
+        build_spdx_document, agent, creation_info, build_sbom, root_file_elements, high_level_build_element
+    )
 
-    return source_graph, build_graph, output_graph
+    return source_graph, build_graph
+
+
+def _shared_elements(spdx_id_generator: SpdxIdGenerator, created: datetime) -> tuple[SoftwareAgent, CreationInfo]:
+    agent = SoftwareAgent(
+        spdxId=spdx_id_generator.generate(),
+        name="KernelSbom",
+    )
+    creation_info = CreationInfo(createdBy=[agent], created=created.strftime("%Y-%m-%dT%H:%M:%SZ"))
+    return (agent, creation_info)
 
 
 def _spdx_document_elements(
     spdx_id_generators: SpdxIdGeneratorCollection,
-) -> tuple[SpdxDocument, SpdxDocument, SpdxDocument]:
+) -> tuple[SpdxDocument, SpdxDocument]:
     source_spdx_document = SpdxDocument(
         spdxId=spdx_id_generators.source.generate(),
         profileConformance=["core", "software", "simpleLicensing"],
@@ -359,19 +274,10 @@ def _spdx_document_elements(
             if generator.prefix is not None
         ],
     )
-    output_spdx_document = SpdxDocument(
-        spdxId=spdx_id_generators.output.generate(),
-        profileConformance=["core", "software", "build", "simpleLicensing"],
-        namespaceMap=[
-            NamespaceMap(prefix=generator.prefix, namespace=generator.namespace)
-            for generator in [spdx_id_generators.output, spdx_id_generators.build, spdx_id_generators.base]
-            if generator.prefix is not None
-        ],
-    )
-    return source_spdx_document, build_spdx_document, output_spdx_document
+    return source_spdx_document, build_spdx_document
 
 
-def _sbom_elements(spdx_id_generators: SpdxIdGeneratorCollection) -> tuple[Sbom, Sbom, Sbom]:
+def _sbom_elements(spdx_id_generators: SpdxIdGeneratorCollection) -> tuple[Sbom, Sbom]:
     source_sbom = Sbom(
         spdxId=spdx_id_generators.source.generate(),
         software_sbomType=["source"],
@@ -380,11 +286,7 @@ def _sbom_elements(spdx_id_generators: SpdxIdGeneratorCollection) -> tuple[Sbom,
         spdxId=spdx_id_generators.build.generate(),
         software_sbomType=["build"],
     )
-    output_sbom = Sbom(
-        spdxId=spdx_id_generators.output.generate(),
-        software_sbomType=["build"],
-    )
-    return source_sbom, build_sbom, output_sbom
+    return source_sbom, build_sbom
 
 
 def _source_file_license_elements(
@@ -409,61 +311,6 @@ def _source_file_license_elements(
         if file.license_identifier is not None
     ]
     return ([*source_file_license_identifiers.values()], source_file_license_relationships)
-
-
-def _output_package_elements(
-    root_file_elements: list[File],
-    package_license: str,
-    package_version: str | None,
-    package_copyright_text: str | None,
-    agent: SoftwareAgent,
-    output_id_generator: SpdxIdGenerator,
-) -> tuple[list[Package], list[Relationship], list[Relationship], LicenseExpression]:
-    def _get_package_name(filename: str) -> str:
-        KERNEL_FILENAMES = ["bzImage", "Image"]
-        basename = os.path.basename(filename)
-        return f"Linux Kernel ({basename})" if basename in KERNEL_FILENAMES else basename
-
-    package_elements = [
-        Package(
-            spdxId=output_id_generator.generate(),
-            name=_get_package_name(file.name),
-            software_packageVersion=package_version,
-            software_copyrightText=package_copyright_text,
-            originatedBy=[agent],
-            comment=f"Architecture={arch}" if (arch := Environment.ARCH or Environment.SRCARCH) else None,
-            software_primaryPurpose=file.software_primaryPurpose,
-        )
-        for file in root_file_elements
-    ]
-    package_contains_file_relationships = [
-        Relationship(
-            spdxId=output_id_generator.generate(),
-            relationshipType="contains",
-            from_=package,
-            to=[file],
-        )
-        for package, file in zip(package_elements, root_file_elements)
-    ]
-    package_license_expression = LicenseExpression(
-        spdxId=output_id_generator.generate(),
-        simplelicensing_licenseExpression=package_license,
-    )
-    package_hasDeclaredLicense_relationships = [
-        Relationship(
-            spdxId=output_id_generator.generate(),
-            relationshipType="hasDeclaredLicense",
-            from_=package,
-            to=[package_license_expression],
-        )
-        for package in package_elements
-    ]
-    return (
-        package_elements,
-        package_contains_file_relationships,
-        package_hasDeclaredLicense_relationships,
-        package_license_expression,
-    )
 
 
 def _high_level_build_elements(
@@ -495,13 +342,19 @@ def _file_relationships(
     # Create a relationship between each node (output file) and its children (input files)
     build_and_relationship_elements: list[Build | Relationship] = []
     for node in iter_cmd_graph(cmd_graph):
-        if len(node.children) == 0:
+        if next(node.children, None) is None:
             continue
+
+        build_comments: list[str] = []
+        if node.cmd_file is not None:
+            build_comments.append(node.cmd_file.savedcmd)
+        build_comments += [incbin.full_statement for incbin in node.incbin_dependencies]
+
         build_element = Build(
             spdxId=build_id_generator.generate(),
             build_buildType=build_type,
             build_buildId=build_id,
-            comment=node.cmd_file.savedcmd if node.cmd_file is not None else None,
+            comment=";".join(build_comments),
         )
         hasInput_relationship = Relationship(
             spdxId=build_id_generator.generate(),
