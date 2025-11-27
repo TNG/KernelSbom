@@ -34,8 +34,8 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/
       --src-tree ../linux \
       --output-tree ../linux/kernel_build \
       --roots arch/x86/boot/bzImage \
-      --spdx \
-      --used-files \
+      --generate-spdx \
+      --generate-used-files \
       --prettify-json
     ```
 
@@ -46,7 +46,7 @@ Using this cmd graph, the script generates three SPDX documents and writes them 
 - **`sbom-build.spdx.json`** — Describes all build artifacts and the process by which they were built from the sources in `sbom-source.spdx.json`.
 - **`sbom-output.spdx.json`** — Describes the final build outputs, i.e., the provided root artifacts.
 
-If the `--used-files` flag is enabled, the script also produces **`sbom.used-files.txt`**, a flat list of all source files in `sbom-source.spdx.json`.
+If the `--generate-used-files` flag is enabled, the script also produces **`sbom.used-files.txt`**, a flat list of all source files in `sbom-source.spdx.json`.
 
 **Note:** If the source tree and output tree are identical, reliably distinguishing source files is not possible. In this case, the source SPDX document is merged into `sbom-build.spdx.json`, and `sbom.used-files.txt` contains all files from `sbom-build.spdx.json`.
 
@@ -65,8 +65,8 @@ python3 sbom/sbom.py \
   --src-tree ../linux \
   --output-tree ../linux/kernel_build \
   --roots-file roots.txt \
-  --spdx \
-  --used-files \
+  --generate-spdx \
+  --generate-used-files \
   --prettify-json
 ```
 
@@ -136,7 +136,7 @@ flowchart TD
     subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
         OUTPUT_DOC["SpdxDocument"]
         OUTPUT_SBOM["Sbom"]
-        PACKAGE["Package (Linux Kernel)"]
+        PACKAGE["Package (Linux Kernel (bzImage))"]
         PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
         BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
         BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
@@ -152,7 +152,7 @@ flowchart TD
         OUTPUT_SBOM -->|element| BZIMAGE
         OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
 
-        PACKAGE -->|contains| BZIMAGE
+        PACKAGE -->|hasDistributionArtifact| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
 
     end
@@ -202,7 +202,7 @@ flowchart TD
     subgraph OUTPUT_GRAPH["sbom-output.spdx.json"]
         OUTPUT_DOC["SpdxDocument"]
         OUTPUT_SBOM["Sbom"]
-        PACKAGE["Package (Linux Kernel)"]
+        PACKAGE["Package (Linux Kernel (bzImage))"]
         PACKAGE_LICENSEEXPRESSION["LicenseExpression (GPL-2.0 WITH Linux-syscall-note)"]
         BZIMAGE_COPY["File (Copy) (arch/x86/boot/bzImage)"]
         BZIMAGE_EXTERNALMAP["ExternalMap (arch/x86/boot/bzImage)"]
@@ -218,7 +218,7 @@ flowchart TD
         OUTPUT_SBOM -->|element| BZIMAGE
         OUTPUT_SBOM -->|element| PACKAGE_LICENSEEXPRESSION
 
-        PACKAGE -->|contains| BZIMAGE
+        PACKAGE -->|hasDistributionArtifact| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
 
     end
