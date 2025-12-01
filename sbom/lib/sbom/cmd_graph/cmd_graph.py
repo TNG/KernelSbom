@@ -25,8 +25,14 @@ class IncbinDependency:
 
 @dataclass
 class CmdGraphNode:
+    """A node in the cmd graph representing a single file and its dependencies."""
+
     absolute_path: PathStr
+    """Absolute path to the file this node represents."""
+
     cmd_file: CmdFile | None = None
+    """Parsed .cmd file describing how the file at absolute_path was built, or None if not available."""
+
     cmd_file_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
     incbin_dependencies: list[IncbinDependency] = field(default_factory=list[IncbinDependency])
     hardcoded_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
@@ -72,8 +78,8 @@ def build_cmd_graph_node(
 
     Args:
         root_path (Path): Path to the root output file relative to output_tree.
-        output_tree (Path): absolute Path to the base directory of the output_tree.
-        src_tree (Path): absolute Path to the `linux` source directory.
+        output_tree (Path): absolute path to the output tree directory.
+        src_tree (Path): absolute path to the source tree directory.
         cache (dict | None): Tracks processed nodes to prevent cycles.
         depth (int): Internal parameter to track the current recursion depth.
         log_depth (int): Maximum recursion depth up to which info-level messages are logged.

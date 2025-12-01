@@ -147,12 +147,16 @@ KERNEL_BUILD_VARIABLES_WHITELIST = [
 
 
 class Environment:
-    kernel_build_variables: dict[str, str | None] = {name: os.getenv(name) for name in KERNEL_BUILD_VARIABLES_WHITELIST}
+    """
+    Read-only accessor for kernel build environment variables.
+    """
+
+    KERNEL_BUILD_VARIABLES: dict[str, str | None] = {name: os.getenv(name) for name in KERNEL_BUILD_VARIABLES_WHITELIST}
 
     @classmethod
     def ARCH(cls) -> str | None:
-        return cls.kernel_build_variables.get("ARCH")
+        return cls.KERNEL_BUILD_VARIABLES.get("ARCH")
 
     @classmethod
     def SRCARCH(cls) -> str | None:
-        return cls.kernel_build_variables.get("SRCARCH")
+        return cls.KERNEL_BUILD_VARIABLES.get("SRCARCH")

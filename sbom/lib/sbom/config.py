@@ -53,10 +53,10 @@ class KernelSbomConfig:
     """UUID used for reproducible SPDX element IDs."""
 
     build_type: str
-    """SPDX buildType value for all Build elements."""
+    """SPDX buildType property to use for all Build elements."""
 
     build_id: str | None
-    """SPDX buildId value for all Build elements."""
+    """SPDX buildId property to use for all Build elements."""
 
     package_license: str
     """License expression applied to all SPDX Packages."""

@@ -25,7 +25,9 @@ if [[ ! -f "fixed-spdx-context.jsonld" ]]; then
     # Remove the "@type": "@vocab" key-value pairs from object valued properties because these break compaction
     (.["@context"].verifiedUsing) |= del(.["@type"]) |
     (.["@context"].software_contentIdentifier) |= del(.["@type"]) |
-    (.["@context"].import) |= del(.["@type"])
+    (.["@context"].import) |= del(.["@type"]) |
+    (.["@context"].build_configSourceDigest) |= del(.["@type"]) |
+    (.["@context"].build_environment) |= del(.["@type"])
     |
     # Add "@container": "@set" to array properties to make values always be compacted as arrays
     (.["@context"].rootElement) |= (. + {"@container": "@set"}) |
@@ -35,7 +37,8 @@ if [[ ! -f "fixed-spdx-context.jsonld" ]]; then
     (.["@context"].to) |= (. + {"@container": "@set"}) |
     (.["@context"].createdBy) |= (. + {"@container": "@set"}) |
     (.["@context"].software_sbomType) |= (. + {"@container": "@set"}) |
-    (.["@context"].originatedBy) |= (. + {"@container": "@set"}) 
+    (.["@context"].originatedBy) |= (. + {"@container": "@set"}) |
+    (.["@context"].build_environment) |= (. + {"@container": "@set"})
     ' spdx-context.jsonld > fixed-spdx-context.jsonld
     rm spdx-context.jsonld
 fi

@@ -14,6 +14,8 @@ from sbom.spdx.spdxId import SpdxIdGenerator
 
 @dataclass
 class SpdxGraph:
+    """Represents the complete graph of a single SPDX document."""
+
     spdx_document: SpdxDocument
     agent: SoftwareAgent
     creation_info: CreationInfo
@@ -37,6 +39,8 @@ class SpdxBuildGraph(SpdxGraph):
 
 @dataclass
 class SpdxIdGeneratorCollection:
+    """Holds SPDX ID generators for different document types to ensure globally unique SPDX IDs."""
+
     base: SpdxIdGenerator
     source: SpdxIdGenerator
     build: SpdxIdGenerator
