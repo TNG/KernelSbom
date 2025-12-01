@@ -79,10 +79,10 @@ def build_kernel_file_element(
                 software_contentIdentifierType="gitoid", software_contentIdentifierValue=_git_blob_oid(absolute_path)
             )
         ]
-    elif is_in_output_tree or is_in_src_tree:
-        sbom_errors.log(f"Cannot compute hash for {absolute_path} because file does not exist.")
-    else:
+    elif file_location == KernelFileLocation.EXTERNAL:
         logging.warning(f"Cannot compute hash for {absolute_path} because file does not exist.")
+    else:
+        sbom_errors.log(f"Cannot compute hash for {absolute_path} because file does not exist.")
 
     # parse spdx license identifier
     license_identifier = (

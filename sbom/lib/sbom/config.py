@@ -3,6 +3,7 @@
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 import os
 from typing import Any
@@ -42,6 +43,9 @@ class KernelSbomConfig:
     debug: bool
     """Whether to enable debug logging."""
 
+    created: datetime
+    """Datetime to use for the SPDX created property of the CreationInfo element."""
+
     spdxId_prefix: str
     """Prefix to use for all SPDX element IDs."""
 
@@ -49,7 +53,10 @@ class KernelSbomConfig:
     """UUID used for reproducible SPDX element IDs."""
 
     build_type: str
-    """SPDX buildType value for all Build elements."""
+    """SPDX buildType property to use for all Build elements."""
+
+    build_id: str | None
+    """SPDX buildId property to use for all Build elements."""
 
     package_license: str
     """License expression applied to all SPDX Packages."""
@@ -83,9 +90,16 @@ def get_config() -> KernelSbomConfig:
     generate_used_files = args["generate_used_files"]
     debug = args["debug"]
 
+    try:
+        created = datetime.fromisoformat(args["created"])
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid date format for argument '--created': '{args['created']}'. Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
+        )
     spdxId_prefix = args["spdxId_prefix"]
     spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
     build_type = args["build_type"]
+    build_id = args["build_id"]
     package_license = args["package_license"]
     package_version = args["package_version"] if args["package_version"] is not None else None
     package_copyright_text: str | None = None
@@ -113,9 +127,11 @@ def get_config() -> KernelSbomConfig:
         generate_used_files=generate_used_files,
         used_files_file_name=used_files_file_name,
         debug=debug,
+        created=created,
         spdxId_prefix=spdxId_prefix,
         spdxId_uuid=spdxId_uuid,
         build_type=build_type,
+        build_id=build_id,
         package_license=package_license,
         package_version=package_version,
         package_copyright_text=package_copyright_text,
@@ -173,6 +189,11 @@ def _parse_cli_arguments() -> dict[str, Any]:
 
     # SPDX specific settings
     parser.add_argument(
+        "--created",
+        default=str(datetime.now()),
+        help="The SPDX created property to use for the CreationInfo element in ISO format (YYYY-MM-DD [HH:MM:SS]). (default: datetime.now())",
+    )
+    parser.add_argument(
         "--spdxId-prefix",
         default="urn:spdx.dev:",
         help="The prefix to use for all spdxId properties. (default: urn:spdx.dev:)",
@@ -186,6 +207,11 @@ def _parse_cli_arguments() -> dict[str, Any]:
         "--build-type",
         default="urn:spdx.dev:Kbuild",
         help="The SPDX buildType property to use for all Build elements. (default: urn:spdx.dev:Kbuild)",
+    )
+    parser.add_argument(
+        "--build-id",
+        default=None,
+        help="The SPDX buildId property to use for all Build elements. If not provided the spdxId of the high level Build element is used as the buildId. (default: None)",
     )
     parser.add_argument(
         "--package-license",

@@ -11,7 +11,16 @@ SPDX_SPEC_VERSION = "3.0.1"
 ExternalIdentifierType = Literal["email", "gitoid", "urlScheme"]
 HashAlgorithm = Literal["sha256", "sha512"]
 ProfileIdentifierType = Literal["core", "software", "build", "lite", "simpleLicensing"]
-RelationshipType = Literal["contains", "generates", "hasDeclaredLicense", "hasInput", "hasOutput"]
+RelationshipType = Literal[
+    "contains",
+    "generates",
+    "hasDeclaredLicense",
+    "hasInput",
+    "hasOutput",
+    "ancestorOf",
+    "hasDistributionArtifact",
+    "dependsOn",
+]
 RelationshipCompleteness = Literal["complete", "incomplete", "noAssertion"]
 
 
@@ -136,3 +145,10 @@ class Artifact(Element):
     type: str = field(init=False, default="Artifact")
     builtTime: str | None = None
     originatedBy: list[Agent] = field(default_factory=list[Agent])
+
+
+@dataclass(kw_only=True)
+class DictionaryEntry(SpdxObject):
+    type: str = field(init=False, default="DictionaryEntry")
+    key: str
+    value: str

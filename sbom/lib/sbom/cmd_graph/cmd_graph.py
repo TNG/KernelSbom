@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-
+from itertools import chain
 import logging
 import os
 from dataclasses import dataclass, field
@@ -10,7 +10,7 @@ from typing import Iterator
 
 from sbom.cmd_graph.deps_parser import parse_deps
 from sbom.cmd_graph.savedcmd_parser import parse_commands
-from sbom.cmd_graph.incbin_parser import parse_incbin
+from sbom.cmd_graph.incbin_parser import IncbinStatement, parse_incbin
 from sbom.cmd_graph.cmd_file_parser import CmdFile, parse_cmd_file
 import sbom.errors as sbom_errors
 from sbom.path_utils import PathStr, is_relative_to
@@ -18,10 +18,36 @@ from .hardcoded_dependencies import get_hardcoded_dependencies
 
 
 @dataclass
+class IncbinDependency:
+    node: "CmdGraphNode"
+    full_statement: str
+
+
+@dataclass
 class CmdGraphNode:
+    """A node in the cmd graph representing a single file and its dependencies."""
+
     absolute_path: PathStr
+    """Absolute path to the file this node represents."""
+
     cmd_file: CmdFile | None = None
-    children: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
+    """Parsed .cmd file describing how the file at absolute_path was built, or None if not available."""
+
+    cmd_file_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
+    incbin_dependencies: list[IncbinDependency] = field(default_factory=list[IncbinDependency])
+    hardcoded_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
+
+    @property
+    def children(self) -> Iterator["CmdGraphNode"]:
+        seen: set[PathStr] = set()
+        for node in chain(
+            self.cmd_file_dependencies,
+            (dep.node for dep in self.incbin_dependencies),
+            self.hardcoded_dependencies,
+        ):
+            if node.absolute_path not in seen:
+                seen.add(node.absolute_path)
+                yield node
 
 
 @dataclass
@@ -52,8 +78,8 @@ def build_cmd_graph_node(
 
     Args:
         root_path (Path): Path to the root output file relative to output_tree.
-        output_tree (Path): absolute Path to the base directory of the output_tree.
-        src_tree (Path): absolute Path to the `linux` source directory.
+        output_tree (Path): absolute path to the output tree directory.
+        src_tree (Path): absolute path to the source tree directory.
         cache (dict | None): Tracks processed nodes to prevent cycles.
         depth (int): Internal parameter to track the current recursion depth.
         log_depth (int): Maximum recursion depth up to which info-level messages are logged.
@@ -88,16 +114,24 @@ def build_cmd_graph_node(
         return node
 
     # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
-    child_paths = get_hardcoded_dependencies(root_path_absolute, output_tree, src_tree)
-    if cmd_file is not None:
-        child_paths += _parse_cmd_file(cmd_file, output_tree, src_tree, root_path)
-    if node.absolute_path.endswith(".S"):
-        child_paths += _parse_incbin(node.absolute_path, output_tree, src_tree, root_path)
+    def _build_child_node(child_path: PathStr):
+        return build_cmd_graph_node(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
 
-    # Create child nodes
-    for child_path in child_paths:
-        child_node = build_cmd_graph_node(child_path, output_tree, src_tree, cache, depth + 1, log_depth)
-        node.children.append(child_node)
+    for hardcoded_dependency_path in get_hardcoded_dependencies(root_path_absolute, output_tree, src_tree):
+        node.hardcoded_dependencies.append(_build_child_node(hardcoded_dependency_path))
+
+    if cmd_file is not None:
+        for cmd_file_dependency_path in _parse_cmd_file(cmd_file, output_tree, src_tree, root_path):
+            node.cmd_file_dependencies.append(_build_child_node(cmd_file_dependency_path))
+
+    if node.absolute_path.endswith(".S"):
+        for incbin_dependency_statement in _parse_incbin(node.absolute_path, output_tree, src_tree, root_path):
+            node.incbin_dependencies.append(
+                IncbinDependency(
+                    node=_build_child_node(incbin_dependency_statement.path),
+                    full_statement=incbin_dependency_statement.full_statement,
+                )
+            )
 
     return node
 
@@ -137,17 +171,23 @@ def _parse_cmd_file(
 
 def _parse_incbin(
     assembly_path: PathStr, output_tree: PathStr, src_tree: PathStr, root_output_in_tree: PathStr
-) -> list[PathStr]:
-    incbin_paths = parse_incbin(assembly_path)
-    if len(incbin_paths) == 0:
+) -> list[IncbinStatement]:
+    incbin_statements = parse_incbin(assembly_path)
+    if len(incbin_statements) == 0:
         return []
-    working_directory = _get_working_directory(incbin_paths[0], output_tree, src_tree, root_output_in_tree)
+    working_directory = _get_working_directory(incbin_statements[0].path, output_tree, src_tree, root_output_in_tree)
     if working_directory is None:
         sbom_errors.log(
-            f"Skip children of node {root_output_in_tree} because no working directory for {incbin_paths[0]} could be found"
+            f"Skip children of node {root_output_in_tree} because no working directory for {incbin_statements[0]} could be found"
         )
         return []
-    return [os.path.normpath(os.path.join(working_directory, incbin_path)) for incbin_path in incbin_paths]
+    return [
+        IncbinStatement(
+            path=os.path.normpath(os.path.join(working_directory, incbin_statement.path)),
+            full_statement=incbin_statement.full_statement,
+        )
+        for incbin_statement in incbin_statements
+    ]
 
 
 def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]:
@@ -159,7 +199,7 @@ def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]
             continue
 
         visited.add(node.absolute_path)
-        node_stack = node.children + node_stack
+        node_stack = list(chain(node.children, node_stack))
         yield node
 
 
