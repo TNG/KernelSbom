@@ -3,6 +3,7 @@
 
 from datetime import datetime
 import logging
+import os
 from typing import Protocol
 
 from sbom.config import KernelSpdxDocumentKind
@@ -27,7 +28,7 @@ from sbom.spdx.simplelicensing import LicenseExpression
 from sbom.spdx.software import File, Sbom
 from sbom.spdx_graph.kernel_file import KernelFile, KernelFileLocation, build_kernel_file_element
 from sbom.spdx_graph.spdx_graph_model import SpdxBuildGraph, SpdxGraph, SpdxIdGeneratorCollection
-from sbom.spdx_graph.spdx_output_graph import create_output_graph
+from sbom.spdx_graph.spdx_output_graph import create_spdx_output_graph
 
 
 class SpdxGraphConfig(Protocol):
@@ -48,25 +49,17 @@ def build_spdx_graphs(
 ) -> dict[KernelSpdxDocumentKind, list[SpdxObject]]:
     if config.src_tree == config.output_tree:
         logging.warning(
-            "Skip creation of dedicated source sbom and add source files into the build sbom because source files cannot be reliably classified when src tree and output tree are equal. "
+            "Skip creation of dedicated source sbom and add source files into the build sbom because source files cannot be reliably classified when src tree and output tree are equal."
         )
-        build_graph = _create_build_spdx_graph(
-            cmd_graph,
-            spdx_id_generators,
-            config,
-        )
-        output_graph = create_output_graph(build_graph, spdx_id_generators, config)
+        build_graph = _create_spdx_build_graph(cmd_graph, spdx_id_generators, config)
+        output_graph = create_spdx_output_graph(build_graph, spdx_id_generators, config)
         return {
             KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
             KernelSpdxDocumentKind.OUTPUT: output_graph.to_list(),
         }
 
-    source_graph, build_graph = _create_source_and_build_spdx_graphs(
-        cmd_graph,
-        spdx_id_generators,
-        config,
-    )
-    output_graph = create_output_graph(build_graph, spdx_id_generators, config)
+    source_graph, build_graph = _create_spdx_source_and_build_graphs(cmd_graph, spdx_id_generators, config)
+    output_graph = create_spdx_output_graph(build_graph, spdx_id_generators, config)
     return {
         KernelSpdxDocumentKind.SOURCE: source_graph.to_list(),
         KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
@@ -74,7 +67,7 @@ def build_spdx_graphs(
     }
 
 
-def _create_build_spdx_graph(
+def _create_spdx_build_graph(
     cmd_graph: CmdGraph,
     spdx_id_generators: SpdxIdGeneratorCollection,
     config: SpdxGraphConfig,
@@ -95,8 +88,9 @@ def _create_build_spdx_graph(
     )
 
     # High-level build element
+    config_source_element = _config_source_element(config.output_tree, config.src_tree, spdx_id_generators.build)
     high_level_build_element, high_level_build_ancestorOf_relationship = _high_level_build_elements(
-        config.build_type, config.build_id, spdx_id_generators.build
+        config.build_type, config.build_id, config_source_element, spdx_id_generators.build
     )
 
     # File elements
@@ -123,6 +117,7 @@ def _create_build_spdx_graph(
     build_sbom.element = [
         high_level_build_element,
         high_level_build_ancestorOf_relationship,
+        config_source_element,
         *file_element_map.values(),
         *source_file_license_identifiers,
         *source_file_license_relationships,
@@ -139,7 +134,7 @@ def _create_build_spdx_graph(
     return build_graph
 
 
-def _create_source_and_build_spdx_graphs(
+def _create_spdx_source_and_build_graphs(
     cmd_graph: CmdGraph,
     spdx_id_generators: SpdxIdGeneratorCollection,
     config: SpdxGraphConfig,
@@ -176,8 +171,9 @@ def _create_source_and_build_spdx_graphs(
     )
 
     # High-level build element
+    config_source_element = _config_source_element(config.output_tree, config.src_tree, spdx_id_generators.build)
     high_level_build_element, high_level_build_ancestorOf_relationship = _high_level_build_elements(
-        config.build_type, config.build_id, spdx_id_generators.build
+        config.build_type, config.build_id, config_source_element, spdx_id_generators.build
     )
 
     # File elements
@@ -227,6 +223,7 @@ def _create_source_and_build_spdx_graphs(
         high_level_build_ancestorOf_relationship,
         output_tree_element,
         output_tree_contains_relationship,
+        config_source_element,
         *output_file_elements,
         *file_relationships,
     ]
@@ -235,7 +232,7 @@ def _create_source_and_build_spdx_graphs(
         element for element in file_relationships if isinstance(element, Build)
     ]
     src_tree_contains_relationship.to = source_file_elements
-    output_tree_contains_relationship.to = output_file_elements
+    output_tree_contains_relationship.to = [config_source_element, *output_file_elements]
 
     # create Spdx graphs
     source_graph = SpdxGraph(source_spdx_document, agent, creation_info, source_sbom)
@@ -315,8 +312,19 @@ def _source_file_license_elements(
     return ([*source_file_license_identifiers.values()], source_file_license_relationships)
 
 
+def _config_source_element(output_tree: PathStr, src_tree: PathStr, spdx_id_generator: SpdxIdGenerator) -> File:
+    config_source_element = build_kernel_file_element(
+        absolute_path=os.path.join(output_tree, ".config"),
+        output_tree=output_tree,
+        src_tree=src_tree,
+        build_id_generator=spdx_id_generator,
+        source_id_generator=spdx_id_generator,
+    )
+    return config_source_element
+
+
 def _high_level_build_elements(
-    build_type: str, build_id: str | None, spdx_id_generator: SpdxIdGenerator
+    build_type: str, build_id: str | None, config_source_element: File, spdx_id_generator: SpdxIdGenerator
 ) -> tuple[Build, Relationship]:
     build_spdxId = spdx_id_generator.generate()
     high_level_build_element = Build(
@@ -328,6 +336,8 @@ def _high_level_build_elements(
             for key, value in Environment.kernel_build_variables.items()
             if value is not None
         ],
+        build_configSourceUri=config_source_element.spdxId,
+        build_configSourceDigest=next(iter(config_source_element.verifiedUsing), None),
     )
     high_level_build_ancestorOf_relationship = Relationship(
         spdxId=spdx_id_generator.generate(),
