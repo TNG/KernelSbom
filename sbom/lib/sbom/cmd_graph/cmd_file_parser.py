@@ -3,7 +3,7 @@
 
 import re
 from dataclasses import dataclass, field
-import sbom.errors as sbom_errors
+import sbom.sbom_logging as sbom_logging
 from sbom.path_utils import PathStr
 
 SAVEDCMD_PATTERN = re.compile(r"^(saved)?cmd_.*?:=\s*(?P<full_command>.+)$")
@@ -51,7 +51,9 @@ def parse_cmd_file(cmd_file_path: PathStr) -> CmdFile | None:
     # savedcmd
     match = SAVEDCMD_PATTERN.match(lines[0])
     if match is None:
-        sbom_errors.log(f"Skip parsing '{cmd_file_path}' because no 'savedcmd_' command was found.")
+        sbom_logging.error(
+            "Skip parsing '{cmd_file_path}' because no 'savedcmd_' command was found.", cmd_file_path=cmd_file_path
+        )
         return None
     savedcmd = match.group("full_command")
 
@@ -68,7 +70,9 @@ def parse_cmd_file(cmd_file_path: PathStr) -> CmdFile | None:
     # source
     line1 = SOURCE_PATTERN.match(lines[1])
     if line1 is None:
-        sbom_errors.log(f"Skip parsing '{cmd_file_path}' because no 'source_' entry was found.")
+        sbom_logging.error(
+            "Skip parsing '{cmd_file_path}' because no 'source_' entry was found.", cmd_file_path=cmd_file_path
+        )
         return CmdFile(cmd_file_path, savedcmd)
     source = line1.group("source_file")
 

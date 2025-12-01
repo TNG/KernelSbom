@@ -5,7 +5,7 @@ import re
 import shlex
 from dataclasses import dataclass
 from typing import Callable, Optional, Union
-import sbom.errors as sbom_errors
+import sbom.sbom_logging as sbom_logging
 from sbom.path_utils import PathStr
 
 
@@ -132,22 +132,26 @@ def _parse_compound_command(command: str) -> list[PathStr]:
     inner_commands = _split_commands(match.group(1))
     for inner_command in inner_commands:
         if isinstance(inner_command, IfBlock):
-            sbom_errors.log(
-                f"Skip parsing inner command {inner_command} of compound command because IfBlock is not supported"
+            sbom_logging.error(
+                "Skip parsing inner command {inner_command} of compound command because IfBlock is not supported",
+                inner_command=inner_command,
             )
             continue
 
         parser = next((parser for pattern, parser in compound_command_parsers if pattern.match(inner_command)), None)
         if parser is None:
-            sbom_errors.log(
-                f"Skip parsing inner command {inner_command} of compound command because no matching parser was found"
+            sbom_logging.error(
+                "Skip parsing inner command {inner_command} of compound command because no matching parser was found",
+                inner_command=inner_command,
             )
             continue
         try:
             input_files += parser(inner_command)
         except CmdParsingError as e:
-            sbom_errors.log(
-                f"Skip parsing inner command {inner_command} of compount command because of command parsing error: {e.message}"
+            sbom_logging.error(
+                "Skip parsing inner command {inner_command} of compound command because of command parsing error: {error_message}",
+                inner_command=inner_command,
+                error_message=e.message,
             )
     return input_files
 
@@ -580,8 +584,9 @@ def parse_commands(commands: str) -> list[PathStr]:
         if isinstance(single_command, IfBlock):
             inputs = parse_commands(single_command.then_statement)
             if inputs:
-                sbom_errors.log(
-                    f"Skip parsing command {single_command.then_statement} because input files in IfBlock 'then' statement are not supported"
+                sbom_logging.error(
+                    "Skip parsing command {then_statement} because input files in IfBlock 'then' statement are not supported",
+                    then_statement=single_command.then_statement,
                 )
             continue
 
@@ -589,12 +594,19 @@ def parse_commands(commands: str) -> list[PathStr]:
             (parser for pattern, parser in SINGLE_COMMAND_PARSERS if pattern.match(single_command)), None
         )
         if matched_parser is None:
-            sbom_errors.log(f"Skip parsing command {single_command} because no matching parser was found")
+            sbom_logging.error(
+                "Skip parsing command {single_command} because no matching parser was found",
+                single_command=single_command,
+            )
             continue
         try:
             inputs = matched_parser(single_command)
             input_files.extend(inputs)
         except CmdParsingError as e:
-            sbom_errors.log(f"Skip parsing command {single_command} because of command parsing error: {e.message}")
+            sbom_logging.error(
+                "Skip parsing command {single_command} because of command parsing error: {error_message}",
+                single_command=single_command,
+                error_message=e.message,
+            )
 
     return [input.strip().rstrip("/") for input in input_files]

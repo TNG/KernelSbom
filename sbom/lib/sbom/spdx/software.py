@@ -10,7 +10,17 @@ from sbom.spdx.core import Artifact, ElementCollection, IntegrityMethod
 SbomType = Literal["source", "build"]
 FileKindType = Literal["file", "directory"]
 SoftwarePurpose = Literal[
-    "source", "archive", "library", "file", "data", "configuration", "executable", "module", "application", "other"
+    "source",
+    "archive",
+    "library",
+    "file",
+    "data",
+    "configuration",
+    "executable",
+    "module",
+    "application",
+    "documentation",
+    "other",
 ]
 ContentIdentifierType = Literal["gitoid", "swhid"]
 

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 import re
-import sbom.errors as sbom_errors
+import sbom.sbom_logging as sbom_logging
 from sbom.path_utils import PathStr
 
 CONFIG_PATTERN = re.compile(r"\$\(wildcard (include/config/[^)]+)\)")
@@ -33,5 +33,5 @@ def parse_deps(deps: list[str]) -> list[PathStr]:
                 input_files.append(dep)
 
             case _:
-                sbom_errors.log(f"Skip parsing dependency {dep} because of unrecognized format")
+                sbom_logging.error("Skip parsing dependency {dep} because of unrecognized format", dep=dep)
     return input_files

@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 from sbom.config import get_config  # noqa: E402
 from sbom.spdx.spdxId import SpdxIdGenerator  # noqa: E402
 from sbom.spdx_graph.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs  # noqa: E402
-import sbom.errors as sbom_errors  # noqa: E402
+import sbom.sbom_logging as sbom_logging  # noqa: E402
 from sbom.path_utils import is_relative_to  # noqa: E402
 from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
 from sbom.spdx import JsonLdSpdxDocument  # noqa: E402
@@ -41,8 +41,9 @@ def main():
     # Save used files document
     if config.generate_used_files:
         if config.src_tree == config.output_tree:
-            logging.warning(
-                f"Cannot distinguish source and output files because source and output trees are equal. Extracting all files from cmd graph for {config.used_files_file_name}"
+            sbom_logging.warning(
+                "Extracting all files from the cmd graph to {used_files_file_name} instead of only source files because source files cannot be reliably classified when the source and output trees are identical.",
+                used_files_file_name=config.used_files_file_name,
             )
             used_files = [os.path.relpath(node.absolute_path, config.src_tree) for node in iter_cmd_graph(cmd_graph)]
             logging.debug(f"Found {len(used_files)} files in cmd graph.")
@@ -85,13 +86,10 @@ def main():
         spdx_doc.save(config.spdx_file_names[kernel_sbom_kind], config.prettify_json)
         logging.info(f"Successfully saved {config.spdx_file_names[kernel_sbom_kind]}")
 
-    # Report collected errors in case of failure
-    errors = sbom_errors.get()
-    if len(errors) > 0:
-        logging.error(f"Sbom generation failed with {len(errors)} errors:")
-        for error in errors:
-            logging.error(error)
-        sys.exit(1)
+    # Report collected warnings and errors in case of failure
+    if config.debug:
+        sbom_logging.summarize_warnings()
+    sbom_logging.summarize_errors()
 
 
 # Call main method

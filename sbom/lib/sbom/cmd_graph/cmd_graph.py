@@ -12,7 +12,7 @@ from sbom.cmd_graph.deps_parser import parse_deps
 from sbom.cmd_graph.savedcmd_parser import parse_commands
 from sbom.cmd_graph.incbin_parser import IncbinStatement, parse_incbin
 from sbom.cmd_graph.cmd_file_parser import CmdFile, parse_cmd_file
-import sbom.errors as sbom_errors
+import sbom.sbom_logging as sbom_logging
 from sbom.path_utils import PathStr, is_relative_to
 from .hardcoded_dependencies import get_hardcoded_dependencies
 
@@ -96,11 +96,11 @@ def build_cmd_graph_node(
 
     if root_path_absolute in cache.keys():
         if depth <= log_depth:
-            logging.debug(f"Reuse Node: {'  ' * depth}{root_path}")
+            logging.debug(f"Reuse node: {'  ' * depth}{root_path}")
         return cache[root_path_absolute]
 
     if depth <= log_depth:
-        logging.debug(f"Build Node: {'  ' * depth}{root_path}")
+        logging.debug(f"Build node: {'  ' * depth}{root_path}")
     cmd_path = _to_cmd_path(root_path_absolute)
     cmd_file = parse_cmd_file(cmd_path) if os.path.exists(cmd_path) else None
     node = CmdGraphNode(root_path_absolute, cmd_file)
@@ -108,9 +108,13 @@ def build_cmd_graph_node(
 
     if not os.path.exists(root_path_absolute):
         if is_relative_to(root_path_absolute, output_tree) or is_relative_to(root_path_absolute, src_tree):
-            sbom_errors.log(f"Skip parsing '{root_path_absolute}' because file does not exist")
+            sbom_logging.error(
+                "Skip parsing '{root_path_absolute}' because file does not exist", root_path_absolute=root_path_absolute
+            )
         else:
-            logging.warning(f"Skip parsing {root_path_absolute} because file does not exist")
+            sbom_logging.warning(
+                "Skip parsing {root_path_absolute} because file does not exist", root_path_absolute=root_path_absolute
+            )
         return node
 
     # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
@@ -156,8 +160,10 @@ def _parse_cmd_file(
             # In the future there might be a way to parse this directly from the cmd file. For now the working directory is estimated heuristically.
             working_directory = _get_working_directory(input_file, output_tree, src_tree, root_artifact)
             if working_directory is None:
-                sbom_errors.log(
-                    f"Skip children of node {root_artifact} because no working directory for relative input {input_file} could be found"
+                sbom_logging.error(
+                    "Skip children of node {root_artifact} because no working directory for relative input {input_file} could be found",
+                    root_artifact=root_artifact,
+                    input_file=input_file,
                 )
                 return []
 
@@ -177,7 +183,7 @@ def _parse_incbin(
         return []
     working_directory = _get_working_directory(incbin_statements[0].path, output_tree, src_tree, root_output_in_tree)
     if working_directory is None:
-        sbom_errors.log(
+        sbom_logging.error(
             f"Skip children of node {root_output_in_tree} because no working directory for {incbin_statements[0]} could be found"
         )
         return []

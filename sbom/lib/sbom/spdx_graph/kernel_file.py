@@ -4,14 +4,13 @@
 from dataclasses import dataclass
 from enum import Enum
 import hashlib
-import logging
 import os
 import re
 from typing import Any
 from sbom.path_utils import PathStr, is_relative_to
 from sbom.spdx.core import Hash
 from sbom.spdx.software import ContentIdentifier, File, SoftwarePurpose
-import sbom.errors as sbom_errors
+import sbom.sbom_logging as sbom_logging
 from sbom.spdx.spdxId import SpdxIdGenerator
 
 
@@ -80,9 +79,13 @@ def build_kernel_file_element(
             )
         ]
     elif file_location == KernelFileLocation.EXTERNAL:
-        logging.warning(f"Cannot compute hash for {absolute_path} because file does not exist.")
+        sbom_logging.warning(
+            "Cannot compute hash for {absolute_path} because file does not exist.", absolute_path=absolute_path
+        )
     else:
-        sbom_errors.log(f"Cannot compute hash for {absolute_path} because file does not exist.")
+        sbom_logging.error(
+            "Cannot compute hash for {absolute_path} because file does not exist.", absolute_path=absolute_path
+        )
 
     # parse spdx license identifier
     license_identifier = (
@@ -177,7 +180,7 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
         return "source"
 
     # Libraries
-    if ends_with([".a", ".so"]):
+    if ends_with([".a", ".so", ".rlib"]):
         return "library"
 
     # Archives
@@ -229,8 +232,12 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
     if ends_with([".pem", ".key", ".conf", ".config", ".cfg", ".bconf"]):
         return "configuration"
 
+    # Documentation
+    if ends_with([".md"]):
+        return "documentation"
+
     # Other / miscellaneous
     if ends_with([".o", ".tmp"]):
         return "other"
 
-    logging.warning(f"Could not infer primary purpose for {absolute_path}")
+    sbom_logging.warning("Could not infer primary purpose for {absolute_path}", absolute_path=absolute_path)

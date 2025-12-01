@@ -4,17 +4,17 @@
 import unittest
 
 from sbom.cmd_graph.savedcmd_parser import parse_commands
-import sbom.errors as sbom_errors
+import sbom.sbom_logging as sbom_logging
 
 
 class TestSavedCmdParser(unittest.TestCase):
     def _assert_parsing(self, cmd: str, expected: str) -> None:
-        sbom_errors.clear()
+        sbom_logging.init()
         parsed = parse_commands(cmd)
         target = [] if expected == "" else expected.split(" ")
         self.assertEqual(parsed, target)
-        errors = sbom_errors.get()
-        self.assertEqual(errors, [])
+        errors = sbom_logging._error_logger.messages  # type: ignore
+        self.assertEqual(errors, {})
 
     # compound command tests
     def test_dd_cat(self):

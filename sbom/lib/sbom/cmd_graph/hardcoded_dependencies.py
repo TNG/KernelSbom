@@ -3,7 +3,7 @@
 
 import os
 from typing import Callable
-import sbom.errors as sbom_errors
+import sbom.sbom_logging as sbom_logging
 from sbom.path_utils import PathStr, is_relative_to
 from sbom.environment import Environment
 
@@ -51,8 +51,10 @@ def get_hardcoded_dependencies(path: PathStr, output_tree: PathStr, src_tree: Pa
         elif os.path.exists(os.path.join(src_tree, dependency)):
             dependencies.append(os.path.relpath(dependency, output_tree))
         else:
-            sbom_errors.log(
-                f"Skip hardcoded dependency '{dependency}' for '{path}' because the dependency lies neither in the src tree nor the output tree."
+            sbom_logging.error(
+                "Skip hardcoded dependency '{dependency}' for '{path}' because the dependency lies neither in the src tree nor the output tree.",
+                dependency=dependency,
+                path=path,
             )
 
     return dependencies
@@ -72,8 +74,9 @@ def _evaluate_template(template: str, variables: dict[str, Callable[[], str | No
 def _get_arch(path: PathStr):
     srcarch = Environment.SRCARCH()
     if srcarch is None:
-        sbom_errors.log(
-            f"Skip architecture specific hardcoded dependency for '{path}' because the SRCARCH environment variable was not set."
+        sbom_logging.error(
+            "Skipped architecture specific hardcoded dependency for '{path}' because the SRCARCH environment variable was not set.",
+            path=path,
         )
         return None
     return srcarch
