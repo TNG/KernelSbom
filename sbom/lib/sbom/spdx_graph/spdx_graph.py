@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from datetime import datetime
-import logging
 import os
 from typing import Protocol
 
-from sbom.config import KernelSpdxDocumentKind
+import sbom.sbom_logging as sbom_logging
 from sbom.environment import Environment
+from sbom.config import KernelSpdxDocumentKind
 from sbom.spdx.spdxId import SpdxIdGenerator
 from typing import Mapping
 from sbom.cmd_graph import CmdGraph, iter_cmd_graph
@@ -48,7 +48,7 @@ def build_spdx_graphs(
     config: SpdxGraphConfig,
 ) -> dict[KernelSpdxDocumentKind, list[SpdxObject]]:
     if config.src_tree == config.output_tree:
-        logging.warning(
+        sbom_logging.warning(
             "Skip creation of dedicated source sbom and add source files into the build sbom because source files cannot be reliably classified when src tree and output tree are equal."
         )
         build_graph = _create_spdx_build_graph(cmd_graph, spdx_id_generators, config)
