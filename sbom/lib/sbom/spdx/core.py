@@ -12,7 +12,14 @@ ExternalIdentifierType = Literal["email", "gitoid", "urlScheme"]
 HashAlgorithm = Literal["sha256", "sha512"]
 ProfileIdentifierType = Literal["core", "software", "build", "lite", "simpleLicensing"]
 RelationshipType = Literal[
-    "contains", "generates", "hasDeclaredLicense", "hasInput", "hasOutput", "ancestorOf", "hasDistributionArtifact"
+    "contains",
+    "generates",
+    "hasDeclaredLicense",
+    "hasInput",
+    "hasOutput",
+    "ancestorOf",
+    "hasDistributionArtifact",
+    "dependsOn",
 ]
 RelationshipCompleteness = Literal["complete", "incomplete", "noAssertion"]
 

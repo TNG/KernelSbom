@@ -344,7 +344,7 @@ def _file_relationships(
     file_elements: Mapping[PathStr, File],
     build_type: str,
     build_id: str,
-    build_id_generator: SpdxIdGenerator,
+    spdx_id_generator: SpdxIdGenerator,
 ) -> list[Build | Relationship]:
     # Create a relationship between each node (output file) and its children (input files)
     build_and_relationship_elements: list[Build | Relationship] = []
@@ -352,29 +352,50 @@ def _file_relationships(
         if next(node.children, None) is None:
             continue
 
-        build_comments: list[str] = []
+        # .cmd file dependencies
         if node.cmd_file is not None:
-            build_comments.append(node.cmd_file.savedcmd)
-        build_comments += [incbin.full_statement for incbin in node.incbin_dependencies]
+            build_element = Build(
+                spdxId=spdx_id_generator.generate(),
+                build_buildType=build_type,
+                build_buildId=build_id,
+                comment=node.cmd_file.savedcmd,
+            )
+            hasInput_relationship = Relationship(
+                spdxId=spdx_id_generator.generate(),
+                relationshipType="hasInput",
+                from_=build_element,
+                to=[file_elements[child_node.absolute_path] for child_node in node.children],
+            )
+            hasOutput_relationship = Relationship(
+                spdxId=spdx_id_generator.generate(),
+                relationshipType="hasOutput",
+                from_=build_element,
+                to=[file_elements[node.absolute_path]],
+            )
+            build_and_relationship_elements += [build_element, hasInput_relationship, hasOutput_relationship]
 
-        build_element = Build(
-            spdxId=build_id_generator.generate(),
-            build_buildType=build_type,
-            build_buildId=build_id,
-            comment=";".join(build_comments),
-        )
-        hasInput_relationship = Relationship(
-            spdxId=build_id_generator.generate(),
-            relationshipType="hasInput",
-            from_=build_element,
-            to=[file_elements[child_node.absolute_path] for child_node in node.children],
-        )
-        hasOutput_relationship = Relationship(
-            spdxId=build_id_generator.generate(),
-            relationshipType="hasOutput",
-            from_=build_element,
-            to=[file_elements[node.absolute_path]],
-        )
-        build_and_relationship_elements += [build_element, hasInput_relationship, hasOutput_relationship]
+        # incbin dependencies
+        if len(node.incbin_dependencies) > 0:
+            incbin_dependsOn_relationship = Relationship(
+                spdxId=spdx_id_generator.generate(),
+                relationshipType="dependsOn",
+                comment="\n".join([incbin_dependency.full_statement for incbin_dependency in node.incbin_dependencies]),
+                from_=file_elements[node.absolute_path],
+                to=[
+                    file_elements[incbin_depdendency.node.absolute_path]
+                    for incbin_depdendency in node.incbin_dependencies
+                ],
+            )
+            build_and_relationship_elements.append(incbin_dependsOn_relationship)
+
+        # hardcoded dependencies
+        if len(node.hardcoded_dependencies) > 0:
+            hardcoded_dependency_relationship = Relationship(
+                spdxId=spdx_id_generator.generate(),
+                relationshipType="dependsOn",
+                from_=file_elements[node.absolute_path],
+                to=[file_elements[n.absolute_path] for n in node.hardcoded_dependencies],
+            )
+            build_and_relationship_elements.append(hardcoded_dependency_relationship)
 
     return build_and_relationship_elements
