@@ -336,8 +336,8 @@ def _high_level_build_elements(
             for key, value in Environment.KERNEL_BUILD_VARIABLES.items()
             if value is not None
         ],
-        build_configSourceUri=config_source_element.spdxId,
-        build_configSourceDigest=next(iter(config_source_element.verifiedUsing), None),
+        build_configSourceUri=[config_source_element.spdxId],
+        build_configSourceDigest=config_source_element.verifiedUsing,
     )
     high_level_build_ancestorOf_relationship = Relationship(
         spdxId=spdx_id_generator.generate(),

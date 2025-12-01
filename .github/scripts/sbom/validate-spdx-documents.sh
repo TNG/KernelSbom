@@ -38,6 +38,8 @@ if [[ ! -f "fixed-spdx-context.jsonld" ]]; then
     (.["@context"].createdBy) |= (. + {"@container": "@set"}) |
     (.["@context"].software_sbomType) |= (. + {"@container": "@set"}) |
     (.["@context"].originatedBy) |= (. + {"@container": "@set"}) |
+    (.["@context"].build_configSourceUri) |= (. + {"@container": "@set"}) |
+    (.["@context"].build_configSourceDigest) |= (. + {"@container": "@set"}) |
     (.["@context"].build_environment) |= (. + {"@container": "@set"})
     ' spdx-context.jsonld > fixed-spdx-context.jsonld
     rm spdx-context.jsonld
