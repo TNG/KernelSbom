@@ -13,7 +13,7 @@
             "args": [
                 "--src-tree",
                 "../linux",
-                "--output-tree",
+                "--obj-tree",
                 "../linux/kernel_build",
                 "--roots",
                 "arch/x86/boot/bzImage",

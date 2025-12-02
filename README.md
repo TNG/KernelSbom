@@ -9,7 +9,7 @@ A script to generate an SPDX-format Software Bill of Materials (SBOM) for the li
 The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
 
 ## How to use
-1. Provide a linux source and output tree, e.g., by downloading precompiled test data from [KernelSbom-TestData](https://fileshare.tngtech.com/d/e69946da808b41f88047/files)
+1. Provide a linux source and object tree, e.g., by downloading precompiled test data from [KernelSbom-TestData](https://fileshare.tngtech.com/d/e69946da808b41f88047/files)
     ```bash
     test_archive="linux.v6.17.tinyconfig.x86.tar.gz"
     curl -L -o "$test_archive" "https://fileshare.tngtech.com/d/e69946da808b41f88047/files/?p=%2F$test_archive&dl=1"
@@ -32,7 +32,7 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/
     export SRCARCH=x86
     python3 sbom/sbom.py \
       --src-tree ../linux \
-      --output-tree ../linux/kernel_build \
+      --obj-tree ../linux/kernel_build \
       --roots arch/x86/boot/bzImage \
       --generate-spdx \
       --generate-used-files \
@@ -48,7 +48,7 @@ Using this cmd graph, the script generates three SPDX documents and writes them 
 
 If the `--generate-used-files` flag is enabled, the script also produces **`sbom.used-files.txt`**, a flat list of all source files in `sbom-source.spdx.json`.
 
-**Note:** If the source tree and output tree are identical, reliably distinguishing source files is not possible. In this case, the source SPDX document is merged into `sbom-build.spdx.json`, and `sbom.used-files.txt` contains all files from `sbom-build.spdx.json`.
+**Note:** If the source tree and object tree are identical, reliably distinguishing source files is not possible. In this case, the source SPDX document is merged into `sbom-build.spdx.json`, and `sbom.used-files.txt` contains all files from `sbom-build.spdx.json`.
 
 ### Kernel Modules
 
@@ -56,14 +56,14 @@ To include `.ko` kernel modules in the provided root artifacts, you can use the 
 
 ```bash
 echo "arch/x86/boot/bzImage" >> roots.txt
-python3 sbom_analysis/module_roots.py <output_tree>/modules.order >> roots.txt
+python3 sbom/module_roots.py <obj_tree>/modules.order >> roots.txt
 ```
 Then pass the roots file to the main script:
 ```bash
 export SRCARCH=x86
 python3 sbom/sbom.py \
   --src-tree ../linux \
-  --output-tree ../linux/kernel_build \
+  --obj-tree ../linux/kernel_build \
   --roots-file roots.txt \
   --generate-spdx \
   --generate-used-files \
@@ -74,7 +74,7 @@ python3 sbom/sbom.py \
 
 The following diagrams illustrate the structure of the generated SPDX documents: `sbom-source.spdx.json`, `sbom-build.spdx.json`, and `sbom-output.spdx.json`.
 
-### Separate Source and Output Trees
+### Separate Source and Object Trees
 ```mermaid
 flowchart TD
 
@@ -110,7 +110,7 @@ flowchart TD
         HIGH_LEVEL_BUILD["Build (High Level)"]
         LOW_LEVEL_BUILD["Build"]
 
-        OUTPUT_TREE["File (output_tree)"]
+        OBJ_TREE["File (obj_tree)"]
         VMLINUX_BIN["File (arch/x86/boot/vmlinux.bin)"]
         BZIMAGE["File (arch/x86/boot/bzImage)"]
         DOTDOT["..."]
@@ -121,8 +121,8 @@ flowchart TD
         BUILD_DOC -->|rootElement| BUILD_SBOM
         BUILD_DOC -->|import| MAINC_EXTERNALMAP
 
-        BUILD_SBOM -->|rootElement| OUTPUT_TREE
-        BUILD_SBOM -->|element| OUTPUT_TREE
+        BUILD_SBOM -->|rootElement| OBJ_TREE
+        BUILD_SBOM -->|element| OBJ_TREE
         BUILD_SBOM -->|element| RUSTLIB
         BUILD_SBOM -->|element| VMLINUX_BIN
         BUILD_SBOM -->|element| BZIMAGE
@@ -130,8 +130,8 @@ flowchart TD
         BUILD_SBOM -->|element| LOW_LEVEL_BUILD
         BUILD_SBOM -->|element| CONFIG
 
-        OUTPUT_TREE -->|contains| VMLINUX_BIN
-        OUTPUT_TREE -->|contains| BZIMAGE
+        OBJ_TREE -->|contains| VMLINUX_BIN
+        OBJ_TREE -->|contains| BZIMAGE
 
         HIGH_LEVEL_BUILD -->|ancestorOf| LOW_LEVEL_BUILD
         HIGH_LEVEL_BUILD -->|configSourceUri| CONFIG
@@ -180,7 +180,7 @@ flowchart TD
     PACKAGE -->|originatedBy| AGENT
 ```
 
-### Equal Source and Output Trees
+### Equal Source and Object Trees
 
 ```mermaid
 flowchart TD

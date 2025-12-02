@@ -13,7 +13,7 @@ from sbom.spdx_graph.spdx_graph_model import SpdxBuildGraph, SpdxGraph, SpdxIdGe
 
 
 class SpdxOutputGraphConfig(Protocol):
-    output_tree: PathStr
+    obj_tree: PathStr
     src_tree: PathStr
     created: datetime
     build_type: str

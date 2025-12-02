@@ -37,22 +37,20 @@ def _remove_files(base_path: PathStr, patterns_to_remove: list[re.Pattern[str]],
 
 def _create_cmd_graph_based_kernel_directory(
     src_tree: PathStr,
-    output_tree: PathStr,
+    obj_tree: PathStr,
     cmd_src_tree: PathStr,
-    cmd_output_tree: PathStr,
+    cmd_obj_tree: PathStr,
     root_paths: list[PathStr],
     cmd_graph_path: PathStr,
     missing_sources_in_cmd_graph: list[PathStr],
 ) -> None:
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
-    shutil.copytree(
-        src_tree, cmd_src_tree, symlinks=True, ignore=shutil.ignore_patterns(os.path.relpath(output_tree, src_tree))
-    )
-    os.makedirs(cmd_output_tree, exist_ok=True)
-    shutil.copyfile(os.path.join(output_tree, ".config"), os.path.join(cmd_output_tree, ".config"))
+    shutil.copytree(src_tree, cmd_src_tree, symlinks=True, ignore=shutil.ignore_patterns(os.path.relpath(obj_tree)))
+    os.makedirs(cmd_obj_tree, exist_ok=True)
+    shutil.copyfile(os.path.join(obj_tree, ".config"), os.path.join(cmd_obj_tree, ".config"))
 
     # Load cached command graph or build it from .cmd files
-    cmd_graph = build_or_load_cmd_graph(root_paths, output_tree, src_tree, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_paths, obj_tree, src_tree, cmd_graph_path)
 
     # remove source files not in cmd_graph
     source_patterns = [
@@ -63,11 +61,11 @@ def _create_cmd_graph_based_kernel_directory(
     ]
     logging.info("Extract source files from cmd graph")
     src_tree_str = str(src_tree)
-    output_tree_str = str(output_tree)
+    obj_tree_str = str(obj_tree)
     cmd_graph_sources = [
         os.path.relpath(node.absolute_path, src_tree_str)
         for node in iter_cmd_graph(cmd_graph)
-        if is_relative_to(node.absolute_path, src_tree_str) and not is_relative_to(node.absolute_path, output_tree_str)
+        if is_relative_to(node.absolute_path, src_tree_str) and not is_relative_to(node.absolute_path, obj_tree_str)
     ]
 
     logging.info("Remove source files not in cmd graph")
@@ -90,7 +88,7 @@ def _get_manual_missing_sources(config: Literal["tinyconfig"]) -> list[PathStr]:
 
 if __name__ == "__main__":
     """
-    cmd_graph_based_kernel_build.py <src_tree> <output_tree>
+    cmd_graph_based_kernel_build.py <src_tree> <obj_tree>
     """
     script_path = os.path.dirname(__file__)
     src_tree = (
@@ -98,7 +96,7 @@ if __name__ == "__main__":
         if len(sys.argv) >= 2 and sys.argv[1]
         else os.path.normpath(os.path.join(script_path, "../../../linux"))
     )
-    output_tree = (
+    obj_tree = (
         os.path.normpath(sys.argv[1]) if len(sys.argv) >= 3 and sys.argv[2] else os.path.join(src_tree, "kernel_build")
     )
     os.environ["SRCARCH"] = "x86"
@@ -108,7 +106,7 @@ if __name__ == "__main__":
     cmd_graph_path = os.path.normpath(os.path.join(script_path, "../cmd_graph.pickle"))
 
     cmd_src_tree = f"{src_tree}_cmd"
-    cmd_output_tree = os.path.normpath(os.path.join(cmd_src_tree, os.path.relpath(output_tree, src_tree)))
+    cmd_obj_tree = os.path.normpath(os.path.join(cmd_src_tree, os.path.relpath(obj_tree, src_tree)))
     missing_sources_in_cmd_graph_path = os.path.join(script_path, "missing_sources_in_cmd_graph.json")
 
     # Configure logging
@@ -123,9 +121,9 @@ if __name__ == "__main__":
     if not os.path.exists(cmd_src_tree):
         _create_cmd_graph_based_kernel_directory(
             src_tree,
-            output_tree,
+            obj_tree,
             cmd_src_tree,
-            cmd_output_tree,
+            cmd_obj_tree,
             root_paths,
             cmd_graph_path,
             missing_sources_in_cmd_graph,
@@ -133,8 +131,8 @@ if __name__ == "__main__":
     build_kernel(
         missing_sources_in_cmd_graph,
         cmd_src_tree,
-        cmd_output_tree,
+        cmd_obj_tree,
         src_tree,
-        output_tree,
+        obj_tree,
         missing_sources_in_cmd_graph_path,
     )

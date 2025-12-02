@@ -35,14 +35,14 @@ def main():
     # Build cmd graph
     logging.debug("Start building cmd graph")
     start_time = time.time()
-    cmd_graph = build_cmd_graph(config.root_paths, config.output_tree, config.src_tree)
+    cmd_graph = build_cmd_graph(config.root_paths, config.obj_tree, config.src_tree)
     logging.debug(f"Built cmd graph in {time.time() - start_time} seconds")
 
     # Save used files document
     if config.generate_used_files:
-        if config.src_tree == config.output_tree:
+        if config.src_tree == config.obj_tree:
             sbom_logging.warning(
-                "Extracting all files from the cmd graph to {used_files_file_name} instead of only source files because source files cannot be reliably classified when the source and output trees are identical.",
+                "Extracting all files from the cmd graph to {used_files_file_name} instead of only source files because source files cannot be reliably classified when the source and object trees are identical.",
                 used_files_file_name=config.used_files_file_name,
             )
             used_files = [os.path.relpath(node.absolute_path, config.src_tree) for node in iter_cmd_graph(cmd_graph)]
@@ -52,12 +52,12 @@ def main():
                 os.path.relpath(node.absolute_path, config.src_tree)
                 for node in iter_cmd_graph(cmd_graph)
                 if is_relative_to(node.absolute_path, config.src_tree)
-                and not is_relative_to(node.absolute_path, config.output_tree)
+                and not is_relative_to(node.absolute_path, config.obj_tree)
             ]
             logging.debug(f"Found {len(used_files)} source files in cmd graph")
-        with open(config.used_files_file_name, "w", encoding="utf-8") as f:
+        with open(os.path.join(config.output_directory, config.used_files_file_name), "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
-        logging.info(f"Successfully saved {config.used_files_file_name}")
+        logging.debug(f"Successfully saved {config.used_files_file_name}")
 
     if config.generate_spdx is False:
         return
@@ -83,8 +83,9 @@ def main():
 
     for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
         spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)
-        spdx_doc.save(config.spdx_file_names[kernel_sbom_kind], config.prettify_json)
-        logging.info(f"Successfully saved {config.spdx_file_names[kernel_sbom_kind]}")
+        save_path = os.path.join(config.output_directory, config.spdx_file_names[kernel_sbom_kind])
+        spdx_doc.save(save_path, config.prettify_json)
+        logging.debug(f"Successfully saved {save_path}")
 
     # Report collected warnings and errors in case of failure
     if config.debug:
