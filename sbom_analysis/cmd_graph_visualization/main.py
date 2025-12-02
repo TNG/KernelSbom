@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from dataclasses import asdict, dataclass
+from itertools import chain
 import json
 import logging
 import os
@@ -17,6 +18,7 @@ sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
 from sbom.path_utils import PathStr  # noqa: E402
 from sbom.cmd_graph.cmd_graph import (  # noqa: E402
+    IncbinDependency,
     build_cmd_graph_node,
     CmdGraphNode,
     CmdGraph,
@@ -95,12 +97,22 @@ def _to_sparse_cmd_graph(
         return cmd_graph if added_before[cmd_graph.absolute_path] else None
 
     sparse_children: list[CmdGraphNode] = []
-    for child_node in cmd_graph.children:
-        sparse_child = _to_sparse_cmd_graph(child_node, include, added_before)
-        if sparse_child is not None:
-            sparse_children.append(sparse_child)
+    cmd_graph.cmd_file_dependencies = [
+        sparse_child
+        for child_node in cmd_graph.cmd_file_dependencies
+        if (sparse_child := _to_sparse_cmd_graph(child_node, include, added_before)) is not None
+    ]
+    cmd_graph.hardcoded_dependencies = [
+        sparse_child
+        for child_node in cmd_graph.hardcoded_dependencies
+        if (sparse_child := _to_sparse_cmd_graph(child_node, include, added_before)) is not None
+    ]
+    cmd_graph.incbin_dependencies = [
+        IncbinDependency(sparse_child, incbin_dependency.full_statement)
+        for incbin_dependency in cmd_graph.incbin_dependencies
+        if (sparse_child := _to_sparse_cmd_graph(incbin_dependency.node, include, added_before)) is not None
+    ]
 
-    cmd_graph.children = sparse_children
     if cmd_graph.absolute_path in include or len(sparse_children) > 0:
         added_before[cmd_graph.absolute_path] = True
         return cmd_graph
@@ -148,7 +160,7 @@ def _extend_cmd_graph_with_missing_files(
                 logging.info(f"Adding {potential_new_root.absolute_path} as new root")
                 root_nodes.append(potential_new_root)
                 break
-            node_stack = node.children + node_stack
+            node_stack = list(chain(node.children, node_stack))
     return CmdGraph(root_nodes)
 
 

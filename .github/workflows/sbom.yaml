@@ -73,7 +73,7 @@ jobs:
           echo ${primaryRoots["${{ inputs.arch }}"]} > roots.txt
           
           if [ "${{ inputs.use_modules }}" = "true" ]; then
-            python3 sbom_analysis/module_roots.py \
+            python3 sbom/module_roots.py \
               /workspace/${{ inputs.obj_tree }}/modules.order \
               >> roots.txt
           fi

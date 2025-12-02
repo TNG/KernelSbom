@@ -37,19 +37,17 @@ def _remove_files(base_path: PathStr, patterns_to_remove: list[re.Pattern[str]],
 
 def _create_cmd_graph_based_kernel_directory(
     src_tree: PathStr,
-    obj_tree
+    obj_tree: PathStr,
     cmd_src_tree: PathStr,
-    cmd_obj_tree
+    cmd_obj_tree: PathStr,
     root_paths: list[PathStr],
     cmd_graph_path: PathStr,
     missing_sources_in_cmd_graph: list[PathStr],
 ) -> None:
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
-    shutil.copytree(
-        src_tree, cmd_src_tree, symlinks=True, ignore=shutil.ignore_patterns(os.path.relpath(obj_treetree))
-    )
-    os.makedirs(cmd_obj_treet_ok=True)
-    shutil.copyfile(os.path.join(obj_tree.config"), os.path.join(cmd_obj_tree, ".config"))
+    shutil.copytree(src_tree, cmd_src_tree, symlinks=True, ignore=shutil.ignore_patterns(os.path.relpath(obj_tree)))
+    os.makedirs(cmd_obj_tree, exist_ok=True)
+    shutil.copyfile(os.path.join(obj_tree, ".config"), os.path.join(cmd_obj_tree, ".config"))
 
     # Load cached command graph or build it from .cmd files
     cmd_graph = build_or_load_cmd_graph(root_paths, obj_tree, src_tree, cmd_graph_path)

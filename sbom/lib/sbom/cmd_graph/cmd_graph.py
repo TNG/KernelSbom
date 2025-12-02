@@ -221,10 +221,10 @@ def build_or_load_cmd_graph(
     root_paths: list[PathStr], obj_tree: PathStr, src_tree: PathStr, cmd_graph_path: PathStr
 ) -> CmdGraph:
     if os.path.exists(cmd_graph_path):
-        logging.info("Load cmd graph")
+        logging.debug("Load cmd graph")
         cmd_graph = load_cmd_graph(cmd_graph_path)
     else:
-        logging.info("Build cmd graph")
+        logging.debug("Build cmd graph")
         cmd_graph = build_cmd_graph(root_paths, obj_tree, src_tree)
         save_cmd_graph(cmd_graph, cmd_graph_path)
     return cmd_graph
