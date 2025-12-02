@@ -40,6 +40,9 @@ class KernelSbomConfig:
     used_files_file_name: str
     """If `generate_used_files` is True, specifies the file name for the used-files document."""
 
+    output_directory: PathStr
+    """Path to the directory where the generated output documents will be saved."""
+
     debug: bool
     """Whether to enable debug logging."""
 
@@ -88,6 +91,7 @@ def get_config() -> KernelSbomConfig:
 
     generate_spdx = args["generate_spdx"]
     generate_used_files = args["generate_used_files"]
+    output_directory = os.path.realpath(args["output_directory"])
     debug = args["debug"]
 
     try:
@@ -126,6 +130,7 @@ def get_config() -> KernelSbomConfig:
         spdx_file_names=spdx_file_names,
         generate_used_files=generate_used_files,
         used_files_file_name=used_files_file_name,
+        output_directory=output_directory,
         debug=debug,
         created=created,
         spdxId_prefix=spdxId_prefix,
@@ -179,6 +184,11 @@ def _parse_cli_arguments() -> dict[str, Any]:
         help="Whether to create the sbom.used-files.txt file, a flat list of all source files used for the kernel build. "
         "Note, if src-tree and obj-tree are equal it is not possible to reliably classify source files. "
         "In this case sbom.used-files.txt will contain all files used for the kernel build including all build artifacts. (default: False)",
+    )
+    parser.add_argument(
+        "--output-directory",
+        default=".",
+        help="Path to the directory where the generated output documents will be saved. (default: .)",
     )
     parser.add_argument(
         "--debug",

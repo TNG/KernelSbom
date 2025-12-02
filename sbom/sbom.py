@@ -55,7 +55,7 @@ def main():
                 and not is_relative_to(node.absolute_path, config.obj_tree)
             ]
             logging.debug(f"Found {len(used_files)} source files in cmd graph")
-        with open(config.used_files_file_name, "w", encoding="utf-8") as f:
+        with open(os.path.join(config.output_directory, config.used_files_file_name), "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
         logging.info(f"Successfully saved {config.used_files_file_name}")
 
@@ -83,8 +83,9 @@ def main():
 
     for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
         spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)
-        spdx_doc.save(config.spdx_file_names[kernel_sbom_kind], config.prettify_json)
-        logging.info(f"Successfully saved {config.spdx_file_names[kernel_sbom_kind]}")
+        save_path = os.path.join(config.output_directory, config.spdx_file_names[kernel_sbom_kind])
+        spdx_doc.save(save_path, config.prettify_json)
+        logging.debug(f"Successfully saved {save_path}")
 
     # Report collected warnings and errors in case of failure
     if config.debug:
