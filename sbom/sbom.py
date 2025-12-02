@@ -57,7 +57,7 @@ def main():
             logging.debug(f"Found {len(used_files)} source files in cmd graph")
         with open(os.path.join(config.output_directory, config.used_files_file_name), "w", encoding="utf-8") as f:
             f.write("\n".join(str(file_path) for file_path in used_files))
-        logging.debug(f"Successfully saved {config.used_files_file_name}")
+        logging.debug(f"Successfully saved {os.path.join(config.output_directory, config.used_files_file_name)}")
 
     if config.generate_spdx is False:
         return

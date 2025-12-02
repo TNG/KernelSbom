@@ -6,7 +6,7 @@ SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 # KernelSbom
 
 A script to generate an SPDX-format Software Bill of Materials (SBOM) for the linux kernel build.
-The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
+The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
 
 ## How to use
 1. Provide a linux source and object tree, e.g., by downloading precompiled test data from [KernelSbom-TestData](https://fileshare.tngtech.com/d/e69946da808b41f88047/files)
@@ -36,7 +36,8 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/
       --roots arch/x86/boot/bzImage \
       --generate-spdx \
       --generate-used-files \
-      --prettify-json
+      --prettify-json \
+      --debug
     ```
 
 Starting from the provided root artifact (`bzImage`), the script constructs a **cmd graph**: a directed acyclic graph whose nodes are filenames and whose edges represent build dependencies extracted from the corresponding `.<filename>.cmd` files.
@@ -276,7 +277,7 @@ flowchart TD
   - [sbom_analysis/cmd_graph_visualization/](sbom_analysis/cmd_graph_visualization/README.md) - Interactive visualization of the cmd graph
 - `testdata_generation/` - Describes how the precompiled kernel builds in [KernelSbom-TestData](https://fileshare.tngtech.com/library/98e7e6f8-bffe-4a55-a8d2-817d4f3e51e8/KernelSbom-TestData/) were generated.
 
-The main contribution of this repository is the content of the `sbom` directory which eventually should be moved into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
+The main contribution of this repository is the content of the `sbom` directory which eventually should be moved into the `linux/tools/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
 
 ## Development
 
