@@ -16,21 +16,21 @@ HARDCODED_DEPENDENCIES: dict[str, list[str]] = {
 }
 
 
-def get_hardcoded_dependencies(path: PathStr, output_tree: PathStr, src_tree: PathStr) -> list[PathStr]:
+def get_hardcoded_dependencies(path: PathStr, obj_tree: PathStr, src_tree: PathStr) -> list[PathStr]:
     """
     Some files in the Linux kernel build process are not tracked by the .cmd dependency mechanism.
     This function provides a temporary workaround by manually specifying known missing dependencies required to correctly model the build graph.
 
     Args:
-        path (Path): absolute path to a file within the src tree or output tree.
-        output_tree (Path): absolute Path to the base directory of the output tree.
+        path (Path): absolute path to a file within the src tree or object tree.
+        obj_tree (Path): absolute Path to the base directory of the object tree.
         src_tree (Path): absolute Path to the `linux` source directory.
 
     Returns:
-        list[Path]: A list of dependency file paths (relative to the output tree) required to build the file at the given path.
+        list[Path]: A list of dependency file paths (relative to the object tree) required to build the file at the given path.
     """
-    if is_relative_to(path, output_tree):
-        path = os.path.relpath(path, output_tree)
+    if is_relative_to(path, obj_tree):
+        path = os.path.relpath(path, obj_tree)
     elif is_relative_to(path, src_tree):
         path = os.path.relpath(path, src_tree)
 
@@ -46,13 +46,13 @@ def get_hardcoded_dependencies(path: PathStr, output_tree: PathStr, src_tree: Pa
         dependency = _evaluate_template(dependency_template, template_variables)
         if dependency is None:
             continue
-        if os.path.exists(os.path.join(output_tree, dependency)):
+        if os.path.exists(os.path.join(obj_tree, dependency)):
             dependencies.append(dependency)
         elif os.path.exists(os.path.join(src_tree, dependency)):
-            dependencies.append(os.path.relpath(dependency, output_tree))
+            dependencies.append(os.path.relpath(dependency, obj_tree))
         else:
             sbom_logging.error(
-                "Skip hardcoded dependency '{dependency}' for '{path}' because the dependency lies neither in the src tree nor the output tree.",
+                "Skip hardcoded dependency '{dependency}' for '{path}' because the dependency lies neither in the src tree nor the object tree.",
                 dependency=dependency,
                 path=path,
             )

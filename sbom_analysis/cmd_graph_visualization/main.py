@@ -110,11 +110,11 @@ def _to_sparse_cmd_graph(
 
 def _extend_cmd_graph_with_missing_files(
     cmd_graph: CmdGraph,
-    output_tree: PathStr,
+    obj_tree: PathStr,
     missing_files: set[PathStr],
 ) -> CmdGraph:
     """
-    Extends an existing cmd graph based on all cmd files in the output tree that are not already present in the cmd graph
+    Extends an existing cmd graph based on all cmd files in the object tree that are not already present in the cmd graph
     A new graph is spanned.
     """
     cmd_graph_node_cache: dict[PathStr, CmdGraphNode] = {}
@@ -124,15 +124,15 @@ def _extend_cmd_graph_with_missing_files(
     # remove children of original cmd graph roots since those are definitely no missing files
     root_nodes = [CmdGraphNode(root.absolute_path, root.cmd_file) for root in cmd_graph.roots]
 
-    for cmd_file_path in [str(p) for p in Path(output_tree).rglob("*.cmd")]:
+    for cmd_file_path in [str(p) for p in Path(obj_tree).rglob("*.cmd")]:
         file_path_abs = os.path.join(
             os.path.dirname(cmd_file_path), os.path.basename(cmd_file_path).removeprefix(".").removesuffix(".cmd")
         )
         if file_path_abs in cmd_graph_node_cache.keys():
             continue
         potential_new_root = build_cmd_graph_node(
-            root_path=os.path.relpath(file_path_abs, output_tree),
-            output_tree=output_tree,
+            root_path=os.path.relpath(file_path_abs, obj_tree),
+            obj_tree=obj_tree,
             src_tree=src_tree,
             cache=cmd_graph_node_cache,
             log_depth=0,
@@ -153,7 +153,7 @@ def _extend_cmd_graph_with_missing_files(
 
 
 def _to_missing_files_graph(
-    cmd_graph: CmdGraph, output_tree: PathStr, script_path: PathStr, config: str
+    cmd_graph: CmdGraph, obj_tree: PathStr, script_path: PathStr, config: str
 ) -> tuple[CmdGraph, set[PathStr]]:
     with open(
         os.path.join(
@@ -164,7 +164,7 @@ def _to_missing_files_graph(
         missing_files: set[PathStr] = set(os.path.join(src_tree, path) for path in json.load(f))  # type: ignore
 
     logging.info("Extend Graph based on missing files")
-    cmd_graph_with_missing_files = _extend_cmd_graph_with_missing_files(cmd_graph, output_tree, missing_files)
+    cmd_graph_with_missing_files = _extend_cmd_graph_with_missing_files(cmd_graph, obj_tree, missing_files)
 
     # list remaining missing files that could not be found
     found_files = {
@@ -193,7 +193,7 @@ def _to_missing_files_graph(
 
 if __name__ == "__main__":
     """
-    cmd_graph_visualization.py <src_tree> <output_tree>
+    cmd_graph_visualization.py <src_tree> <obj_tree>
     """
     script_path = os.path.dirname(__file__)
     src_tree = (
@@ -201,7 +201,7 @@ if __name__ == "__main__":
         if len(sys.argv) >= 2 and sys.argv[1]
         else os.path.realpath(os.path.join(script_path, "../../../linux"))
     )
-    output_tree = (
+    obj_tree = (
         os.path.realpath(sys.argv[2]) if len(sys.argv) >= 3 and sys.argv[2] else os.path.join(src_tree, "kernel_build")
     )
     os.environ["SRCARCH"] = "x86"
@@ -218,12 +218,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Load cached command graph if available, otherwise build it from .cmd files
-    cmd_graph = build_or_load_cmd_graph(root_paths, output_tree, src_tree, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_paths, obj_tree, src_tree, cmd_graph_path)
 
     # Extend cmd graph with missing files
     missing_files: set[PathStr] = set()
     if visualize_missing_files:
-        cmd_graph, missing_files = _to_missing_files_graph(cmd_graph, output_tree, script_path, config)
+        cmd_graph, missing_files = _to_missing_files_graph(cmd_graph, obj_tree, script_path, config)
 
     # Create Force Graph representation
     force_graph = _to_force_graph(

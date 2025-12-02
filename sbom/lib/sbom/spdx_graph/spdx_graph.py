@@ -32,7 +32,7 @@ from sbom.spdx_graph.spdx_output_graph import create_spdx_output_graph
 
 
 class SpdxGraphConfig(Protocol):
-    output_tree: PathStr
+    obj_tree: PathStr
     src_tree: PathStr
     created: datetime
     build_type: str
@@ -47,9 +47,9 @@ def build_spdx_graphs(
     spdx_id_generators: SpdxIdGeneratorCollection,
     config: SpdxGraphConfig,
 ) -> dict[KernelSpdxDocumentKind, list[SpdxObject]]:
-    if config.src_tree == config.output_tree:
+    if config.src_tree == config.obj_tree:
         sbom_logging.warning(
-            "Skipped creating a dedicated source SBOM because source files cannot be reliably classified when the source and output trees are identical. Added source files to the build SBOM instead."
+            "Skipped creating a dedicated source SBOM because source files cannot be reliably classified when the source and object trees are identical. Added source files to the build SBOM instead."
         )
         build_graph = _create_spdx_build_graph(cmd_graph, spdx_id_generators, config)
         output_graph = create_spdx_output_graph(build_graph, spdx_id_generators, config)
@@ -88,7 +88,7 @@ def _create_spdx_build_graph(
     )
 
     # High-level build element
-    config_source_element = _config_source_element(config.output_tree, config.src_tree, spdx_id_generators.build)
+    config_source_element = _config_source_element(config.obj_tree, config.src_tree, spdx_id_generators.build)
     high_level_build_element, high_level_build_ancestorOf_relationship = _high_level_build_elements(
         config.build_type, config.build_id, config_source_element, spdx_id_generators.build
     )
@@ -96,7 +96,7 @@ def _create_spdx_build_graph(
     # File elements
     file_element_map: dict[PathStr, KernelFile] = {
         node.absolute_path: build_kernel_file_element(
-            node.absolute_path, config.output_tree, config.src_tree, spdx_id_generators.build, spdx_id_generators.build
+            node.absolute_path, config.obj_tree, config.src_tree, spdx_id_generators.build, spdx_id_generators.build
         )
         for node in iter_cmd_graph(cmd_graph)
     }
@@ -146,15 +146,15 @@ def _create_spdx_source_and_build_graphs(
     source_spdx_document, build_spdx_document = _spdx_document_elements(spdx_id_generators)
     source_sbom, build_sbom = _sbom_elements(spdx_id_generators)
 
-    # Src and output tree elements
+    # Src and object tree elements
     src_tree_element = File(
         spdxId=spdx_id_generators.source.generate(),
         name="$(src_tree)",
         software_fileKind="directory",
     )
-    output_tree_element = File(
+    obj_tree_element = File(
         spdxId=spdx_id_generators.build.generate(),
-        name="$(output_tree)",
+        name="$(obj_tree)",
         software_fileKind="directory",
     )
     src_tree_contains_relationship = Relationship(
@@ -163,15 +163,15 @@ def _create_spdx_source_and_build_graphs(
         from_=src_tree_element,
         to=[],
     )
-    output_tree_contains_relationship = Relationship(
+    obj_tree_contains_relationship = Relationship(
         spdxId=spdx_id_generators.build.generate(),
         relationshipType="contains",
-        from_=output_tree_element,
+        from_=obj_tree_element,
         to=[],
     )
 
     # High-level build element
-    config_source_element = _config_source_element(config.output_tree, config.src_tree, spdx_id_generators.build)
+    config_source_element = _config_source_element(config.obj_tree, config.src_tree, spdx_id_generators.build)
     high_level_build_element, high_level_build_ancestorOf_relationship = _high_level_build_elements(
         config.build_type, config.build_id, config_source_element, spdx_id_generators.build
     )
@@ -179,7 +179,7 @@ def _create_spdx_source_and_build_graphs(
     # File elements
     file_element_map: dict[PathStr, KernelFile] = {
         node.absolute_path: build_kernel_file_element(
-            node.absolute_path, config.output_tree, config.src_tree, spdx_id_generators.source, spdx_id_generators.build
+            node.absolute_path, config.obj_tree, config.src_tree, spdx_id_generators.source, spdx_id_generators.build
         )
         for node in iter_cmd_graph(cmd_graph)
     }
@@ -217,12 +217,12 @@ def _create_spdx_source_and_build_graphs(
         *source_file_license_identifiers,
         *source_file_license_relationships,
     ]
-    build_sbom.rootElement = [output_tree_element]
+    build_sbom.rootElement = [obj_tree_element]
     build_sbom.element = [
         high_level_build_element,
         high_level_build_ancestorOf_relationship,
-        output_tree_element,
-        output_tree_contains_relationship,
+        obj_tree_element,
+        obj_tree_contains_relationship,
         config_source_element,
         *output_file_elements,
         *file_relationships,
@@ -232,7 +232,7 @@ def _create_spdx_source_and_build_graphs(
         element for element in file_relationships if isinstance(element, Build)
     ]
     src_tree_contains_relationship.to = source_file_elements
-    output_tree_contains_relationship.to = [config_source_element, *output_file_elements]
+    obj_tree_contains_relationship.to = [config_source_element, *output_file_elements]
 
     # create Spdx graphs
     source_graph = SpdxGraph(source_spdx_document, agent, creation_info, source_sbom)
@@ -312,10 +312,10 @@ def _source_file_license_elements(
     return ([*source_file_license_identifiers.values()], source_file_license_relationships)
 
 
-def _config_source_element(output_tree: PathStr, src_tree: PathStr, spdx_id_generator: SpdxIdGenerator) -> File:
+def _config_source_element(obj_tree: PathStr, src_tree: PathStr, spdx_id_generator: SpdxIdGenerator) -> File:
     config_source_element = build_kernel_file_element(
-        absolute_path=os.path.join(output_tree, ".config"),
-        output_tree=output_tree,
+        absolute_path=os.path.join(obj_tree, ".config"),
+        obj_tree=obj_tree,
         src_tree=src_tree,
         build_id_generator=spdx_id_generator,
         source_id_generator=spdx_id_generator,

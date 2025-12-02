@@ -15,16 +15,16 @@ from sbom.spdx.spdxId import SpdxIdGenerator
 
 
 class KernelFileLocation(Enum):
-    """Represents the location of a file relative to the source/output trees."""
+    """Represents the location of a file relative to the source/object trees."""
 
     SOURCE_TREE = "source_tree"
     """File is located in the source tree."""
-    OUTPUT_TREE = "output_tree"
-    """File is located in the output tree."""
+    OBJ_TREE = "obj_tree"
+    """File is located in the object tree."""
     EXTERNAL = "external"
-    """File is located outside both source and output trees."""
+    """File is located outside both source and object trees."""
     BOTH = "both"
-    """File is located in a folder that is both source and output tree."""
+    """File is located in a folder that is both source and object tree."""
 
 
 @dataclass(kw_only=True)
@@ -46,29 +46,29 @@ class KernelFile(File):
 
 def build_kernel_file_element(
     absolute_path: PathStr,
-    output_tree: PathStr,
+    obj_tree: PathStr,
     src_tree: PathStr,
     source_id_generator: SpdxIdGenerator,
     build_id_generator: SpdxIdGenerator,
 ) -> KernelFile:
-    is_in_output_tree = is_relative_to(absolute_path, output_tree)
+    is_in_obj_tree = is_relative_to(absolute_path, obj_tree)
     is_in_src_tree = is_relative_to(absolute_path, src_tree)
 
     # file element name should be relative to output or src tree if possible
-    if not is_in_src_tree and not is_in_output_tree:
+    if not is_in_src_tree and not is_in_obj_tree:
         file_element_name = str(absolute_path)
         file_location = KernelFileLocation.EXTERNAL
-    elif is_in_src_tree and src_tree == output_tree:
-        file_element_name = os.path.relpath(absolute_path, output_tree)
+    elif is_in_src_tree and src_tree == obj_tree:
+        file_element_name = os.path.relpath(absolute_path, obj_tree)
         file_location = KernelFileLocation.BOTH
-    elif is_in_output_tree:
-        file_element_name = os.path.relpath(absolute_path, output_tree)
-        file_location = KernelFileLocation.OUTPUT_TREE
+    elif is_in_obj_tree:
+        file_element_name = os.path.relpath(absolute_path, obj_tree)
+        file_location = KernelFileLocation.OBJ_TREE
     else:
         file_element_name = os.path.relpath(absolute_path, src_tree)
         file_location = KernelFileLocation.SOURCE_TREE
 
-    # Create file hash if possible. Hashes for files outside the src and output trees are optional.
+    # Create file hash if possible. Hashes for files outside the src and object trees are optional.
     verifiedUsing: list[Hash] = []
     content_identifier: list[ContentIdentifier] = []
     if os.path.exists(absolute_path):

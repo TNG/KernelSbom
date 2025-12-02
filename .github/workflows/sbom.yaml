@@ -12,8 +12,8 @@ on:
       src_tree: 
         description: Path to the source tree
         default: linux
-      output_tree: 
-        description: Path to the output tree
+      obj_tree: 
+        description: Path to the object tree
         default: linux/kernel_build
       arch:
         description: The architecture on which the kernel was built
@@ -34,7 +34,7 @@ on:
       src_tree:
         required: true
         type: string
-      output_tree:
+      obj_tree:
         required: true
         type: string
       arch:
@@ -74,7 +74,7 @@ jobs:
           
           if [ "${{ inputs.use_modules }}" = "true" ]; then
             python3 sbom_analysis/module_roots.py \
-              /workspace/${{ inputs.output_tree }}/modules.order \
+              /workspace/${{ inputs.obj_tree }}/modules.order \
               >> roots.txt
           fi
           
@@ -88,7 +88,7 @@ jobs:
 
           python3 sbom/sbom.py \
             --src-tree /workspace/${{ inputs.src_tree }} \
-            --output-tree /workspace/${{ inputs.output_tree }} \
+            --obj-tree /workspace/${{ inputs.obj_tree }} \
             --roots-file roots.txt \
             --generate-spdx \
             --generate-used-files \
@@ -101,7 +101,7 @@ jobs:
           echo "output_dir=$output_dir" >> "$GITHUB_OUTPUT"
 
           generated_sboms=(sbom-source.spdx.json sbom-build.spdx.json sbom-output.spdx.json)
-          if [[ "${{ inputs.src_tree }}" == "${{ inputs.output_tree }}" ]]; then
+          if [[ "${{ inputs.src_tree }}" == "${{ inputs.obj_tree }}" ]]; then
             generated_sboms=(sbom-build.spdx.json sbom-output.spdx.json)
           fi
           {

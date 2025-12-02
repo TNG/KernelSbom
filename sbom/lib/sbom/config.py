@@ -22,11 +22,11 @@ class KernelSbomConfig:
     src_tree: PathStr
     """Absolute path to the Linux kernel source directory."""
 
-    output_tree: PathStr
+    obj_tree: PathStr
     """Absolute path to the build output directory."""
 
     root_paths: list[PathStr]
-    """List of paths to root outputs (relative to output_tree) to base the SBOM on."""
+    """List of paths to root outputs (relative to obj_tree) to base the SBOM on."""
 
     generate_spdx: bool
     """Whether to generate SPDX SBOM documents. If False, no SPDX files are created."""
@@ -77,14 +77,14 @@ def get_config() -> KernelSbomConfig:
 
     # Extract and validate cli arguments
     src_tree = os.path.realpath(args["src_tree"])
-    output_tree = os.path.realpath(args["output_tree"])
+    obj_tree = os.path.realpath(args["obj_tree"])
     root_paths = []
     if args["roots_file"]:
         with open(args["roots_file"], "rt") as f:
             root_paths = [root.strip() for root in f.readlines()]
     else:
         root_paths = args["roots"]
-    _validate_path_arguments(src_tree, output_tree, root_paths)
+    _validate_path_arguments(src_tree, obj_tree, root_paths)
 
     generate_spdx = args["generate_spdx"]
     generate_used_files = args["generate_used_files"]
@@ -120,7 +120,7 @@ def get_config() -> KernelSbomConfig:
 
     return KernelSbomConfig(
         src_tree=src_tree,
-        output_tree=output_tree,
+        obj_tree=obj_tree,
         root_paths=root_paths,
         generate_spdx=generate_spdx,
         spdx_file_names=spdx_file_names,
@@ -150,16 +150,16 @@ def _parse_cli_arguments() -> dict[str, Any]:
         help="Path to the Linux kernel source tree (default: ../linux)",
     )
     parser.add_argument(
-        "--output-tree",
+        "--obj-tree",
         default="../linux/kernel_build",
-        help="Path to the build output tree directory (default: ../linux/kernel_build)",
+        help="Path to the build object tree directory (default: ../linux/kernel_build)",
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--roots",
         nargs="+",
         default="arch/x86/boot/bzImage",
-        help="Space-separated list of paths (relative to --output-tree) on which the SBOM will be based. "
+        help="Space-separated list of paths (relative to --obj-tree) on which the SBOM will be based. "
         "Cannot be used together with --roots-file. (default: arch/x86/boot/bzImage)",
     )
     group.add_argument(
@@ -177,7 +177,7 @@ def _parse_cli_arguments() -> dict[str, Any]:
         action="store_true",
         default=False,
         help="Whether to create the sbom.used-files.txt file, a flat list of all source files used for the kernel build. "
-        "Note, if src-tree and output-tree are equal it is not possible to reliably classify source files. "
+        "Note, if src-tree and obj-tree are equal it is not possible to reliably classify source files. "
         "In this case sbom.used-files.txt will contain all files used for the kernel build including all build artifacts. (default: False)",
     )
     parser.add_argument(
@@ -239,13 +239,13 @@ def _parse_cli_arguments() -> dict[str, Any]:
     return args
 
 
-def _validate_path_arguments(src_tree: PathStr, output_tree: PathStr, root_paths: list[PathStr]) -> None:
+def _validate_path_arguments(src_tree: PathStr, obj_tree: PathStr, root_paths: list[PathStr]) -> None:
     if not os.path.exists(src_tree):
         raise argparse.ArgumentTypeError(f"--src-tree {src_tree} does not exist")
-    if not os.path.exists(output_tree):
-        raise argparse.ArgumentTypeError(f"--output-tree {output_tree} does not exist")
+    if not os.path.exists(obj_tree):
+        raise argparse.ArgumentTypeError(f"--obj-tree {obj_tree} does not exist")
     for root_path in root_paths:
-        if not os.path.exists(os.path.join(output_tree, root_path)):
+        if not os.path.exists(os.path.join(obj_tree, root_path)):
             raise argparse.ArgumentTypeError(
-                f"path to root artifact {os.path.join(output_tree, root_path)} does not exist"
+                f"path to root artifact {os.path.join(obj_tree, root_path)} does not exist"
             )

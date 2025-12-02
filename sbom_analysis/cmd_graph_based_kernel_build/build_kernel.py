@@ -56,9 +56,9 @@ class MakeError:
 def build_kernel(
     missing_sources_in_cmd_graph: list[PathStr],
     cmd_src_tree: PathStr,
-    cmd_output_tree: PathStr,
+    cmd_obj_tree: PathStr,
     src_tree: PathStr,
-    output_tree: PathStr,
+    obj_tree: PathStr,
     missing_sources_in_cmd_graph_path: PathStr,
 ) -> None:
     def save_missing_file(missing_file: PathStr) -> None:
@@ -74,7 +74,7 @@ def build_kernel(
     while True:
         logging.info("Build kernel")
         returncode, log_outputs = _run_command(
-            ["make", f"O={os.path.relpath(cmd_output_tree, cmd_src_tree)}"], cmd_src_tree, live_output=True
+            ["make", f"O={os.path.relpath(cmd_obj_tree, cmd_src_tree)}"], cmd_src_tree, live_output=True
         )
         if returncode == 0:
             if potential_missing_file is not None:
@@ -94,7 +94,7 @@ def build_kernel(
             # Create new list of potential missing files
             logging.info("Search potential missing files")
             potential_missing_files = _get_potential_missing_files(
-                make_error, src_tree, output_tree, cmd_src_tree, ignore=missing_sources_in_cmd_graph
+                make_error, src_tree, obj_tree, cmd_src_tree, ignore=missing_sources_in_cmd_graph
             )
 
             if len(potential_missing_files) == 0:
@@ -131,7 +131,7 @@ def _run_command(cmd: list[str], cwd: PathStr, live_output: bool = False) -> tup
 def _get_potential_missing_files(
     make_error: MakeError,
     src_tree: PathStr,
-    output_tree: PathStr,
+    obj_tree: PathStr,
     cmd_src_tree: PathStr,
     ignore: list[PathStr] = [],
 ) -> list[PathStr]:
@@ -168,7 +168,7 @@ def _get_potential_missing_files(
         if not os.path.isabs(path):
             path = os.path.normpath(os.path.join(src_tree, path))
 
-        if not os.path.isfile(path) or not is_relative_to(path, src_tree) or is_relative_to(path, output_tree):
+        if not os.path.isfile(path) or not is_relative_to(path, src_tree) or is_relative_to(path, obj_tree):
             # skip files in that do not exist of are outside the src tree
             continue
 
