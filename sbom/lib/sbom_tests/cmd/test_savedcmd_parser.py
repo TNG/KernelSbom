@@ -145,6 +145,20 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "/usr/lib/rust-1.84/lib/rustlib/src/rust/library/core/src/lib.rs rust/core.o"
         self._assert_parsing(cmd, expected)
 
+    # test rustdoc
+
+    def test_rustdoc(self):
+        cmd = """OBJTREE=/workspace/linux/kernel_build rustdoc --test --edition=2021 -Zbinary_dep_depinfo=y -Astable_features -Dnon_ascii_idents -Dunsafe_op_in_unsafe_fn -Wmissing_docs -Wrust_2018_idioms -Wunreachable_pub -Wclippy::all -Wclippy::as_ptr_cast_mut -Wclippy::as_underscore -Wclippy::cast_lossless -Wclippy::ignored_unit_patterns -Wclippy::mut_mut -Wclippy::needless_bitwise_bool -Aclippy::needless_lifetimes -Wclippy::no_mangle_with_rust_abi -Wclippy::ptr_as_ptr -Wclippy::ptr_cast_constness -Wclippy::ref_as_ptr -Wclippy::undocumented_unsafe_blocks -Wclippy::unnecessary_safety_comment -Wclippy::unnecessary_safety_doc -Wrustdoc::missing_crate_level_docs -Wrustdoc::unescaped_backticks -Cpanic=abort -Cembed-bitcode=n -Clto=n -Cforce-unwind-tables=n -Ccodegen-units=1 -Csymbol-mangling-version=v0 -Crelocation-model=static -Zfunction-sections=n -Wclippy::float_arithmetic --target=aarch64-unknown-none -Ctarget-feature="-neon" -Cforce-unwind-tables=n -Zbranch-protection=pac-ret -Copt-level=2 -Cdebug-assertions=y -Coverflow-checks=y -Dwarnings -Cforce-frame-pointers=y -Zsanitizer=kernel-address -Zsanitizer-recover=kernel-address -Cllvm-args=-asan-mapping-offset=0xdfff800000000000 -Cpasses=sancov-module -Cllvm-args=-sanitizer-coverage-level=3 -Cllvm-args=-sanitizer-coverage-trace-pc -Cllvm-args=-sanitizer-coverage-trace-compares @./include/generated/rustc_cfg -L./rust --extern ffi --extern pin_init --extern kernel --extern build_error --extern macros --extern bindings --extern uapi --no-run --crate-name kernel -Zunstable-options --sysroot=/dev/null  --test-builder ./scripts/rustdoc_test_builder ../rust/kernel/lib.rs >/dev/null"""
+        expected = "../rust/kernel/lib.rs"
+        self._assert_parsing(cmd, expected)
+
+    # test rustdoc test gen
+
+    def test_rustdoc_test_gen(self):
+        cmd = "./scripts/rustdoc_test_gen"
+        expected = ""
+        self._assert_parsing(cmd, expected)
+
     # .sh script command tests
 
     def test_syscallhdr(self):
@@ -250,6 +264,11 @@ class TestSavedCmdParser(unittest.TestCase):
     # awk command tests
 
     def test_awk(self):
+        cmd = "awk -f ../arch/arm64/tools/gen-cpucaps.awk ../arch/arm64/tools/cpucaps > arch/arm64/include/generated/asm/cpucap-defs.h"
+        expected = "../arch/arm64/tools/cpucaps"
+        self._assert_parsing(cmd, expected)
+
+    def test_awk_with_input_redirection(self):
         cmd = "awk -v N=1 -f ../lib/raid6/unroll.awk < ../lib/raid6/int.uc > lib/raid6/int1.c"
         expected = "../lib/raid6/int.uc"
         self._assert_parsing(cmd, expected)
@@ -259,6 +278,13 @@ class TestSavedCmdParser(unittest.TestCase):
     def test_pnmtologo(self):
         cmd = "drivers/video/logo/pnmtologo -t clut224 -n logo_linux_clut224 -o drivers/video/logo/logo_linux_clut224.c ../drivers/video/logo/logo_linux_clut224.ppm"
         expected = "../drivers/video/logo/logo_linux_clut224.ppm"
+        self._assert_parsing(cmd, expected)
+
+    # relacheck tests
+
+    def test_relacheck(self):
+        cmd = "arch/arm64/kernel/pi/relacheck arch/arm64/kernel/pi/idreg-override.pi.o arch/arm64/kernel/pi/idreg-override.o"
+        expected = "arch/arm64/kernel/pi/idreg-override.pi.o"
         self._assert_parsing(cmd, expected)
 
     # perl tests
