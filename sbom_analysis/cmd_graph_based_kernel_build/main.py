@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+from dataclasses import dataclass
 import json
 import logging
 import os
@@ -20,6 +21,17 @@ from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
 from sbom.cmd_graph.cmd_graph import build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
 
 
+@dataclass
+class CmdGraphBasedKernelBuildConfig:
+    root_paths: list[PathStr]
+    obj_tree: PathStr
+    src_tree: PathStr
+    cmd_src_tree: PathStr
+    cmd_obj_tree: PathStr
+    missing_sources_in_cmd_graph_path: PathStr
+    fail_on_unknown_build_command: bool = True
+
+
 def _remove_files(base_path: PathStr, patterns_to_remove: list[re.Pattern[str]], ignore: set[PathStr]) -> list[PathStr]:
     removed_files: list[PathStr] = []
     for file_path in [str(p) for p in Path(base_path).rglob("*")]:
@@ -36,12 +48,7 @@ def _remove_files(base_path: PathStr, patterns_to_remove: list[re.Pattern[str]],
 
 
 def _create_cmd_graph_based_kernel_directory(
-    src_tree: PathStr,
-    obj_tree: PathStr,
-    cmd_src_tree: PathStr,
-    cmd_obj_tree: PathStr,
-    root_paths: list[PathStr],
-    cmd_graph_path: PathStr,
+    config: CmdGraphBasedKernelBuildConfig,
     missing_sources_in_cmd_graph: list[PathStr],
 ) -> None:
     logging.info(f"Copy {src_tree} into {cmd_src_tree}")
@@ -50,7 +57,7 @@ def _create_cmd_graph_based_kernel_directory(
     shutil.copyfile(os.path.join(obj_tree, ".config"), os.path.join(cmd_obj_tree, ".config"))
 
     # Load cached command graph or build it from .cmd files
-    cmd_graph = build_or_load_cmd_graph(root_paths, obj_tree, src_tree, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_paths, cmd_graph_path, config)
 
     # remove source files not in cmd_graph
     source_patterns = [
@@ -109,6 +116,15 @@ if __name__ == "__main__":
     cmd_obj_tree = os.path.normpath(os.path.join(cmd_src_tree, os.path.relpath(obj_tree, src_tree)))
     missing_sources_in_cmd_graph_path = os.path.join(script_path, "missing_sources_in_cmd_graph.json")
 
+    config = CmdGraphBasedKernelBuildConfig(
+        root_paths,
+        obj_tree,
+        src_tree,
+        cmd_src_tree,
+        cmd_obj_tree,
+        missing_sources_in_cmd_graph_path,
+    )
+
     # Configure logging
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
@@ -120,12 +136,7 @@ if __name__ == "__main__":
 
     if not os.path.exists(cmd_src_tree):
         _create_cmd_graph_based_kernel_directory(
-            src_tree,
-            obj_tree,
-            cmd_src_tree,
-            cmd_obj_tree,
-            root_paths,
-            cmd_graph_path,
+            config,
             missing_sources_in_cmd_graph,
         )
     build_kernel(

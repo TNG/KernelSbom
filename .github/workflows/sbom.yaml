@@ -94,6 +94,7 @@ jobs:
             --generate-used-files \
             --package-license "GPL-2.0 WITH Linux-syscall-note" \
             --prettify-json \
+            --write-output-on-error \
             --debug
           
           test_archive="${{ inputs.test_archive }}"

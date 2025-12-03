@@ -17,6 +17,7 @@ SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
 from sbom.config import get_config  # noqa: E402
+from sbom.spdx.core import CreationInfo  # noqa: E402
 from sbom.spdx.spdxId import SpdxIdGenerator  # noqa: E402
 from sbom.spdx_graph.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs  # noqa: E402
 import sbom.sbom_logging as sbom_logging  # noqa: E402
@@ -35,7 +36,7 @@ def main():
     # Build cmd graph
     logging.debug("Start building cmd graph")
     start_time = time.time()
-    cmd_graph = build_cmd_graph(config.root_paths, config.obj_tree, config.src_tree)
+    cmd_graph = build_cmd_graph(config.root_paths, config)
     logging.debug(f"Built cmd graph in {time.time() - start_time} seconds")
 
     # Save used files document
@@ -55,9 +56,10 @@ def main():
                 and not is_relative_to(node.absolute_path, config.obj_tree)
             ]
             logging.debug(f"Found {len(used_files)} source files in cmd graph")
-        with open(os.path.join(config.output_directory, config.used_files_file_name), "w", encoding="utf-8") as f:
-            f.write("\n".join(str(file_path) for file_path in used_files))
-        logging.debug(f"Successfully saved {os.path.join(config.output_directory, config.used_files_file_name)}")
+        if not sbom_logging.has_errors() or config.write_output_on_error:
+            with open(os.path.join(config.output_directory, config.used_files_file_name), "w", encoding="utf-8") as f:
+                f.write("\n".join(str(file_path) for file_path in used_files))
+            logging.debug(f"Successfully saved {os.path.join(config.output_directory, config.used_files_file_name)}")
 
     if config.generate_spdx is False:
         return
@@ -81,16 +83,29 @@ def main():
     )
     logging.debug(f"Generated SPDX graph in {time.time() - start_time} seconds")
 
-    for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
-        spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)
-        save_path = os.path.join(config.output_directory, config.spdx_file_names[kernel_sbom_kind])
-        spdx_doc.save(save_path, config.prettify_json)
-        logging.debug(f"Successfully saved {save_path}")
-
     # Report collected warnings and errors in case of failure
-    if config.debug:
-        sbom_logging.summarize_warnings()
-    sbom_logging.summarize_errors()
+    warning_summary = sbom_logging.summarize_warnings()
+    error_summary = sbom_logging.summarize_errors()
+
+    if not sbom_logging.has_errors() or config.write_output_on_error:
+        for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
+            creation_info = next(element for element in spdx_graph if isinstance(element, CreationInfo))
+            creation_info.comment = "\n".join([warning_summary, error_summary]).strip()
+            spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)
+            save_path = os.path.join(config.output_directory, config.spdx_file_names[kernel_sbom_kind])
+            spdx_doc.save(save_path, config.prettify_json)
+            logging.debug(f"Successfully saved {save_path}")
+
+    if warning_summary:
+        logging.warning(warning_summary)
+    if error_summary:
+        logging.error(error_summary)
+        if not config.write_output_on_error:
+            logging.info(
+                "You can use --write-output-on-error to generate output documents even when errors occur. "
+                "Note that in this case the documents may be incomplete."
+            )
+        sys.exit(1)
 
 
 # Call main method

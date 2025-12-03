@@ -6,10 +6,10 @@ import logging
 import os
 from dataclasses import dataclass, field
 import pickle
-from typing import Iterator
+from typing import Iterator, Protocol
 
-from sbom.cmd_graph.deps_parser import parse_deps
-from sbom.cmd_graph.savedcmd_parser import parse_commands
+from sbom.cmd_graph.deps_parser import parse_cmd_file_deps
+from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
 from sbom.cmd_graph.incbin_parser import IncbinStatement, parse_incbin
 from sbom.cmd_graph.cmd_file_parser import CmdFile, parse_cmd_file
 import sbom.sbom_logging as sbom_logging
@@ -55,81 +55,87 @@ class CmdGraph:
     roots: list[CmdGraphNode] = field(default_factory=list[CmdGraphNode])
 
 
-def build_cmd_graph(root_paths: list[PathStr], obj_tree: PathStr, src_tree: PathStr, log_depth: int = 0) -> CmdGraph:
+class CmdGraphConfig(Protocol):
+    obj_tree: PathStr
+    src_tree: PathStr
+    fail_on_unknown_build_command: bool
+
+
+def build_cmd_graph(root_paths: list[PathStr], config: CmdGraphConfig) -> CmdGraph:
     node_cache: dict[PathStr, CmdGraphNode] = {}
-    root_nodes = [
-        build_cmd_graph_node(str(root_path), str(obj_tree), str(src_tree), node_cache, log_depth=log_depth)
-        for root_path in root_paths
-    ]
+    root_nodes = [build_cmd_graph_node(root_path, config, node_cache) for root_path in root_paths]
     return CmdGraph(root_nodes)
 
 
 def build_cmd_graph_node(
-    root_path: PathStr,
-    obj_tree: PathStr,
-    src_tree: PathStr,
+    target_path: PathStr,
+    config: CmdGraphConfig,
     cache: dict[PathStr, CmdGraphNode] | None = None,
     depth: int = 0,
-    log_depth: int = 0,
 ) -> CmdGraphNode:
     """
-    Recursively builds a dependency graph starting from `root_path`.
-    Dependencies are mainly discovered by parsing the `.<root_path.name>.cmd` file.
+    Recursively builds a dependency graph starting from `target_path`.
+    Dependencies are mainly discovered by parsing the `.<target_path.name>.cmd` file.
 
     Args:
-        root_path (Path): Path to the root output file relative to obj_tree.
-        obj_tree (Path): absolute path to the output tree directory.
-        src_tree (Path): absolute path to the source tree directory.
+        target_path (PathStr): Path to the target file relative to obj_tree.
+        config (CmdGraphConfig): Config options
         cache (dict | None): Tracks processed nodes to prevent cycles.
         depth (int): Internal parameter to track the current recursion depth.
         log_depth (int): Maximum recursion depth up to which info-level messages are logged.
 
     Returns:
-        CmdGraphNode: Root of the command dependency graph.
+        CmdGraphNode: cmd graph node representing the target file
     """
     if cache is None:
         cache = {}
 
-    root_path_absolute = (
-        os.path.realpath(p) if os.path.islink(p := os.path.join(obj_tree, root_path)) else os.path.normpath(p)
+    target_file_absolute = (
+        os.path.realpath(p) if os.path.islink(p := os.path.join(config.obj_tree, target_path)) else os.path.normpath(p)
     )
 
-    if root_path_absolute in cache.keys():
-        if depth <= log_depth:
-            logging.debug(f"Reuse node: {'  ' * depth}{root_path}")
-        return cache[root_path_absolute]
+    if target_file_absolute in cache.keys():
+        return cache[target_file_absolute]
 
-    if depth <= log_depth:
-        logging.debug(f"Build node: {'  ' * depth}{root_path}")
-    cmd_path = _to_cmd_path(root_path_absolute)
+    if depth == 0:
+        logging.debug(f"Build node: {'  ' * depth}{target_path}")
+    cmd_path = _to_cmd_path(target_file_absolute)
     cmd_file = parse_cmd_file(cmd_path) if os.path.exists(cmd_path) else None
-    node = CmdGraphNode(root_path_absolute, cmd_file)
-    cache[root_path_absolute] = node
+    node = CmdGraphNode(target_file_absolute, cmd_file)
+    cache[target_file_absolute] = node
 
-    if not os.path.exists(root_path_absolute):
-        if is_relative_to(root_path_absolute, obj_tree) or is_relative_to(root_path_absolute, src_tree):
+    if not os.path.exists(target_file_absolute):
+        if is_relative_to(target_file_absolute, config.obj_tree) or is_relative_to(
+            target_file_absolute, config.src_tree
+        ):
             sbom_logging.error(
-                "Skip parsing '{root_path_absolute}' because file does not exist", root_path_absolute=root_path_absolute
+                "Skip parsing '{target_path_absolute}' because file does not exist",
+                target_path_absolute=target_file_absolute,
             )
         else:
             sbom_logging.warning(
-                "Skip parsing {root_path_absolute} because file does not exist", root_path_absolute=root_path_absolute
+                "Skip parsing {target_path_absolute} because file does not exist",
+                target_path_absolute=target_file_absolute,
             )
         return node
 
     # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
     def _build_child_node(child_path: PathStr):
-        return build_cmd_graph_node(child_path, obj_tree, src_tree, cache, depth + 1, log_depth)
+        return build_cmd_graph_node(child_path, config, cache, depth + 1)
 
-    for hardcoded_dependency_path in get_hardcoded_dependencies(root_path_absolute, obj_tree, src_tree):
+    for hardcoded_dependency_path in get_hardcoded_dependencies(target_file_absolute, config.obj_tree, config.src_tree):
         node.hardcoded_dependencies.append(_build_child_node(hardcoded_dependency_path))
 
     if cmd_file is not None:
-        for cmd_file_dependency_path in _parse_cmd_file(cmd_file, obj_tree, src_tree, root_path):
+        for cmd_file_dependency_path in _parse_cmd_file_dependencies(
+            cmd_file, target_path, config.obj_tree, config.src_tree, config.fail_on_unknown_build_command
+        ):
             node.cmd_file_dependencies.append(_build_child_node(cmd_file_dependency_path))
 
     if node.absolute_path.endswith(".S"):
-        for incbin_dependency_statement in _parse_incbin(node.absolute_path, obj_tree, src_tree, root_path):
+        for incbin_dependency_statement in _parse_incbin_statements(
+            node.absolute_path, target_path, config.obj_tree, config.src_tree
+        ):
             node.incbin_dependencies.append(
                 IncbinDependency(
                     node=_build_child_node(incbin_dependency_statement.path),
@@ -140,49 +146,63 @@ def build_cmd_graph_node(
     return node
 
 
-def _parse_cmd_file(cmd_file: CmdFile, obj_tree: PathStr, src_tree: PathStr, root_artifact: PathStr) -> list[PathStr]:
-    input_files: list[PathStr] = [str(p) for p in parse_commands(cmd_file.savedcmd)]
+def _parse_cmd_file_dependencies(
+    cmd_file: CmdFile, target_file: PathStr, obj_tree: PathStr, src_tree: PathStr, fail_on_unknown_build_command: bool
+) -> list[PathStr]:
+    """
+    Parses the cmd file of a given target file and returns a list of all dependency files required to build the target file.
+
+    Args:
+        cmd_file (CmdFile): The command file describing how the target file was built
+        target_file (PathStr): File being built.
+
+    Returns:
+        list[PathStr]: Resolved dependency file paths relative to `obj_tree`.
+    """
+    input_files: list[PathStr] = [
+        str(p) for p in parse_inputs_from_commands(cmd_file.savedcmd, fail_on_unknown_build_command)
+    ]
     if cmd_file.deps:
-        input_files += [str(p) for p in parse_deps(cmd_file.deps)]
+        input_files += [str(p) for p in parse_cmd_file_deps(cmd_file.deps)]
     input_files = _expand_resolve_files(input_files, obj_tree)
 
-    child_paths: list[PathStr] = []
+    cmd_file_dependencies: list[PathStr] = []
     working_directory: PathStr | None = None
     for input_file in input_files:
         if os.path.isabs(input_file):
-            child_paths.append(os.path.relpath(input_file, obj_tree))
+            cmd_file_dependencies.append(os.path.relpath(input_file, obj_tree))
             continue
 
         if working_directory is None:
             # Define working directory relative to obj_tree which is the directory from which the savedcommand was executed. All input_files should be relative to this working directory.
-            # In the future there might be a way to parse this directly from the cmd file. For now the working directory is estimated heuristically.
-            working_directory = _get_working_directory(input_file, obj_tree, src_tree, root_artifact)
+            # In the future there might be a way to parse the working directory directly from the cmd file. For now the working directory is estimated heuristically.
+            working_directory = _get_working_directory(input_file, target_file, obj_tree, src_tree)
             if working_directory is None:
                 sbom_logging.error(
-                    "Skip children of node {root_artifact} because no working directory for relative input {input_file} could be found",
-                    root_artifact=root_artifact,
+                    "Skip children of node {target_path} because no working directory for relative input {input_file} could be found",
+                    target_path=target_file,
                     input_file=input_file,
                 )
                 return []
 
-        child_paths.append(os.path.normpath(os.path.join(working_directory, input_file)))
+        cmd_file_dependencies.append(os.path.normpath(os.path.join(working_directory, input_file)))
 
-    # Remove root output from the input_files to prevent cycles.
-    # Some multi stage commands create an output and pass it as input to the next command, e.g., objcopy.
-    child_paths = [child_path for child_path in child_paths if child_path != root_artifact]
-    return child_paths
+    # Remove target file from the dependency files to prevent cycles.
+    # This is necessary because some multi stage commands first create an output and then pass it as input to the next command, e.g., objcopy.
+    cmd_file_dependencies = [dependency for dependency in cmd_file_dependencies if dependency != target_file]
+    return cmd_file_dependencies
 
 
-def _parse_incbin(
-    assembly_path: PathStr, obj_tree: PathStr, src_tree: PathStr, root_output_in_tree: PathStr
+def _parse_incbin_statements(
+    assembly_path: PathStr, target_path: PathStr, obj_tree: PathStr, src_tree: PathStr
 ) -> list[IncbinStatement]:
     incbin_statements = parse_incbin(assembly_path)
     if len(incbin_statements) == 0:
         return []
-    working_directory = _get_working_directory(incbin_statements[0].path, obj_tree, src_tree, root_output_in_tree)
+    working_directory = _get_working_directory(incbin_statements[0].path, target_path, obj_tree, src_tree)
     if working_directory is None:
         sbom_logging.error(
-            f"Skip children of node {root_output_in_tree} because no working directory for {incbin_statements[0]} could be found"
+            f"Skip children of node {target_path} because no working directory for {incbin_statements[0]} could be found"
         )
         return []
     return [
@@ -217,15 +237,13 @@ def load_cmd_graph(path: PathStr) -> CmdGraph:
         return pickle.load(f)
 
 
-def build_or_load_cmd_graph(
-    root_paths: list[PathStr], obj_tree: PathStr, src_tree: PathStr, cmd_graph_path: PathStr
-) -> CmdGraph:
+def build_or_load_cmd_graph(target_paths: list[PathStr], cmd_graph_path: PathStr, config: CmdGraphConfig) -> CmdGraph:
     if os.path.exists(cmd_graph_path):
         logging.debug("Load cmd graph")
         cmd_graph = load_cmd_graph(cmd_graph_path)
     else:
         logging.debug("Build cmd graph")
-        cmd_graph = build_cmd_graph(root_paths, obj_tree, src_tree)
+        cmd_graph = build_cmd_graph(target_paths, config)
         save_cmd_graph(cmd_graph, cmd_graph_path)
     return cmd_graph
 
@@ -236,20 +254,20 @@ def _to_cmd_path(path: PathStr) -> PathStr:
 
 
 def _get_working_directory(
-    input_file: PathStr, obj_tree: PathStr, src_tree: PathStr, root_artifact: PathStr
+    input_file: PathStr, target_path: PathStr, obj_tree: PathStr, src_tree: PathStr
 ) -> PathStr | None:
     """
     Input paths in .cmd files are often relative paths but it is unclear to which original working directory these paths are relative to.
     This function heuristically estimates the working directory for a given input_file and returns the working directory relative to the output tree.
     """
 
-    relative_to_cmd_file = os.path.exists(os.path.join(obj_tree, os.path.dirname(root_artifact), input_file))
+    relative_to_cmd_file = os.path.exists(os.path.join(obj_tree, os.path.dirname(target_path), input_file))
     relative_to_obj_tree = os.path.exists(os.path.join(obj_tree, input_file))
-    relative_to_tools_objtool = root_artifact.startswith("tools/objtool/arch/x86")
-    relative_to_tools_lib_subcmd = root_artifact.startswith("tools/objtool/libsubcmd")
+    relative_to_tools_objtool = target_path.startswith("tools/objtool/arch/x86")
+    relative_to_tools_lib_subcmd = target_path.startswith("tools/objtool/libsubcmd")
 
     if relative_to_cmd_file:
-        return os.path.dirname(root_artifact)
+        return os.path.dirname(target_path)
     elif relative_to_obj_tree:
         return "."
     elif relative_to_tools_objtool:
