@@ -83,10 +83,14 @@ def create_spdx_output_graph(
 
     # Update relationships
     spdx_document.rootElement = [sbom]
-    config_source_uri = build_graph.high_level_build_element.build_configSourceUri
     spdx_document.import_ = [
         ExternalMap(externalSpdxId=build_graph.high_level_build_element.spdxId),
-        *([ExternalMap(externalSpdxId=config_source_uri)] if config_source_uri is not None else []),
+        *(
+            [
+                ExternalMap(externalSpdxId=config_source_uri)
+                for config_source_uri in build_graph.high_level_build_element.build_configSourceUri
+            ]
+        ),
         *(ExternalMap(externalSpdxId=file.spdxId) for file in build_graph.root_file_elements),
     ]
 
