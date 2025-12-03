@@ -3,14 +3,14 @@
 
 import unittest
 
-from sbom.cmd_graph.savedcmd_parser import parse_commands
+from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
 import sbom.sbom_logging as sbom_logging
 
 
 class TestSavedCmdParser(unittest.TestCase):
     def _assert_parsing(self, cmd: str, expected: str) -> None:
         sbom_logging.init()
-        parsed = parse_commands(cmd)
+        parsed = parse_inputs_from_commands(cmd, fail_on_unknown_build_command=False)
         target = [] if expected == "" else expected.split(" ")
         self.assertEqual(parsed, target)
         errors = sbom_logging._error_logger.messages  # type: ignore

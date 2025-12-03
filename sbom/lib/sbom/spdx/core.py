@@ -123,6 +123,7 @@ class CreationInfo(SpdxObject):
     specVersion: str = SPDX_SPEC_VERSION
     createdBy: list[Agent]
     created: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    comment: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {("@id" if k == "id" else k): v for k, v in super().to_dict().items()}

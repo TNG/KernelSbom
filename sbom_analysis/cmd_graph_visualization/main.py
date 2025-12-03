@@ -26,6 +26,15 @@ from sbom.cmd_graph.cmd_graph import (  # noqa: E402
     iter_cmd_graph,
 )
 
+
+@dataclass
+class CmdGraphVisualizationConfig:
+    obj_tree: PathStr
+    src_tree: PathStr
+    kernel_config: str
+    fail_on_unknown_build_command: bool = True
+
+
 ForceGraphNodeId = str
 
 
@@ -122,7 +131,7 @@ def _to_sparse_cmd_graph(
 
 def _extend_cmd_graph_with_missing_files(
     cmd_graph: CmdGraph,
-    obj_tree: PathStr,
+    config: CmdGraphVisualizationConfig,
     missing_files: set[PathStr],
 ) -> CmdGraph:
     """
@@ -143,11 +152,9 @@ def _extend_cmd_graph_with_missing_files(
         if file_path_abs in cmd_graph_node_cache.keys():
             continue
         potential_new_root = build_cmd_graph_node(
-            root_path=os.path.relpath(file_path_abs, obj_tree),
-            obj_tree=obj_tree,
-            src_tree=src_tree,
+            target_path=os.path.relpath(file_path_abs, obj_tree),
+            config=config,
             cache=cmd_graph_node_cache,
-            log_depth=0,
         )
 
         # check if potential_new_root includes any missing files. If so add it as new root.
@@ -165,18 +172,19 @@ def _extend_cmd_graph_with_missing_files(
 
 
 def _to_missing_files_graph(
-    cmd_graph: CmdGraph, obj_tree: PathStr, script_path: PathStr, config: str
+    cmd_graph: CmdGraph, obj_tree: PathStr, script_path: PathStr, config: CmdGraphVisualizationConfig
 ) -> tuple[CmdGraph, set[PathStr]]:
     with open(
         os.path.join(
-            script_path, f"../cmd_graph_based_kernel_build/missing_sources/missing_sources_in_cmd_graph.{config}.json"
+            script_path,
+            f"../cmd_graph_based_kernel_build/missing_sources/missing_sources_in_cmd_graph.{config.kernel_config}.json",
         ),
         "rt",
     ) as f:
         missing_files: set[PathStr] = set(os.path.join(src_tree, path) for path in json.load(f))  # type: ignore
 
     logging.info("Extend Graph based on missing files")
-    cmd_graph_with_missing_files = _extend_cmd_graph_with_missing_files(cmd_graph, obj_tree, missing_files)
+    cmd_graph_with_missing_files = _extend_cmd_graph_with_missing_files(cmd_graph, config, missing_files)
 
     # list remaining missing files that could not be found
     found_files = {
@@ -224,13 +232,19 @@ if __name__ == "__main__":
 
     # missing file graph options
     visualize_missing_files = True
-    config = "linux.v6.17.tinyconfig"
+    kernel_config = "linux.v6.17.tinyconfig"
+
+    config = CmdGraphVisualizationConfig(
+        obj_tree,
+        src_tree,
+        kernel_config=kernel_config,
+    )
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
     # Load cached command graph if available, otherwise build it from .cmd files
-    cmd_graph = build_or_load_cmd_graph(root_paths, obj_tree, src_tree, cmd_graph_path)
+    cmd_graph = build_or_load_cmd_graph(root_paths, cmd_graph_path, config)
 
     # Extend cmd graph with missing files
     missing_files: set[PathStr] = set()

@@ -11,7 +11,7 @@ WILDCARD_PATTERN = re.compile(r"\$\(wildcard (?P<path>[^)]+)\)")
 VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
 
 
-def parse_deps(deps: list[str]) -> list[PathStr]:
+def parse_cmd_file_deps(deps: list[str]) -> list[PathStr]:
     """
     Parse dependency strings of a .cmd file and return valid input file paths.
     Args:

@@ -4,7 +4,7 @@
 import re
 import shlex
 from dataclasses import dataclass
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, Union
 import sbom.sbom_logging as sbom_logging
 from sbom.path_utils import PathStr
 
@@ -544,6 +544,20 @@ def _find_first_top_level_command_separator(
 
 
 def _split_commands(commands: str) -> list[str | IfBlock]:
+    """
+    Splits a string of command-line commands into individual parts.
+
+    This function handles:
+    - Top-level command separators (e.g., `;` and `&&`) to split multiple commands.
+    - Conditional if-blocks, returning them as `IfBlock` instances.
+    - Preserves the order of commands and trims whitespace.
+
+    Args:
+        commands (str): The raw command string.
+
+    Returns:
+        list[str | IfBlock]: A list of single commands or `IfBlock` objects.
+    """
     single_commands: list[str | IfBlock] = []
     remaining_commands = _unwrap_outer_parentheses(commands)
     while len(remaining_commands) > 0:
@@ -572,20 +586,31 @@ def _split_commands(commands: str) -> list[str | IfBlock]:
     return single_commands
 
 
-def parse_commands(commands: str) -> list[PathStr]:
+def parse_inputs_from_commands(commands: str, fail_on_unknown_build_command: bool) -> list[PathStr]:
     """
-    Parses a collection of command line commands and returns the combined input files required for these commands.
+    Extract input files referenced in a set of command-line commands.
+
+    Args:
+        commands (str): Command line expression to parse.
+        fail_on_unknown_build_command (bool): Whether to fail if an unknown build command is encountered. If False, errors are logged as warnings.
 
     Returns:
-        input_files (list[str]): Input files of the commands.
+        list[PathStr]: List of input file paths required by the commands.
     """
+
+    def log_error_or_warning(message: str, /, **kwargs: Any) -> None:
+        if fail_on_unknown_build_command:
+            sbom_logging.error(message, **kwargs)
+        else:
+            sbom_logging.warning(message, **kwargs)
+
     input_files: list[PathStr] = []
     for single_command in _split_commands(commands):
         if isinstance(single_command, IfBlock):
-            inputs = parse_commands(single_command.then_statement)
+            inputs = parse_inputs_from_commands(single_command.then_statement, fail_on_unknown_build_command)
             if inputs:
-                sbom_logging.error(
-                    "Skip parsing command {then_statement} because input files in IfBlock 'then' statement are not supported",
+                log_error_or_warning(
+                    "Skipped parsing command {then_statement} because input files in IfBlock 'then' statement are not supported",
                     then_statement=single_command.then_statement,
                 )
             continue
@@ -594,8 +619,8 @@ def parse_commands(commands: str) -> list[PathStr]:
             (parser for pattern, parser in SINGLE_COMMAND_PARSERS if pattern.match(single_command)), None
         )
         if matched_parser is None:
-            sbom_logging.error(
-                "Skip parsing command {single_command} because no matching parser was found",
+            log_error_or_warning(
+                "Skipped parsing command {single_command} because no matching parser was found",
                 single_command=single_command,
             )
             continue
@@ -603,8 +628,8 @@ def parse_commands(commands: str) -> list[PathStr]:
             inputs = matched_parser(single_command)
             input_files.extend(inputs)
         except CmdParsingError as e:
-            sbom_logging.error(
-                "Skip parsing command {single_command} because of command parsing error: {error_message}",
+            log_error_or_warning(
+                "Skipped parsing command {single_command} because of command parsing error: {error_message}",
                 single_command=single_command,
                 error_message=e.message,
             )

@@ -46,6 +46,12 @@ class KernelSbomConfig:
     debug: bool
     """Whether to enable debug logging."""
 
+    fail_on_unknown_build_command: bool
+    """Whether to fail if an unknown build command is encountered in a .cmd file."""
+
+    write_output_on_error: bool
+    """Whether to write output documents even if errors occur."""
+
     created: datetime
     """Datetime to use for the SPDX created property of the CreationInfo element."""
 
@@ -72,76 +78,6 @@ class KernelSbomConfig:
 
     prettify_json: bool
     """Whether to pretty-print generated SPDX JSON documents."""
-
-
-def get_config() -> KernelSbomConfig:
-    # Parse cli arguments
-    args = _parse_cli_arguments()
-
-    # Extract and validate cli arguments
-    src_tree = os.path.realpath(args["src_tree"])
-    obj_tree = os.path.realpath(args["obj_tree"])
-    root_paths = []
-    if args["roots_file"]:
-        with open(args["roots_file"], "rt") as f:
-            root_paths = [root.strip() for root in f.readlines()]
-    else:
-        root_paths = args["roots"]
-    _validate_path_arguments(src_tree, obj_tree, root_paths)
-
-    generate_spdx = args["generate_spdx"]
-    generate_used_files = args["generate_used_files"]
-    output_directory = os.path.realpath(args["output_directory"])
-    debug = args["debug"]
-
-    try:
-        created = datetime.fromisoformat(args["created"])
-    except ValueError:
-        raise argparse.ArgumentTypeError(
-            f"Invalid date format for argument '--created': '{args['created']}'. Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
-        )
-    spdxId_prefix = args["spdxId_prefix"]
-    spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
-    build_type = args["build_type"]
-    build_id = args["build_id"]
-    package_license = args["package_license"]
-    package_version = args["package_version"] if args["package_version"] is not None else None
-    package_copyright_text: str | None = None
-    if args["package_copyright_text"] is not None:
-        package_copyright_text = args["package_copyright_text"]
-    elif os.path.isfile(copying_path := os.path.join(src_tree, "COPYING")):
-        with open(copying_path, "r") as f:
-            package_copyright_text = f.read()
-    prettify_json = args["prettify_json"]
-
-    # Hardcoded config
-    spdx_file_names = {
-        KernelSpdxDocumentKind.SOURCE: "sbom-source.spdx.json",
-        KernelSpdxDocumentKind.BUILD: "sbom-build.spdx.json",
-        KernelSpdxDocumentKind.OUTPUT: "sbom-output.spdx.json",
-    }
-    used_files_file_name = "sbom.used-files.txt"
-
-    return KernelSbomConfig(
-        src_tree=src_tree,
-        obj_tree=obj_tree,
-        root_paths=root_paths,
-        generate_spdx=generate_spdx,
-        spdx_file_names=spdx_file_names,
-        generate_used_files=generate_used_files,
-        used_files_file_name=used_files_file_name,
-        output_directory=output_directory,
-        debug=debug,
-        created=created,
-        spdxId_prefix=spdxId_prefix,
-        spdxId_uuid=spdxId_uuid,
-        build_type=build_type,
-        build_id=build_id,
-        package_license=package_license,
-        package_version=package_version,
-        package_copyright_text=package_copyright_text,
-        prettify_json=prettify_json,
-    )
 
 
 def _parse_cli_arguments() -> dict[str, Any]:
@@ -194,7 +130,30 @@ def _parse_cli_arguments() -> dict[str, Any]:
         "--debug",
         action="store_true",
         default=False,
-        help="Debug level (default: False)",
+        help="Enable debug logs (default: False)",
+    )
+
+    # Error handling settings
+    parser.add_argument(
+        "--do-not-fail-on-unknown-build-command",
+        action="store_true",
+        default=False,
+        help=(
+            "Whether to fail if an unknown build command is encountered in a .cmd file. "
+            "If set to True, errors are logged as warnings instead. "
+            "(default: False)"
+        ),
+    )
+    parser.add_argument(
+        "--write-output-on-error",
+        action="store_true",
+        default=False,
+        help=(
+            "Write output documents even if errors occur. "
+            "The resulting documents may be incomplete. A summary of warnings "
+            "and errors can be found in the 'comment' property of the CreationInfo element. "
+            "(default: False)"
+        ),
     )
 
     # SPDX specific settings
@@ -247,6 +206,81 @@ def _parse_cli_arguments() -> dict[str, Any]:
 
     args = vars(parser.parse_args())
     return args
+
+
+def get_config() -> KernelSbomConfig:
+    # Parse cli arguments
+    args = _parse_cli_arguments()
+
+    # Extract and validate cli arguments
+    src_tree = os.path.realpath(args["src_tree"])
+    obj_tree = os.path.realpath(args["obj_tree"])
+    root_paths = []
+    if args["roots_file"]:
+        with open(args["roots_file"], "rt") as f:
+            root_paths = [root.strip() for root in f.readlines()]
+    else:
+        root_paths = args["roots"]
+    _validate_path_arguments(src_tree, obj_tree, root_paths)
+
+    generate_spdx = args["generate_spdx"]
+    generate_used_files = args["generate_used_files"]
+    output_directory = os.path.realpath(args["output_directory"])
+    debug = args["debug"]
+
+    fail_on_unknown_build_command = not args["do_not_fail_on_unknown_build_command"]
+    write_output_on_error = args["write_output_on_error"]
+
+    try:
+        created = datetime.fromisoformat(args["created"])
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid date format for argument '--created': '{args['created']}'. Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
+        )
+    spdxId_prefix = args["spdxId_prefix"]
+    spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
+    build_type = args["build_type"]
+    build_id = args["build_id"]
+    package_license = args["package_license"]
+    package_version = args["package_version"] if args["package_version"] is not None else None
+    package_copyright_text: str | None = None
+    if args["package_copyright_text"] is not None:
+        package_copyright_text = args["package_copyright_text"]
+    elif os.path.isfile(copying_path := os.path.join(src_tree, "COPYING")):
+        with open(copying_path, "r") as f:
+            package_copyright_text = f.read()
+    prettify_json = args["prettify_json"]
+
+    # Hardcoded config
+    spdx_file_names = {
+        KernelSpdxDocumentKind.SOURCE: "sbom-source.spdx.json",
+        KernelSpdxDocumentKind.BUILD: "sbom-build.spdx.json",
+        KernelSpdxDocumentKind.OUTPUT: "sbom-output.spdx.json",
+    }
+    used_files_file_name = "sbom.used-files.txt"
+
+    return KernelSbomConfig(
+        src_tree=src_tree,
+        obj_tree=obj_tree,
+        root_paths=root_paths,
+        generate_spdx=generate_spdx,
+        spdx_file_names=spdx_file_names,
+        generate_used_files=generate_used_files,
+        used_files_file_name=used_files_file_name,
+        output_directory=output_directory,
+        debug=debug,
+        fail_on_unknown_build_command=fail_on_unknown_build_command,
+        write_output_on_error=write_output_on_error,
+        created=created,
+        spdxId_prefix=spdxId_prefix,
+        spdxId_uuid=spdxId_uuid,
+        build_type=build_type,
+        build_id=build_id,
+        package_license=package_license,
+        package_version=package_version,
+        package_copyright_text=package_copyright_text,
+        prettify_json=prettify_json,
+    )
 
 
 def _validate_path_arguments(src_tree: PathStr, obj_tree: PathStr, root_paths: list[PathStr]) -> None:
