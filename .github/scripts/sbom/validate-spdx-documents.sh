@@ -6,7 +6,7 @@ set -euo pipefail
 
 spdx_documents=("$@")
 
-export SPDX_TOOLS_VERSION=2.0.2
+export SPDX_TOOLS_VERSION=2.0.3
 if [[ ! -f "tools-java-${SPDX_TOOLS_VERSION}-jar-with-dependencies.jar" ]]; then
     echo "Download spdx-tools-java"
     curl -sLO "https://github.com/spdx/tools-java/releases/download/v${SPDX_TOOLS_VERSION}/tools-java-${SPDX_TOOLS_VERSION}.zip"
