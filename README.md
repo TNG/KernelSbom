@@ -291,6 +291,7 @@ flowchart TD
 - `sbom_analysis/` - Additional scripts for analyzing the outputs produced by the main script.
   - [sbom_analysis/cmd_graph_based_kernel_build/](sbom_analysis/cmd_graph_based_kernel_build/README.md) - Validation of cmd graph completeness by rebuilding the linux kernel only with files referenced in the cmd graph.
   - [sbom_analysis/cmd_graph_visualization/](sbom_analysis/cmd_graph_visualization/README.md) - Interactive visualization of the cmd graph
+  - [sbom_analysis/strace_kernel_build/](sbom_analysis/strace_kernel_build/README.md) - build kernel with strace and compare touched files with files found with cmd graph
 - `testdata_generation/` - Describes how the precompiled kernel builds in [KernelSbom-TestData](https://fileshare.tngtech.com/library/98e7e6f8-bffe-4a55-a8d2-817d4f3e51e8/KernelSbom-TestData/) were generated.
 
 The main contribution of this repository is the content of the `sbom` directory which eventually should be moved into the `linux/tools/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
