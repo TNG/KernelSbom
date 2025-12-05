@@ -221,6 +221,15 @@ def _parse_rustc_command(command: str) -> list[PathStr]:
     raise CmdParsingError("Could not find .rs input source file")
 
 
+def _parse_rustdoc_command(command: str) -> list[PathStr]:
+    parts = shlex.split(command)
+    # expect last positional argument ending in `.rs` to be the input file
+    for part in reversed(parts):
+        if not part.startswith("-") and part.endswith(".rs"):
+            return [part]
+    raise CmdParsingError("Could not find .rs input source file")
+
+
 def _parse_syscallhdr_command(command: str) -> list[PathStr]:
     command_parts = _tokenize_single_command(command.strip(), flag_options=["--emit-nr"])
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
@@ -299,6 +308,13 @@ def _parse_sed_command(command: str) -> list[PathStr]:
     return [input]
 
 
+def _parse_awk(command: str) -> list[PathStr]:
+    command_parts = _tokenize_single_command(command)
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be ["awk", input1, input2, ...]
+    return positionals[1:]
+
+
 def _parse_nm_piped_command(command: str) -> list[PathStr]:
     nm_command, _ = command.split("|", 1)
     command_parts = _tokenize_single_command(
@@ -314,6 +330,12 @@ def _parse_pnm_to_logo_command(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     # expect command parts to be ["pnmtologo", <options>, input]
     return [command_parts[-1]]
+
+
+def _parse_relacheck(command: str) -> list[PathStr]:
+    positionals = _tokenize_single_command_positionals_only(command)
+    # expect positionals to be ["relachek", input, log_reference]
+    return [positionals[1]]
 
 
 def _parse_perl_command(command: str) -> list[PathStr]:
@@ -421,6 +443,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr
     (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
     (re.compile(r"^sed\b"), _parse_noop),
     (re.compile(r"^awk.*?<.*?>"), lambda c: [c.split("<")[1].split(">")[0]]),
+    (re.compile(r"^awk.*?>"), lambda c: _parse_awk(c.split(">")[0])),
     (re.compile(r"^(/bin/)?true\b"), _parse_noop),
     (re.compile(r"^(/bin/)?false\b"), _parse_noop),
     (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
@@ -433,7 +456,8 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr
     (re.compile(r"^([^\s]+-)?nm\b.*?\|"), _parse_nm_piped_command),
     (re.compile(r"^([^\s]+-)?objcopy\b"), _parse_objcopy_command),
     (re.compile(r"^([^\s]+-)?strip\b"), _parse_strip_command),
-    (re.compile(r".*rustc\b"), _parse_rustc_command),
+    (re.compile(r".*?rustc\b"), _parse_rustc_command),
+    (re.compile(r".*?rustdoc\b"), _parse_rustdoc_command),
     (re.compile(r"^flex\b"), _parse_flex_command),
     (re.compile(r"^bison\b"), _parse_bison_command),
     (re.compile(r"^bindgen\b"), _parse_bindgen_command),
@@ -455,6 +479,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr
     (re.compile(r"^(.*/)?certs/extract-cert"), _parse_extract_cert_command),
     (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
     (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
+    (re.compile(r"^(.*/)?kernel/pi/relacheck"), _parse_relacheck),
     (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [c.split(" ")[1]]),
     (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
     (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
@@ -464,6 +489,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr
     (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
     (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
     (re.compile(r"^(.*/)?gen_header.py"), _parse_gen_header),
+    (re.compile(r"^(.*/)?scripts/rustdoc_test_gen"), _parse_noop),
 ]
 
 

@@ -188,7 +188,7 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
         return "archive"
 
     # Applications
-    if ends_with(["bzImage"]):
+    if ends_with(["bzImage", "Image"]):
         return "application"
 
     # Executables / machine code
@@ -224,6 +224,8 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
             "utf8data.c_shipped",
             "blacklist_hash_list",
             "x509_revocation_list",
+            "cpucaps",
+            "sysreg",
         ]
     ) or includes_path_segments(["drivers/gpu/drm/radeon/reg_srcs/"]):
         return "data"
