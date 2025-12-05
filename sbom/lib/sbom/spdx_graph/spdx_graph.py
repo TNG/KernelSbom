@@ -26,6 +26,7 @@ from sbom.spdx.core import (
 )
 from sbom.spdx.simplelicensing import LicenseExpression
 from sbom.spdx.software import File, Sbom
+from sbom.spdx_graph.expand_spdxIds_for_non_expandable_properties import expand_spdxIds_for_non_expandable_properties
 from sbom.spdx_graph.kernel_file import KernelFile, KernelFileLocation, build_kernel_file_element
 from sbom.spdx_graph.spdx_graph_model import SpdxBuildGraph, SpdxGraph, SpdxIdGeneratorCollection
 from sbom.spdx_graph.spdx_output_graph import create_spdx_output_graph
@@ -53,17 +54,22 @@ def build_spdx_graphs(
         )
         build_graph = _create_spdx_build_graph(cmd_graph, spdx_id_generators, config)
         output_graph = create_spdx_output_graph(build_graph, spdx_id_generators, config)
-        return {
+        spdx_graphs = {
+            KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
+            KernelSpdxDocumentKind.OUTPUT: output_graph.to_list(),
+        }
+    else:
+        source_graph, build_graph = _create_spdx_source_and_build_graphs(cmd_graph, spdx_id_generators, config)
+        output_graph = create_spdx_output_graph(build_graph, spdx_id_generators, config)
+        spdx_graphs = {
+            KernelSpdxDocumentKind.SOURCE: source_graph.to_list(),
             KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
             KernelSpdxDocumentKind.OUTPUT: output_graph.to_list(),
         }
 
-    source_graph, build_graph = _create_spdx_source_and_build_graphs(cmd_graph, spdx_id_generators, config)
-    output_graph = create_spdx_output_graph(build_graph, spdx_id_generators, config)
     return {
-        KernelSpdxDocumentKind.SOURCE: source_graph.to_list(),
-        KernelSpdxDocumentKind.BUILD: build_graph.to_list(),
-        KernelSpdxDocumentKind.OUTPUT: output_graph.to_list(),
+        k: expand_spdxIds_for_non_expandable_properties(spdx_graph, spdx_id_generators)
+        for k, spdx_graph in spdx_graphs.items()
     }
 
 
