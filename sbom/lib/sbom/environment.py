@@ -3,7 +3,7 @@
 
 import os
 
-KERNEL_BUILD_VARIABLES_WHITELIST = [
+KERNEL_BUILD_VARIABLES_ALLOWLIST = [
     "AFLAGS_KERNEL",
     "AFLAGS_MODULE",
     "AR",
@@ -151,7 +151,7 @@ class Environment:
     Read-only accessor for kernel build environment variables.
     """
 
-    KERNEL_BUILD_VARIABLES: dict[str, str | None] = {name: os.getenv(name) for name in KERNEL_BUILD_VARIABLES_WHITELIST}
+    KERNEL_BUILD_VARIABLES: dict[str, str | None] = {name: os.getenv(name) for name in KERNEL_BUILD_VARIABLES_ALLOWLIST}
 
     @classmethod
     def ARCH(cls) -> str | None:

@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+# pyright: reportMissingImports=false
+# ruff: noqa: E402
 
 """
 Compute software bill of materials in SPDX format describing a kernel build.
@@ -16,14 +18,13 @@ LIB_DIR = "./lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
 
-from sbom.config import get_config  # noqa: E402
-from sbom.spdx.core import CreationInfo  # noqa: E402
-from sbom.spdx.spdxId import SpdxIdGenerator  # noqa: E402
-from sbom.spdx_graph.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs  # noqa: E402
-import sbom.sbom_logging as sbom_logging  # noqa: E402
-from sbom.path_utils import is_relative_to  # noqa: E402
-from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph  # noqa: E402
-from sbom.spdx import JsonLdSpdxDocument  # noqa: E402
+from sbom.config import get_config
+import sbom.sbom_logging as sbom_logging
+from sbom.path_utils import is_relative_to
+from sbom.spdx import JsonLdSpdxDocument, SpdxIdGenerator
+from sbom.spdx.core import CreationInfo
+from sbom.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs
+from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph
 
 
 def main():

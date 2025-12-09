@@ -1,0 +1,213 @@
+{
+  "@context": [
+    "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+    {
+      "s": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/source/",
+      "p": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/"
+    }
+  ],
+  "@graph": [
+    {
+      "type": "SpdxDocument",
+      "spdxId": "s:0",
+      "creationInfo": "_:creationinfo",
+      "rootElement": [
+        "s:1"
+      ],
+      "profileConformance": [
+        "core",
+        "software",
+        "simpleLicensing"
+      ]
+    },
+    {
+      "type": "SoftwareAgent",
+      "spdxId": "p:0",
+      "creationInfo": "_:creationinfo",
+      "name": "KernelSbom"
+    },
+    {
+      "type": "CreationInfo",
+      "@id": "_:creationinfo",
+      "specVersion": "3.0.1",
+      "createdBy": [
+        "p:0"
+      ],
+      "created": "2025-12-09T00:00:00Z"
+    },
+    {
+      "type": "software_Sbom",
+      "spdxId": "s:1",
+      "creationInfo": "_:creationinfo",
+      "element": [
+        "s:2",
+        "s:3",
+        "s:4",
+        "s:5",
+        "s:6",
+        "s:7",
+        "s:11",
+        "s:12",
+        "s:13",
+        "s:14",
+        "s:15"
+      ],
+      "rootElement": [
+        "s:2"
+      ],
+      "software_sbomType": [
+        "source"
+      ]
+    },
+    {
+      "type": "software_File",
+      "spdxId": "s:2",
+      "creationInfo": "_:creationinfo",
+      "name": "$(src_tree)",
+      "software_fileKind": "directory"
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:3",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "contains",
+      "from": "s:2",
+      "to": [
+        "s:4",
+        "s:5",
+        "s:6",
+        "s:7"
+      ]
+    },
+    {
+      "type": "software_File",
+      "spdxId": "s:4",
+      "creationInfo": "_:creationinfo",
+      "name": "arch/x86/boot/setup.c",
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "hashValue": "3789cc0ebed37450664600fb2a69230f492248d6db676c0bcce6eee77e57a4d3",
+          "algorithm": "sha256"
+        }
+      ],
+      "software_primaryPurpose": "source",
+      "software_contentIdentifier": [
+        {
+          "type": "software_ContentIdentifier",
+          "software_contentIdentifierType": "gitoid",
+          "software_contentIdentifierValue": "915c114ce81bd45cfe77493438cf0377a6609777"
+        }
+      ]
+    },
+    {
+      "type": "software_File",
+      "spdxId": "s:5",
+      "creationInfo": "_:creationinfo",
+      "name": "arch/x86/boot/main.c",
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "hashValue": "195786e455fadb3b94d3be5013230efd8fb0954a0302c114a8383fa30a854380",
+          "algorithm": "sha256"
+        }
+      ],
+      "software_primaryPurpose": "source",
+      "software_contentIdentifier": [
+        {
+          "type": "software_ContentIdentifier",
+          "software_contentIdentifierType": "gitoid",
+          "software_contentIdentifierValue": "116481228279a417b76036354288b2c039c7d3c3"
+        }
+      ]
+    },
+    {
+      "type": "software_File",
+      "spdxId": "s:6",
+      "creationInfo": "_:creationinfo",
+      "name": "init/main.c",
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "hashValue": "13873c13f30f006bf5bbac466423e046a7ec0ddae01148613a6ab0dafa56fe41",
+          "algorithm": "sha256"
+        }
+      ],
+      "software_primaryPurpose": "source",
+      "software_contentIdentifier": [
+        {
+          "type": "software_ContentIdentifier",
+          "software_contentIdentifierType": "gitoid",
+          "software_contentIdentifierValue": "5d1ccb92e2f8d13e580606c80a982f4b2c7016f4"
+        }
+      ]
+    },
+    {
+      "type": "software_File",
+      "spdxId": "s:7",
+      "creationInfo": "_:creationinfo",
+      "name": "init/version.c",
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "hashValue": "1969da34e22908f4a7d9d78cbb7977b69839159b9948d0798ec001f51c08ced0",
+          "algorithm": "sha256"
+        }
+      ],
+      "software_primaryPurpose": "source",
+      "software_contentIdentifier": [
+        {
+          "type": "software_ContentIdentifier",
+          "software_contentIdentifierType": "gitoid",
+          "software_contentIdentifierValue": "b3b0cbc38d722e9ea8b6fe8edd148618579c3dd4"
+        }
+      ]
+    },
+    {
+      "type": "simplelicensing_LicenseExpression",
+      "spdxId": "s:11",
+      "creationInfo": "_:creationinfo",
+      "simplelicensing_licenseExpression": "GPL-2.0-only"
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:12",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasDeclaredLicense",
+      "from": "s:4",
+      "to": [
+        "s:11"
+      ]
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:13",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasDeclaredLicense",
+      "from": "s:5",
+      "to": [
+        "s:11"
+      ]
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:14",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasDeclaredLicense",
+      "from": "s:6",
+      "to": [
+        "s:11"
+      ]
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:15",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasDeclaredLicense",
+      "from": "s:7",
+      "to": [
+        "s:11"
+      ]
+    }
+  ]
+}
