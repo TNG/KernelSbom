@@ -1,5 +1,5 @@
 <!--
-SPDX-License-Identifier: GPL-2.0-only
+SPDX-License-Identifier: GPL-2.0-only OR MIT
 SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 -->
 
@@ -309,6 +309,6 @@ pre-commit install
 When committing, `reuse lint` is run as a pre-commit hook to ensure all files have compliant license headers.  
 If any file is missing a license header, it can be added using:
 ```
-reuse annotate --license="GPL-2.0-only" --copyright="TNG Technology Consulting GmbH" --template default <filename>
+reuse annotate --license="GPL-2.0-only OR MIT" --copyright="TNG Technology Consulting GmbH" --template default <filename>
 ```
 > **Note:** If the annotated file contains a shebang, `reuse annotate` will insert an empty line after it. This empty line must be removed manually.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: GPL-2.0-only OR MIT
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 FROM ubuntu:25.04
