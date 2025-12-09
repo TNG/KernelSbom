@@ -1,0 +1,4 @@
+arch/x86/boot/setup.c
+arch/x86/boot/main.c
+init/main.c
+init/version.c
