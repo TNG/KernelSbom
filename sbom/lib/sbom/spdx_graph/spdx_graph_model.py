@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from typing import Literal
 
 from sbom.config import KernelSpdxDocumentKind
-from sbom.spdx.build import Build
 from sbom.spdx.core import CreationInfo, SoftwareAgent, SpdxDocument, SpdxObject
-from sbom.spdx.software import File, Sbom
+from sbom.spdx.software import Sbom
 from sbom.spdx.spdxId import SpdxIdGenerator
 
 
@@ -29,12 +28,6 @@ class SpdxGraph:
             self.sbom,
             *self.sbom.element,
         ]
-
-
-@dataclass
-class SpdxBuildGraph(SpdxGraph):
-    root_file_elements: list[File]
-    high_level_build_element: Build
 
 
 @dataclass

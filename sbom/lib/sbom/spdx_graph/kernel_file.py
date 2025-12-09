@@ -6,12 +6,13 @@ from enum import Enum
 import hashlib
 import os
 import re
-from typing import Any
+from sbom.cmd_graph import CmdGraph, iter_cmd_graph
 from sbom.path_utils import PathStr, is_relative_to
+from sbom.spdx import SpdxId, SpdxIdGenerator
 from sbom.spdx.core import Hash
 from sbom.spdx.software import ContentIdentifier, File, SoftwarePurpose
 import sbom.sbom_logging as sbom_logging
-from sbom.spdx.spdxId import SpdxIdGenerator
+from sbom.spdx_graph.spdx_graph_model import SpdxIdGeneratorCollection
 
 
 class KernelFileLocation(Enum):
@@ -27,48 +28,113 @@ class KernelFileLocation(Enum):
     """File is located in a folder that is both source and object tree."""
 
 
-@dataclass(kw_only=True)
-class KernelFile(File):
-    """SPDX file element with kernel-specific metadata."""
+@dataclass
+class KernelFile:
+    """kernel-specific metadata used to generate an SPDX File element."""
 
     absolute_path: PathStr
+    """Absolute path of the file."""
     file_location: KernelFileLocation
+    """Location of the file relative to the source/object trees."""
+    name: str
+    """name of the file element. Should be relative to the source tree if file_location equals SOURCE_TREE and relative to the object tree if file_location equals OBJ_TREE. 
+    If file_location equals EXTERNAL, the absolute path is used."""
     license_identifier: str | None
-    """SPDX license ID if file_location equals SOURCE or BOTH; otherwise None."""
+    """SPDX license ID if file_location equals SOURCE_TREE or BOTH; otherwise None."""
+    spdx_id_generator: SpdxIdGenerator
+    """Generator for the SPDX ID of the file element."""
 
-    def to_dict(self) -> dict[str, Any]:
-        d = super().to_dict()
-        d.pop("absolute_path", None)
-        d.pop("file_location", None)
-        d.pop("license_identifier", None)
-        return d
+    _spdx_file_element: File | None = None
+
+    @classmethod
+    def create(
+        cls,
+        absolute_path: PathStr,
+        obj_tree: PathStr,
+        src_tree: PathStr,
+        spdx_id_generators: SpdxIdGeneratorCollection,
+        is_output: bool,
+    ) -> "KernelFile":
+        is_in_obj_tree = is_relative_to(absolute_path, obj_tree)
+        is_in_src_tree = is_relative_to(absolute_path, src_tree)
+
+        # file element name should be relative to output or src tree if possible
+        if not is_in_src_tree and not is_in_obj_tree:
+            file_element_name = str(absolute_path)
+            file_location = KernelFileLocation.EXTERNAL
+            spdx_id_generator = spdx_id_generators.build
+        elif is_in_src_tree and src_tree == obj_tree:
+            file_element_name = os.path.relpath(absolute_path, obj_tree)
+            file_location = KernelFileLocation.BOTH
+            spdx_id_generator = spdx_id_generators.output if is_output else spdx_id_generators.build
+        elif is_in_obj_tree:
+            file_element_name = os.path.relpath(absolute_path, obj_tree)
+            file_location = KernelFileLocation.OBJ_TREE
+            spdx_id_generator = spdx_id_generators.output if is_output else spdx_id_generators.build
+        else:
+            file_element_name = os.path.relpath(absolute_path, src_tree)
+            file_location = KernelFileLocation.SOURCE_TREE
+            spdx_id_generator = spdx_id_generators.source
+
+        # parse spdx license identifier
+        license_identifier = (
+            _parse_spdx_license_identifier(absolute_path)
+            if file_location == KernelFileLocation.SOURCE_TREE or file_location == KernelFileLocation.BOTH
+            else None
+        )
+
+        return KernelFile(
+            absolute_path,
+            file_location,
+            file_element_name,
+            license_identifier,
+            spdx_id_generator,
+        )
+
+    @property
+    def spdx_file_element(self) -> File:
+        if self._spdx_file_element is None:
+            self._spdx_file_element = _build_file_element(
+                self.absolute_path,
+                self.name,
+                self.spdx_id_generator.generate(),
+                self.file_location,
+            )
+        return self._spdx_file_element
 
 
-def build_kernel_file_element(
-    absolute_path: PathStr,
-    obj_tree: PathStr,
-    src_tree: PathStr,
-    source_id_generator: SpdxIdGenerator,
-    build_id_generator: SpdxIdGenerator,
-) -> KernelFile:
-    is_in_obj_tree = is_relative_to(absolute_path, obj_tree)
-    is_in_src_tree = is_relative_to(absolute_path, src_tree)
+@dataclass
+class KernelFileCollection:
+    """Collection of kernel files."""
 
-    # file element name should be relative to output or src tree if possible
-    if not is_in_src_tree and not is_in_obj_tree:
-        file_element_name = str(absolute_path)
-        file_location = KernelFileLocation.EXTERNAL
-    elif is_in_src_tree and src_tree == obj_tree:
-        file_element_name = os.path.relpath(absolute_path, obj_tree)
-        file_location = KernelFileLocation.BOTH
-    elif is_in_obj_tree:
-        file_element_name = os.path.relpath(absolute_path, obj_tree)
-        file_location = KernelFileLocation.OBJ_TREE
-    else:
-        file_element_name = os.path.relpath(absolute_path, src_tree)
-        file_location = KernelFileLocation.SOURCE_TREE
+    source: dict[PathStr, KernelFile]
+    build: dict[PathStr, KernelFile]
+    output: dict[PathStr, KernelFile]
 
-    # Create file hash if possible. Hashes for files outside the src and object trees are optional.
+    @classmethod
+    def create(
+        cls, cmd_graph: CmdGraph, obj_tree: PathStr, src_tree: PathStr, spdx_id_generators: SpdxIdGeneratorCollection
+    ) -> "KernelFileCollection":
+        source: dict[PathStr, KernelFile] = {}
+        build: dict[PathStr, KernelFile] = {}
+        output: dict[PathStr, KernelFile] = {}
+        for node in iter_cmd_graph(cmd_graph):
+            is_root = node in cmd_graph.roots
+            kernel_file = KernelFile.create(node.absolute_path, obj_tree, src_tree, spdx_id_generators, is_root)
+            if is_root:
+                output[kernel_file.absolute_path] = kernel_file
+            elif kernel_file.file_location == KernelFileLocation.SOURCE_TREE:
+                source[kernel_file.absolute_path] = kernel_file
+            else:
+                build[kernel_file.absolute_path] = kernel_file
+
+        return KernelFileCollection(source, build, output)
+
+    def to_dict(self) -> dict[PathStr, KernelFile]:
+        return {**self.source, **self.build, **self.output}
+
+
+def _build_file_element(absolute_path: PathStr, name: str, spdx_id: SpdxId, file_location: KernelFileLocation) -> File:
     verifiedUsing: list[Hash] = []
     content_identifier: list[ContentIdentifier] = []
     if os.path.exists(absolute_path):
@@ -87,30 +153,13 @@ def build_kernel_file_element(
             "Cannot compute hash for {absolute_path} because file does not exist.", absolute_path=absolute_path
         )
 
-    # parse spdx license identifier
-    license_identifier = (
-        _parse_spdx_license_identifier(absolute_path)
-        if file_location == KernelFileLocation.SOURCE_TREE or file_location == KernelFileLocation.BOTH
-        else None
-    )
-
     # primary purpose
     primary_purpose = _get_primary_purpose(absolute_path)
 
-    # spdxId
-    spdxId = (
-        source_id_generator.generate()
-        if file_location == KernelFileLocation.SOURCE_TREE
-        else build_id_generator.generate()
-    )
-
-    return KernelFile(
-        spdxId=spdxId,
-        name=file_element_name,
+    return File(
+        spdxId=spdx_id,
+        name=name,
         verifiedUsing=verifiedUsing,
-        absolute_path=absolute_path,
-        file_location=file_location,
-        license_identifier=license_identifier,
         software_primaryPurpose=primary_purpose,
         software_contentIdentifier=content_identifier,
     )

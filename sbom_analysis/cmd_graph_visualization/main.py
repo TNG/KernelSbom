@@ -231,7 +231,7 @@ if __name__ == "__main__":
     cmd_graph_path = os.path.normpath(os.path.join(script_path, "../cmd_graph.pickle"))
 
     # missing file graph options
-    visualize_missing_files = True
+    visualize_missing_files = False
     kernel_config = "linux.v6.17.tinyconfig"
 
     config = CmdGraphVisualizationConfig(
@@ -255,7 +255,7 @@ if __name__ == "__main__":
     force_graph = _to_force_graph(
         cmd_graph,
         filter_patterns=[
-            # re.compile(r"^(?!.*voffset\.h$).+\.h$"),  # uncomment if header files make the graph too messy
+            re.compile(r"^(?!.*voffset\.h$).+\.h$"),  # uncomment if header files make the graph too messy
         ],
         missing_files=missing_files,
     )
