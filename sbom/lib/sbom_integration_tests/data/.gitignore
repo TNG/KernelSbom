@@ -1,7 +1,0 @@
-# SPDX-License-Identifier: GPL-2.0-only
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
-
-sbom-build.spdx.json
-sbom-source.spdx.json
-sbom-output.spdx.json
-sbom.used-files.txt
