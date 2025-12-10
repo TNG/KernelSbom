@@ -1,0 +1,637 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only OR MIT
+SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+-->
+
+KernelSbom
+==========
+
+Introduction
+------------
+
+The kernel CONFIG_SBOM option enables the KernelSbom tool which runs at compile time after all build outputs have been created.
+The KernelSbom tool is a Python script `sbom.py` that analyzes all files involved during the build and generates Software Bill of Material (SBOM) documents in SPDX format.
+
+KernelSbom generates SPDX-format SBOM documents that describe:
+- All source files used in a kernel build
+- The build process and intermediate artifacts
+- The final output artifacts (kernel image and modules)
+
+
+Requirements
+------------
+Python 3.x (Python 3.10 or later recommended)
+
+The tool does not require any external Python packages beyond the standard
+library.
+
+Basic Usage
+-----------
+
+The simplest usage is to enable the CONFIG_SBOM option and to build the kernel as usual.
+To get the most information in the sbom it is recommended to do an out of tree build using the `O` option when building the kernel. 
+For example:
+
+    $ make defconfig O=kernel_build
+    $ scripts/config --file kernel_build/.config --enable SBOM
+    $ make O=kernel_build -j$(nproc)
+
+This will invoke the `sbom.py` script after all build outputs have been created.
+The script then generates three SPDX documents in the object tree:
+- `sbom-source.spdx.json` describes all source files involved during the build. Also parses SPDX License Headers of each source file.
+- `sbom-output.spdx.json` describes the final output files created during the build (kernel image and `.ko` module files) together with Metadata about the build, like environment variables and a hash of the .config file that was used. 
+- `sbom-build.spdx.json` imports the source and output files from the previous two documents and describes all intermediate build artifacts that transformed the sources into the outputs storing the exact command that was used to generate each build artifact from its inputs. 
+
+Additionally, by default the `sbom.used-files.txt` file is generated which contains all source files involved in the build as a flat list. 
+
+Standalone Usage
+----------------
+
+KernelSbom can also be used as a standalone script to create SPDX documents for specific outputs.
+For example, after a successfull x86 kernel build KernelSbom can generate SPDX documents only for the `bzImage` kernel image:
+
+    $ export SRCARCH=x86
+    $ python3 tools/sbom/sbom.py \
+        --src-tree . \
+        --obj-tree ./kernel_build \
+        --roots arch/x86/boot/bzImage \
+        --generate-spdx \
+        --generate-used-files \
+        --prettify-json \
+        --debug
+
+Note that when outside of the make process environment variables used during the compilation are not available and can therefore not be included in the SPDX documents. 
+
+Overview
+--------
+
+KernelSbom works by constructing a "cmd graph" - a directed acyclic graph
+representing build dependencies. Starting from specified root artifacts (such
+as bzImage or kernel modules), the tool recursively follows dependencies by
+parsing .cmd files generated during the kernel build process.
+
+The .cmd files (e.g., .init/main.c.cmd) contain the exact build commands used
+to compile each file, including all input dependencies. By parsing these files,
+KernelSbom can reconstruct the complete dependency graph of a kernel build.
+
+From this cmd graph, KernelSbom generates three separate SPDX documents:
+
+1. sbom-source.spdx.json - Describes all source files in the source tree that
+   contributed to building the root artifacts.
+
+2. sbom-build.spdx.json - Describes all build artifacts and the processes by
+   which they were built from the sources.
+
+3. sbom-output.spdx.json - Describes the final build outputs (the root
+   artifacts specified by the user).
+
+Additionally, if requested, the tool can generate sbom.used-files.txt, a flat
+list of all source files used in the build.
+
+
+Features
+--------
+
+KernelSbom has the following features:
+
+- Cmd graph construction - Extracts build dependencies from
+  .cmd files generated during kernel compilation
+
+- SPDX compliance - Generates SPDX 3.0 compliant documents in JSON-LD
+  format
+
+- Three-document structure - Separates source files, build artifacts, and
+  output artifacts into distinct SPDX documents for clarity and modularity
+
+- License identification - Extracts SPDX-License-Identifier tags from source
+  files and includes them in the SBOM
+
+- File integrity - Computes SHA-256 hashes and Git object IDs for all files
+
+- Kernel module support - Can include .ko kernel modules in the root artifacts
+
+- Reproducible output - Supports deterministic SPDX document generation through
+  fixed UUIDs and timestamps
+
+- External file handling - Properly identifies and documents files outside the
+  source tree (e.g., Rust standard library sources)
+
+- Build command parsing - Understands gcc, clang, ld, ar, and other common
+  build tools used in kernel compilation
+
+- Error handling - Configurable error handling with options to continue
+  processing despite unknown build commands or missing files
+
+
+
+
+
+
+
+Command-Line Options
+--------------------
+
+Required Arguments
+-----------------
+
+One of the following must be specified:
+
+--roots ROOT [ROOT ...]
+        Space-separated list of paths (relative to --obj-tree) on which the
+        SBOM will be based. Cannot be used together with --roots-file.
+        Default: arch/x86/boot/bzImage
+
+--roots-file FILE
+        Path to a file containing the root paths (one per line). Cannot be
+        used together with --roots.
+
+
+Path Arguments
+--------------
+
+--src-tree PATH
+        Path to the Linux kernel source tree.
+        Default: ../linux
+
+--obj-tree PATH
+        Path to the build object tree directory.
+        Default: ../linux/kernel_build
+
+--output-directory PATH
+        Path to the directory where generated output documents will be saved.
+        Default: .
+
+
+Output Control
+--------------
+
+--generate-spdx
+        Generate SPDX SBOM documents (sbom-source.spdx.json,
+        sbom-build.spdx.json, sbom-output.spdx.json).
+        Default: False
+
+--generate-used-files
+        Generate sbom.used-files.txt, a flat list of all source files used
+        for the kernel build. Note: if src-tree and obj-tree are equal, it
+        is not possible to reliably classify source files. In this case
+        sbom.used-files.txt will contain all files used for the kernel build
+        including all build artifacts.
+        Default: False
+
+--prettify-json
+        Pretty-print the generated SPDX JSON documents with indentation.
+        Default: False
+
+
+SPDX Document Configuration
+-----------------------------
+
+--spdxId-prefix PREFIX
+        Prefix to use for all spdxId properties.
+        Default: urn:spdx.dev:
+
+--spdxId-uuid UUID
+        UUID to use for all spdxId properties to make the SPDX documents
+        reproducible. By default a random UUID is generated.
+
+--created DATETIME
+        The SPDX created property to use for the CreationInfo element in ISO
+        format (YYYY-MM-DD [HH:MM:SS]).
+        Default: current datetime
+
+--build-type TYPE
+        The SPDX buildType property to use for all Build elements.
+        Default: urn:spdx.dev:Kbuild
+
+--build-id ID
+        The SPDX buildId property to use for all Build elements. If not
+        provided, the spdxId of the high-level Build element is used as the
+        buildId.
+        Default: None
+
+--package-license LICENSE
+        The SPDX licenseExpression property to use for the LicenseExpression
+        linked to all SPDX Package elements.
+        Default: NOASSERTION
+
+--package-version VERSION
+        The SPDX packageVersion property to use for all SPDX Package elements.
+        Default: None
+
+--package-copyright-text TEXT
+        The SPDX copyrightText property to use for all SPDX Package elements.
+        If not specified, and if a COPYING file exists in the source tree, the
+        package-copyright-text is set to the content of this file.
+        Default: None
+
+
+Error Handling
+-------------
+
+--do-not-fail-on-unknown-build-command
+        Do not fail if an unknown build command is encountered in a .cmd file.
+        If set, errors are logged as warnings instead.
+        Default: False (tool will fail on unknown commands)
+
+--write-output-on-error
+        Write output documents even if errors occur. The resulting documents
+        may be incomplete. A summary of warnings and errors can be found in
+        the 'comment' property of the CreationInfo element.
+        Default: False
+
+
+Debugging
+---------
+
+--debug
+        Enable debug logging with detailed information about the processing
+        steps.
+        Default: False
+
+
+Output Format
+-------------
+
+SPDX Documents
+--------------
+
+The tool generates SPDX documents in JSON-LD format. Each document follows
+the SPDX 2.3/3.0 specification and includes:
+
+- SpdxDocument - Root document element with metadata
+- CreationInfo - Information about when and how the document was created
+- SoftwareAgent - Tool that created the document
+- Sbom - Root element containing all SBOM data
+- File elements - Represent source files, build artifacts, and outputs
+- Build elements - Represent build processes
+- Package elements - Represent distributable packages
+- Relationship elements - Connect files, builds, and packages
+- LicenseExpression elements - Represent license information
+
+The three documents are linked through ExternalMap references, allowing tools
+to navigate between source, build, and output information.
+
+Used Files List
+---------------
+
+The sbom.used-files.txt file contains one file path per line, with paths
+relative to the source tree. This format is useful for:
+- License compliance checking
+- Source code auditing
+- Build reproducibility verification
+
+
+How It Works
+------------
+
+Cmd Graph Construction
+----------------------
+
+KernelSbom starts from the root artifacts specified by the user (e.g.,
+arch/x86/boot/bzImage). For each root artifact, it:
+
+1. Locates the corresponding .cmd file (e.g., .arch/x86/boot/bzImage.cmd)
+
+2. Parses the build command to extract:
+   - Input files (source files, object files, libraries)
+   - Build tool used (gcc, clang, ld, ar, etc.)
+   - Command-line arguments
+
+3. Recursively processes each input file:
+   - If the file has a .cmd file, it is processed recursively
+   - Dependencies are added to the graph as child nodes
+   - The process continues until all dependencies are resolved
+
+4. Handles special cases:
+   - Hardcoded dependencies (files referenced in special ways)
+   - Assembly .incbin statements (binary data inclusion)
+   - External files (outside source/object trees)
+
+The result is a complete dependency graph where:
+- Nodes represent files
+- Edges represent "file A is used to build file B" relationships
+
+SPDX Document Generation
+------------------------
+
+From the cmd graph, KernelSbom generates three SPDX documents:
+
+1. Source Document (sbom-source.spdx.json):
+   - Contains all source files from the source tree
+   - Includes license information extracted from source files
+   - Files are organized in a directory structure
+
+2. Build Document (sbom-build.spdx.json):
+   - Contains all build artifacts (object files, intermediate files)
+   - Contains Build elements representing compilation steps
+   - Links build inputs to build outputs via relationships
+   - References source files via ExternalMap
+
+3. Output Document (sbom-output.spdx.json):
+   - Contains Package elements representing distributable outputs
+   - References build artifacts and processes via ExternalMap
+   - Includes package-level license and copyright information
+
+File Classification
+------------------
+
+Files are classified based on their location:
+
+- Source files: Files in the source tree but not in the object tree
+- Build artifacts: Files in the object tree
+- External files: Files outside both trees (e.g., Rust stdlib)
+
+When source and object trees are identical, reliable classification is not
+possible. In this case, the source document is merged into the build document.
+
+
+SPDX Document Structure
+-----------------------
+
+Source Document (sbom-source.spdx.json)
+----------------------------------------
+
+The source document describes all source files that contributed to the build.
+It includes:
+
+- A root File element representing the source tree directory
+- File elements for each source file with:
+  - Name (relative to source tree)
+  - SHA-256 hash
+  - Git blob object ID (if applicable)
+  - License information (extracted from SPDX-License-Identifier tags)
+- LicenseExpression elements for each unique license identifier
+- Relationship elements connecting files to licenses
+
+Build Document (sbom-build.spdx.json)
+--------------------------------------
+
+The build document describes the build process and intermediate artifacts. It
+includes:
+
+- A root File element representing the object tree directory
+- File elements for build artifacts (object files, linked binaries, etc.)
+- Build elements representing compilation steps:
+  - High-level Build element representing the overall build
+  - Individual Build elements for each compilation command
+  - Build elements include the actual command used (savedcmd property)
+- Relationship elements:
+  - hasInput: links Build elements to input files
+  - hasOutput: links Build elements to output files
+  - ancestorOf: links high-level Build to individual Build elements
+- ExternalMap references to source files (in source document)
+- File elements for external files (e.g., Rust stdlib sources)
+
+Output Document (sbom-output.spdx.json)
+---------------------------------------
+
+The output document describes the final distributable artifacts. It includes:
+
+- Package elements representing the kernel or kernel modules:
+  - Package name (e.g., "Linux Kernel (bzImage)")
+  - Package version (if provided)
+  - Package license expression
+  - Package copyright text
+- File elements for the output artifacts
+- Relationship elements:
+  - hasDistributionArtifact: links Package to output File
+  - originatedBy: links Package to SoftwareAgent
+- ExternalMap references to:
+  - Build artifacts (in build document)
+  - Build processes (in build document)
+  - Configuration files (in build document)
+
+Document Relationships
+---------------------
+
+The three documents are linked through ExternalMap references:
+
+- Build document imports source files via ExternalMap
+- Output document imports build artifacts and processes via ExternalMap
+- This allows tools to navigate the complete dependency chain from source
+  to output
+
+
+Advanced Usage
+--------------
+
+Including Kernel Modules
+------------------------
+
+To include kernel modules (.ko files) in the SBOM, first generate a roots
+file:
+
+    $ echo "arch/x86/boot/bzImage" > roots.txt
+    $ python3 module_roots.py <obj_tree>/modules.order >> roots.txt
+
+Then use the roots file:
+
+    $ export SRCARCH=x86
+    $ python3 sbom.py \
+        --src-tree /path/to/linux \
+        --obj-tree /path/to/linux/kernel_build \
+        --roots-file roots.txt \
+        --generate-spdx \
+        --generate-used-files
+
+Reproducible Builds
+-------------------
+
+By default, SPDX documents are non-deterministic because:
+- spdxIds are generated using random UUIDs
+- CreationInfo.created is set to the current datetime
+
+To produce deterministic, reproducible outputs:
+
+    $ export SRCARCH=x86
+    $ python3 sbom.py \
+        --src-tree /path/to/linux \
+        --obj-tree /path/to/linux/kernel_build \
+        --roots arch/x86/boot/bzImage \
+        --generate-spdx \
+        --spdxId-uuid bd3ab149-b4a7-4993-8fb4-5c99093c4f28 \
+        --created "2025-12-03 11:30:00"
+
+This ensures that running the tool multiple times on the same kernel build
+produces identical SPDX documents.
+
+Equal Source and Object Trees
+------------------------------
+
+When the source tree and object tree are identical (e.g., building in-tree),
+reliable file classification is not possible. In this case:
+
+- The source SPDX document is not generated
+- All files (both source and build artifacts) are included in the build
+  document
+- sbom.used-files.txt contains all files from the build document
+
+The tool will issue a warning when this situation is detected.
+
+
+Examples
+--------
+
+Basic Example
+-------------
+
+Generate an SBOM for a standard kernel build:
+
+    $ export SRCARCH=x86
+    $ python3 sbom.py \
+        --src-tree /path/to/linux \
+        --obj-tree /path/to/linux/kernel_build \
+        --roots arch/x86/boot/bzImage \
+        --generate-spdx \
+        --generate-used-files \
+        --prettify-json
+
+This produces:
+- sbom-source.spdx.json
+- sbom-build.spdx.json
+- sbom-output.spdx.json
+- sbom.used-files.txt
+
+Example with Kernel Modules
+---------------------------
+
+Include kernel modules in the SBOM:
+
+    $ echo "arch/x86/boot/bzImage" > roots.txt
+    $ python3 module_roots.py kernel_build/modules.order >> roots.txt
+    $ export SRCARCH=x86
+    $ python3 sbom.py \
+        --src-tree /path/to/linux \
+        --obj-tree /path/to/linux/kernel_build \
+        --roots-file roots.txt \
+        --generate-spdx \
+        --generate-used-files
+
+Reproducible Build Example
+--------------------------
+
+Generate a reproducible SBOM for compliance:
+
+    $ export SRCARCH=x86
+    $ python3 sbom.py \
+        --src-tree /path/to/linux \
+        --obj-tree /path/to/linux/kernel_build \
+        --roots arch/x86/boot/bzImage \
+        --generate-spdx \
+        --spdxId-uuid bd3ab149-b4a7-4993-8fb4-5c99093c4f28 \
+        --created "2025-12-03 11:30:00" \
+        --package-license "GPL-2.0 WITH Linux-syscall-note" \
+        --package-version "6.1.0"
+
+Debug Mode Example
+------------------
+
+Run with detailed debug output:
+
+    $ export SRCARCH=x86
+    $ python3 sbom.py \
+        --src-tree /path/to/linux \
+        --obj-tree /path/to/linux/kernel_build \
+        --roots arch/x86/boot/bzImage \
+        --generate-spdx \
+        --debug
+
+This will print detailed information about:
+- Cmd graph construction progress
+- File processing
+- SPDX graph generation
+- Timing information
+
+
+Troubleshooting
+---------------
+
+Missing .cmd Files
+------------------
+
+If .cmd files are missing for some build artifacts, KernelSbom will issue
+warnings. This can happen if:
+- The kernel was built without KBUILD_VERBOSE=1
+- .cmd files were cleaned up after the build
+- The build used a different build system
+
+Solution: Rebuild the kernel with KBUILD_VERBOSE=1 to ensure .cmd files are
+generated:
+
+    $ make KBUILD_VERBOSE=1 O=kernel_build
+
+Unknown Build Commands
+----------------------
+
+If KernelSbom encounters an unknown build command in a .cmd file, it will
+fail by default. This can happen with:
+- Custom build scripts
+- Unusual compiler invocations
+- New build tools
+
+Solution: Use --do-not-fail-on-unknown-build-command to continue processing:
+
+    $ python3 sbom.py ... --do-not-fail-on-unknown-build-command
+
+Note that dependencies from unknown commands will not be included in the SBOM.
+
+File Classification Issues
+---------------------------
+
+If files are incorrectly classified (e.g., source files appearing in build
+document), check:
+- That --src-tree and --obj-tree point to correct directories
+- That paths are absolute or correctly relative
+- That the object tree is actually a separate build directory
+
+Solution: Use absolute paths and ensure source and object trees are distinct:
+
+    $ python3 sbom.py \
+        --src-tree $(realpath /path/to/linux) \
+        --obj-tree $(realpath /path/to/linux/kernel_build) \
+        ...
+
+Performance Issues
+------------------
+
+For large kernel builds, cmd graph construction can take significant time.
+This is normal and expected. The tool processes files sequentially to ensure
+correctness.
+
+To monitor progress, use --debug to see detailed timing information.
+
+
+Limitations
+-----------
+
+- The tool requires .cmd files to be present. If these are missing, dependency
+  information cannot be extracted.
+
+- Some build commands may not be recognized. The tool supports common
+  commands (gcc, clang, ld, ar, etc.) but may not handle all possible build
+  invocations.
+
+- File classification relies on path comparison. Files outside both source
+  and object trees are classified as "external" but may not be fully
+  processed.
+
+- License extraction only works for files with SPDX-License-Identifier tags.
+  Files without these tags will have NOASSERTION as their license.
+
+- The tool processes the build graph sequentially. Very large kernel builds
+  may take considerable time to process.
+
+- When source and object trees are identical, source file classification is
+  not possible, and the source document is merged into the build document.
+
+
+See Also
+--------
+
+- SPDX Specification: https://spdx.dev/specifications/
+- Linux Kernel Build System: Documentation/kbuild/
+- Kernel .cmd Files: Documentation/kbuild/makefiles.rst
+
+For more information about SBOMs and their importance, see:
+- NTIA Software Component Transparency: https://www.ntia.gov/page/software-component-transparency
+- CISA SBOM Resources: https://www.cisa.gov/sbom
