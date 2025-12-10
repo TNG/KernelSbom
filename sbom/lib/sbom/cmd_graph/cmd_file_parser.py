@@ -46,7 +46,7 @@ def parse_cmd_file(cmd_file_path: PathStr) -> CmdFile | None:
         cmd_file (CmdFile): Parsed cmd file.
     """
     with open(cmd_file_path, "rt") as f:
-        lines = [line.strip() for line in f.readlines() if line.strip() != ""]
+        lines = [line.strip() for line in f.readlines() if line.strip() != "" and not line.startswith("#")]
 
     # savedcmd
     match = SAVEDCMD_PATTERN.match(lines[0])

@@ -312,3 +312,14 @@ If any file is missing a license header, it can be added using:
 reuse annotate --license="GPL-2.0-only OR MIT" --copyright="TNG Technology Consulting GmbH" --template default <filename>
 ```
 > **Note:** If the annotated file contains a shebang, `reuse annotate` will insert an empty line after it. This empty line must be removed manually.
+
+## Run tests
+Unit tests can be found in `sbom/lib/sbom_tests`. These are designed to be contributed upstream to the `linux` kernel repository.
+Integration tests are located in `sbom_integration_tests`. These tests are not intended for inclusion in the kernel repository, as they require a larger number of additional files.
+
+```bash
+# Run unit tests
+python3 -m unittest discover -v -s sbom/lib -p "test_*.py"
+# Run integration tests
+python3 -m unittest discover -v -s sbom_integration_tests -p "test_*.py"
+```
