@@ -27,3 +27,6 @@ jobs:
       
       - name: Tests
         run: python3 -m unittest discover -v -s sbom/lib -p "test_*.py"
+
+      - name: Integration Tests
+        run: python3 -m unittest discover -v -s sbom_integration_tests -p "test_*.py"

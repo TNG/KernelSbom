@@ -11,14 +11,19 @@ from unittest.mock import patch
 import os
 from importlib import util
 
-
-# Now we can import from the sbom package
-from sbom.path_utils import PathStr
+# Add the sbom package to the sys.path
+SBOM_PATH = Path(__file__).parent.parent / "sbom"
+sys.path.append(str(SBOM_PATH))
 
 # Import the sbom.py script as a module with a different name to avoid conflict
-sbom_py_spec = util.spec_from_file_location("sbom_script", Path(__file__).parent.parent.parent / "sbom.py")
+sbom_py_spec = util.spec_from_file_location("sbom_script", SBOM_PATH / "sbom.py")
+if sbom_py_spec is None or sbom_py_spec.loader is None:
+    raise ImportError(f"Could not load spec for sbom.py at {SBOM_PATH / 'sbom.py'}")
 sbom_script = util.module_from_spec(sbom_py_spec)
 sbom_py_spec.loader.exec_module(sbom_script)
+
+# Imports from the sbom package
+from sbom.path_utils import PathStr
 
 
 class TestSbom(unittest.TestCase):
