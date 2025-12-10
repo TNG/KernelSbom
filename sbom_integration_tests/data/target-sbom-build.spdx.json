@@ -4,6 +4,7 @@
     {
       "b": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/",
       "s": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/source/",
+      "o": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/",
       "p": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/"
     }
   ],
@@ -36,6 +37,14 @@
         {
           "type": "ExternalMap",
           "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/source/7"
+        },
+        {
+          "type": "ExternalMap",
+          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+        },
+        {
+          "type": "ExternalMap",
+          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/5"
         }
       ]
     },
@@ -59,11 +68,11 @@
       "spdxId": "b:1",
       "creationInfo": "_:creationinfo",
       "element": [
-        "b:5",
-        "b:6",
         "b:2",
         "b:3",
         "b:4",
+        "b:5",
+        "b:6",
         "b:7",
         "b:8",
         "b:9",
@@ -84,10 +93,7 @@
         "b:24",
         "b:25",
         "b:26",
-        "b:27",
-        "b:28",
-        "b:29",
-        "b:30"
+        "b:27"
       ],
       "rootElement": [
         "b:2"
@@ -95,39 +101,6 @@
       "software_sbomType": [
         "build"
       ]
-    },
-    {
-      "type": "build_Build",
-      "spdxId": "b:5",
-      "creationInfo": "_:creationinfo",
-      "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/5",
-      "build_configSourceUri": [
-        "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/4"
-      ],
-      "build_configSourceDigest": [
-        {
-          "type": "Hash",
-          "hashValue": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "algorithm": "sha256"
-        }
-      ]
-    },
-    {
-      "type": "Relationship",
-      "spdxId": "b:6",
-      "creationInfo": "_:creationinfo",
-      "relationshipType": "ancestorOf",
-      "from": "b:5",
-      "to": [
-        "b:13",
-        "b:16",
-        "b:19",
-        "b:22",
-        "b:25",
-        "b:28"
-      ],
-      "completeness": "complete"
     },
     {
       "type": "software_File",
@@ -144,59 +117,16 @@
       "from": "b:2",
       "to": [
         "b:4",
+        "b:5",
+        "b:6",
         "b:7",
         "b:8",
-        "b:9",
-        "b:10",
-        "b:11",
-        "b:12"
+        "o:5"
       ]
     },
     {
       "type": "software_File",
       "spdxId": "b:4",
-      "creationInfo": "_:creationinfo",
-      "name": ".config",
-      "verifiedUsing": [
-        {
-          "type": "Hash",
-          "hashValue": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "algorithm": "sha256"
-        }
-      ],
-      "software_primaryPurpose": "configuration",
-      "software_contentIdentifier": [
-        {
-          "type": "software_ContentIdentifier",
-          "software_contentIdentifierType": "gitoid",
-          "software_contentIdentifierValue": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-        }
-      ]
-    },
-    {
-      "type": "software_File",
-      "spdxId": "b:7",
-      "creationInfo": "_:creationinfo",
-      "name": "arch/x86/boot/bzImage",
-      "verifiedUsing": [
-        {
-          "type": "Hash",
-          "hashValue": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "algorithm": "sha256"
-        }
-      ],
-      "software_primaryPurpose": "application",
-      "software_contentIdentifier": [
-        {
-          "type": "software_ContentIdentifier",
-          "software_contentIdentifierType": "gitoid",
-          "software_contentIdentifierValue": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-        }
-      ]
-    },
-    {
-      "type": "software_File",
-      "spdxId": "b:8",
       "creationInfo": "_:creationinfo",
       "name": "arch/x86/boot/setup.o",
       "verifiedUsing": [
@@ -217,7 +147,7 @@
     },
     {
       "type": "software_File",
-      "spdxId": "b:9",
+      "spdxId": "b:5",
       "creationInfo": "_:creationinfo",
       "name": "arch/x86/boot/main.o",
       "verifiedUsing": [
@@ -238,7 +168,7 @@
     },
     {
       "type": "software_File",
-      "spdxId": "b:10",
+      "spdxId": "b:6",
       "creationInfo": "_:creationinfo",
       "name": "init/built-in.a",
       "verifiedUsing": [
@@ -259,7 +189,7 @@
     },
     {
       "type": "software_File",
-      "spdxId": "b:11",
+      "spdxId": "b:7",
       "creationInfo": "_:creationinfo",
       "name": "init/main.o",
       "verifiedUsing": [
@@ -280,7 +210,7 @@
     },
     {
       "type": "software_File",
-      "spdxId": "b:12",
+      "spdxId": "b:8",
       "creationInfo": "_:creationinfo",
       "name": "init/version.o",
       "verifiedUsing": [
@@ -300,12 +230,58 @@
       ]
     },
     {
+      "type": "Relationship",
+      "spdxId": "b:9",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "ancestorOf",
+      "from": "o:3",
+      "to": [
+        "b:10",
+        "b:13",
+        "b:16",
+        "b:19",
+        "b:22",
+        "b:25"
+      ],
+      "completeness": "complete"
+    },
+    {
       "type": "build_Build",
-      "spdxId": "b:13",
+      "spdxId": "b:10",
       "creationInfo": "_:creationinfo",
       "comment": "(dd if=arch/x86/boot/setup.o bs=4k conv=sync status=none; cat arch/x86/boot/main.o) >arch/x86/boot/bzImage",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/5"
+      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "b:11",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasInput",
+      "from": "b:10",
+      "to": [
+        "b:4",
+        "b:5",
+        "b:6"
+      ]
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "b:12",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasOutput",
+      "from": "b:10",
+      "to": [
+        "o:5"
+      ]
+    },
+    {
+      "type": "build_Build",
+      "spdxId": "b:13",
+      "creationInfo": "_:creationinfo",
+      "comment": "gcc -c -o arch/x86/boot/setup.o ../arch/x86/boot/setup.c",
+      "build_buildType": "urn:spdx.dev:Kbuild",
+      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
     },
     {
       "type": "Relationship",
@@ -314,9 +290,7 @@
       "relationshipType": "hasInput",
       "from": "b:13",
       "to": [
-        "b:8",
-        "b:9",
-        "b:10"
+        "s:4"
       ]
     },
     {
@@ -326,16 +300,16 @@
       "relationshipType": "hasOutput",
       "from": "b:13",
       "to": [
-        "b:7"
+        "b:4"
       ]
     },
     {
       "type": "build_Build",
       "spdxId": "b:16",
       "creationInfo": "_:creationinfo",
-      "comment": "gcc -c -o arch/x86/boot/setup.o ../arch/x86/boot/setup.c",
+      "comment": "gcc -c -o arch/x86/boot/main.o ../arch/x86/boot/main.c",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/5"
+      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
     },
     {
       "type": "Relationship",
@@ -344,7 +318,7 @@
       "relationshipType": "hasInput",
       "from": "b:16",
       "to": [
-        "s:4"
+        "s:5"
       ]
     },
     {
@@ -354,16 +328,16 @@
       "relationshipType": "hasOutput",
       "from": "b:16",
       "to": [
-        "b:8"
+        "b:5"
       ]
     },
     {
       "type": "build_Build",
       "spdxId": "b:19",
       "creationInfo": "_:creationinfo",
-      "comment": "gcc -c -o arch/x86/boot/main.o ../arch/x86/boot/main.c",
+      "comment": "rm -f init/built-in.a;  printf \"init/%s \" main.o version.o | xargs ar cDPrST init/built-in.a",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/5"
+      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
     },
     {
       "type": "Relationship",
@@ -372,7 +346,8 @@
       "relationshipType": "hasInput",
       "from": "b:19",
       "to": [
-        "s:5"
+        "b:7",
+        "b:8"
       ]
     },
     {
@@ -382,16 +357,16 @@
       "relationshipType": "hasOutput",
       "from": "b:19",
       "to": [
-        "b:9"
+        "b:6"
       ]
     },
     {
       "type": "build_Build",
       "spdxId": "b:22",
       "creationInfo": "_:creationinfo",
-      "comment": "rm -f init/built-in.a;  printf \"init/%s \" main.o version.o | xargs ar cDPrST init/built-in.a",
+      "comment": "gcc -c -o init/main.o ../init/main.c",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/5"
+      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
     },
     {
       "type": "Relationship",
@@ -400,8 +375,7 @@
       "relationshipType": "hasInput",
       "from": "b:22",
       "to": [
-        "b:11",
-        "b:12"
+        "s:6"
       ]
     },
     {
@@ -411,16 +385,16 @@
       "relationshipType": "hasOutput",
       "from": "b:22",
       "to": [
-        "b:10"
+        "b:7"
       ]
     },
     {
       "type": "build_Build",
       "spdxId": "b:25",
       "creationInfo": "_:creationinfo",
-      "comment": "gcc -c -o init/main.o ../init/main.c",
+      "comment": "gcc -c -o init/version.o ../init/version.c",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/5"
+      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
     },
     {
       "type": "Relationship",
@@ -429,7 +403,7 @@
       "relationshipType": "hasInput",
       "from": "b:25",
       "to": [
-        "s:6"
+        "s:7"
       ]
     },
     {
@@ -439,35 +413,7 @@
       "relationshipType": "hasOutput",
       "from": "b:25",
       "to": [
-        "b:11"
-      ]
-    },
-    {
-      "type": "build_Build",
-      "spdxId": "b:28",
-      "creationInfo": "_:creationinfo",
-      "comment": "gcc -c -o init/version.o ../init/version.c",
-      "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/build/5"
-    },
-    {
-      "type": "Relationship",
-      "spdxId": "b:29",
-      "creationInfo": "_:creationinfo",
-      "relationshipType": "hasInput",
-      "from": "b:28",
-      "to": [
-        "s:7"
-      ]
-    },
-    {
-      "type": "Relationship",
-      "spdxId": "b:30",
-      "creationInfo": "_:creationinfo",
-      "relationshipType": "hasOutput",
-      "from": "b:28",
-      "to": [
-        "b:12"
+        "b:8"
       ]
     }
   ]

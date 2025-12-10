@@ -1,11 +1,11 @@
 {
     "python.analysis.extraPaths": [
-        "./sbom/lib"
+        "./sbom"
     ],
     "python.testing.unittestArgs": [
         "-v",
         "-s",
-        "./sbom/lib",
+        "./sbom",
         "-p",
         "test_*.py"
     ],

@@ -53,6 +53,7 @@ class TestSbom(unittest.TestCase):
     )
     def test_sbom(self):
         # Run the sbom.py script to generate the output documents
+        os.environ["SRCARCH"] = "x86"
         sbom_script.main()
 
         # Assert generated output documents are binary equal to the target documents

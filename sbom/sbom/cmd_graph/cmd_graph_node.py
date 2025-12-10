@@ -1,26 +1,32 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+
+from dataclasses import dataclass, field
 from itertools import chain
 import logging
 import os
-from dataclasses import dataclass, field
-import pickle
 from typing import Iterator, Protocol
 
-from sbom.cmd_graph.deps_parser import parse_cmd_file_deps
-from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
-from sbom.cmd_graph.incbin_parser import IncbinStatement, parse_incbin
+from sbom import sbom_logging
 from sbom.cmd_graph.cmd_file_parser import CmdFile, parse_cmd_file
-import sbom.sbom_logging as sbom_logging
+from sbom.cmd_graph.deps_parser import parse_cmd_file_deps
+from sbom.cmd_graph.hardcoded_dependencies import get_hardcoded_dependencies
+from sbom.cmd_graph.incbin_parser import IncbinStatement, parse_incbin
+from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
 from sbom.path_utils import PathStr, is_relative_to
-from .hardcoded_dependencies import get_hardcoded_dependencies
 
 
 @dataclass
 class IncbinDependency:
     node: "CmdGraphNode"
     full_statement: str
+
+
+class CmdGraphNodeConfig(Protocol):
+    obj_tree: PathStr
+    src_tree: PathStr
+    fail_on_unknown_build_command: bool
 
 
 @dataclass
@@ -49,101 +55,89 @@ class CmdGraphNode:
                 seen.add(node.absolute_path)
                 yield node
 
+    @classmethod
+    def create(
+        cls,
+        target_path: PathStr,
+        config: CmdGraphNodeConfig,
+        cache: dict[PathStr, "CmdGraphNode"] | None = None,
+        depth: int = 0,
+    ) -> "CmdGraphNode":
+        """
+        Recursively builds a dependency graph starting from `target_path`.
+        Dependencies are mainly discovered by parsing the `.<target_path.name>.cmd` file.
 
-@dataclass
-class CmdGraph:
-    roots: list[CmdGraphNode] = field(default_factory=list[CmdGraphNode])
+        Args:
+            target_path (PathStr): Path to the target file relative to obj_tree.
+            config (CmdGraphNodeConfig): Config options
+            cache (dict | None): Tracks processed nodes to prevent cycles.
+            depth (int): Internal parameter to track the current recursion depth.
+            log_depth (int): Maximum recursion depth up to which info-level messages are logged.
 
+        Returns:
+            CmdGraphNode: cmd graph node representing the target file
+        """
+        if cache is None:
+            cache = {}
 
-class CmdGraphConfig(Protocol):
-    obj_tree: PathStr
-    src_tree: PathStr
-    fail_on_unknown_build_command: bool
+        target_file_absolute = (
+            os.path.realpath(p)
+            if os.path.islink(p := os.path.join(config.obj_tree, target_path))
+            else os.path.normpath(p)
+        )
 
+        if target_file_absolute in cache:
+            return cache[target_file_absolute]
 
-def build_cmd_graph(root_paths: list[PathStr], config: CmdGraphConfig) -> CmdGraph:
-    node_cache: dict[PathStr, CmdGraphNode] = {}
-    root_nodes = [build_cmd_graph_node(root_path, config, node_cache) for root_path in root_paths]
-    return CmdGraph(root_nodes)
+        if depth == 0:
+            logging.debug(f"Build node: {'  ' * depth}{target_path}")
+        cmd_path = _to_cmd_path(target_file_absolute)
+        cmd_file = parse_cmd_file(cmd_path) if os.path.exists(cmd_path) else None
+        node = CmdGraphNode(target_file_absolute, cmd_file)
+        cache[target_file_absolute] = node
 
-
-def build_cmd_graph_node(
-    target_path: PathStr,
-    config: CmdGraphConfig,
-    cache: dict[PathStr, CmdGraphNode] | None = None,
-    depth: int = 0,
-) -> CmdGraphNode:
-    """
-    Recursively builds a dependency graph starting from `target_path`.
-    Dependencies are mainly discovered by parsing the `.<target_path.name>.cmd` file.
-
-    Args:
-        target_path (PathStr): Path to the target file relative to obj_tree.
-        config (CmdGraphConfig): Config options
-        cache (dict | None): Tracks processed nodes to prevent cycles.
-        depth (int): Internal parameter to track the current recursion depth.
-        log_depth (int): Maximum recursion depth up to which info-level messages are logged.
-
-    Returns:
-        CmdGraphNode: cmd graph node representing the target file
-    """
-    if cache is None:
-        cache = {}
-
-    target_file_absolute = (
-        os.path.realpath(p) if os.path.islink(p := os.path.join(config.obj_tree, target_path)) else os.path.normpath(p)
-    )
-
-    if target_file_absolute in cache.keys():
-        return cache[target_file_absolute]
-
-    if depth == 0:
-        logging.debug(f"Build node: {'  ' * depth}{target_path}")
-    cmd_path = _to_cmd_path(target_file_absolute)
-    cmd_file = parse_cmd_file(cmd_path) if os.path.exists(cmd_path) else None
-    node = CmdGraphNode(target_file_absolute, cmd_file)
-    cache[target_file_absolute] = node
-
-    if not os.path.exists(target_file_absolute):
-        if is_relative_to(target_file_absolute, config.obj_tree) or is_relative_to(
-            target_file_absolute, config.src_tree
-        ):
-            sbom_logging.error(
-                "Skip parsing '{target_path_absolute}' because file does not exist",
-                target_path_absolute=target_file_absolute,
-            )
-        else:
-            sbom_logging.warning(
-                "Skip parsing {target_path_absolute} because file does not exist",
-                target_path_absolute=target_file_absolute,
-            )
-        return node
-
-    # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
-    def _build_child_node(child_path: PathStr):
-        return build_cmd_graph_node(child_path, config, cache, depth + 1)
-
-    for hardcoded_dependency_path in get_hardcoded_dependencies(target_file_absolute, config.obj_tree, config.src_tree):
-        node.hardcoded_dependencies.append(_build_child_node(hardcoded_dependency_path))
-
-    if cmd_file is not None:
-        for cmd_file_dependency_path in _parse_cmd_file_dependencies(
-            cmd_file, target_path, config.obj_tree, config.src_tree, config.fail_on_unknown_build_command
-        ):
-            node.cmd_file_dependencies.append(_build_child_node(cmd_file_dependency_path))
-
-    if node.absolute_path.endswith(".S"):
-        for incbin_dependency_statement in _parse_incbin_statements(
-            node.absolute_path, target_path, config.obj_tree, config.src_tree
-        ):
-            node.incbin_dependencies.append(
-                IncbinDependency(
-                    node=_build_child_node(incbin_dependency_statement.path),
-                    full_statement=incbin_dependency_statement.full_statement,
+        if not os.path.exists(target_file_absolute):
+            if is_relative_to(target_file_absolute, config.obj_tree) or is_relative_to(
+                target_file_absolute, config.src_tree
+            ):
+                sbom_logging.error(
+                    "Skip parsing '{target_path_absolute}' because file does not exist",
+                    target_path_absolute=target_file_absolute,
                 )
-            )
+            else:
+                sbom_logging.warning(
+                    "Skip parsing {target_path_absolute} because file does not exist",
+                    target_path_absolute=target_file_absolute,
+                )
+            return node
 
-    return node
+        # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
+        def _build_child_node(child_path: PathStr) -> "CmdGraphNode":
+            return CmdGraphNode.create(child_path, config, cache, depth + 1)
+
+        for hardcoded_dependency_path in get_hardcoded_dependencies(
+            target_file_absolute, config.obj_tree, config.src_tree
+        ):
+            node.hardcoded_dependencies.append(_build_child_node(hardcoded_dependency_path))
+
+        if cmd_file is not None:
+            for cmd_file_dependency_path in _parse_cmd_file_dependencies(
+                cmd_file, target_path, config.obj_tree, config.src_tree, config.fail_on_unknown_build_command
+            ):
+                node.cmd_file_dependencies.append(_build_child_node(cmd_file_dependency_path))
+
+        if node.absolute_path.endswith(".S"):
+            for incbin_dependency_statement in _parse_incbin_statements(
+                node.absolute_path, target_path, config.obj_tree, config.src_tree
+            ):
+                node.incbin_dependencies.append(
+                    IncbinDependency(
+                        node=_build_child_node(incbin_dependency_statement.path),
+                        full_statement=incbin_dependency_statement.full_statement,
+                    )
+                )
+
+        return node
 
 
 def _parse_cmd_file_dependencies(
@@ -212,40 +206,6 @@ def _parse_incbin_statements(
         )
         for incbin_statement in incbin_statements
     ]
-
-
-def iter_cmd_graph(cmd_graph: CmdGraph | CmdGraphNode) -> Iterator[CmdGraphNode]:
-    visited: set[PathStr] = set()
-    node_stack: list[CmdGraphNode] = cmd_graph.roots.copy() if isinstance(cmd_graph, CmdGraph) else [cmd_graph]
-    while len(node_stack) > 0:
-        node = node_stack.pop(0)
-        if node.absolute_path in visited:
-            continue
-
-        visited.add(node.absolute_path)
-        node_stack = list(chain(node.children, node_stack))
-        yield node
-
-
-def save_cmd_graph(node: CmdGraph, path: PathStr) -> None:
-    with open(path, "wb") as f:
-        pickle.dump(node, f)
-
-
-def load_cmd_graph(path: PathStr) -> CmdGraph:
-    with open(path, "rb") as f:
-        return pickle.load(f)
-
-
-def build_or_load_cmd_graph(target_paths: list[PathStr], cmd_graph_path: PathStr, config: CmdGraphConfig) -> CmdGraph:
-    if os.path.exists(cmd_graph_path):
-        logging.debug("Load cmd graph")
-        cmd_graph = load_cmd_graph(cmd_graph_path)
-    else:
-        logging.debug("Build cmd graph")
-        cmd_graph = build_cmd_graph(target_paths, config)
-        save_cmd_graph(cmd_graph, cmd_graph_path)
-    return cmd_graph
 
 
 def _to_cmd_path(path: PathStr) -> PathStr:

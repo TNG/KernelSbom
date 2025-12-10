@@ -46,11 +46,11 @@
         "s:5",
         "s:6",
         "s:7",
+        "s:8",
+        "s:9",
+        "s:10",
         "s:11",
-        "s:12",
-        "s:13",
-        "s:14",
-        "s:15"
+        "s:12"
       ],
       "rootElement": [
         "s:2"
@@ -165,48 +165,48 @@
     },
     {
       "type": "simplelicensing_LicenseExpression",
-      "spdxId": "s:11",
+      "spdxId": "s:8",
       "creationInfo": "_:creationinfo",
       "simplelicensing_licenseExpression": "GPL-2.0-only"
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:9",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasDeclaredLicense",
+      "from": "s:4",
+      "to": [
+        "s:8"
+      ]
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:10",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasDeclaredLicense",
+      "from": "s:5",
+      "to": [
+        "s:8"
+      ]
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "s:11",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "hasDeclaredLicense",
+      "from": "s:6",
+      "to": [
+        "s:8"
+      ]
     },
     {
       "type": "Relationship",
       "spdxId": "s:12",
       "creationInfo": "_:creationinfo",
       "relationshipType": "hasDeclaredLicense",
-      "from": "s:4",
-      "to": [
-        "s:11"
-      ]
-    },
-    {
-      "type": "Relationship",
-      "spdxId": "s:13",
-      "creationInfo": "_:creationinfo",
-      "relationshipType": "hasDeclaredLicense",
-      "from": "s:5",
-      "to": [
-        "s:11"
-      ]
-    },
-    {
-      "type": "Relationship",
-      "spdxId": "s:14",
-      "creationInfo": "_:creationinfo",
-      "relationshipType": "hasDeclaredLicense",
-      "from": "s:6",
-      "to": [
-        "s:11"
-      ]
-    },
-    {
-      "type": "Relationship",
-      "spdxId": "s:15",
-      "creationInfo": "_:creationinfo",
-      "relationshipType": "hasDeclaredLicense",
       "from": "s:7",
       "to": [
-        "s:11"
+        "s:8"
       ]
     }
   ]
