@@ -148,7 +148,9 @@ def _high_level_build_elements(
         build_buildType=build_type,
         build_buildId=build_id if build_id is not None else build_spdxId,
         build_environment=[
-            DictionaryEntry(key=key, value=value) for key, value in Environment.KERNEL_BUILD_VARIABLES.items() if value
+            DictionaryEntry(key=key, value=value)
+            for key, value in Environment.KERNEL_BUILD_VARIABLES().items()
+            if value
         ],
         build_configSourceUri=[config_source_element.spdxId],
         build_configSourceDigest=config_source_element.verifiedUsing,

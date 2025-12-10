@@ -151,12 +151,14 @@ class Environment:
     Read-only accessor for kernel build environment variables.
     """
 
-    KERNEL_BUILD_VARIABLES: dict[str, str | None] = {name: os.getenv(name) for name in KERNEL_BUILD_VARIABLES_ALLOWLIST}
+    @classmethod
+    def KERNEL_BUILD_VARIABLES(cls) -> dict[str, str | None]:
+        return {name: os.getenv(name) for name in KERNEL_BUILD_VARIABLES_ALLOWLIST}
 
     @classmethod
     def ARCH(cls) -> str | None:
-        return cls.KERNEL_BUILD_VARIABLES.get("ARCH")
+        return os.getenv("ARCH")
 
     @classmethod
     def SRCARCH(cls) -> str | None:
-        return cls.KERNEL_BUILD_VARIABLES.get("SRCARCH")
+        return os.getenv("SRCARCH")

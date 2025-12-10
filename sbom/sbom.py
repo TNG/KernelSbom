@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-# pyright: reportMissingImports=false
 # ruff: noqa: E402
 
 """
@@ -24,7 +23,7 @@ from sbom.path_utils import is_relative_to
 from sbom.spdx import JsonLdSpdxDocument, SpdxIdGenerator
 from sbom.spdx.core import CreationInfo
 from sbom.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs
-from sbom.cmd_graph import build_cmd_graph, iter_cmd_graph
+from sbom.cmd_graph import CmdGraph
 
 
 def main():
@@ -37,7 +36,7 @@ def main():
     # Build cmd graph
     logging.debug("Start building cmd graph")
     start_time = time.time()
-    cmd_graph = build_cmd_graph(config.root_paths, config)
+    cmd_graph = CmdGraph.create(config.root_paths, config)
     logging.debug(f"Built cmd graph in {time.time() - start_time} seconds")
 
     # Save used files document
@@ -47,12 +46,12 @@ def main():
                 "Extracting all files from the cmd graph to {used_files_file_name} instead of only source files because source files cannot be reliably classified when the source and object trees are identical.",
                 used_files_file_name=config.used_files_file_name,
             )
-            used_files = [os.path.relpath(node.absolute_path, config.src_tree) for node in iter_cmd_graph(cmd_graph)]
+            used_files = [os.path.relpath(node.absolute_path, config.src_tree) for node in cmd_graph]
             logging.debug(f"Found {len(used_files)} files in cmd graph.")
         else:
             used_files = [
                 os.path.relpath(node.absolute_path, config.src_tree)
-                for node in iter_cmd_graph(cmd_graph)
+                for node in cmd_graph
                 if is_relative_to(node.absolute_path, config.src_tree)
                 and not is_relative_to(node.absolute_path, config.obj_tree)
             ]

@@ -6,7 +6,7 @@ from enum import Enum
 import hashlib
 import os
 import re
-from sbom.cmd_graph import CmdGraph, iter_cmd_graph
+from sbom.cmd_graph import CmdGraph
 from sbom.path_utils import PathStr, is_relative_to
 from sbom.spdx import SpdxId, SpdxIdGenerator
 from sbom.spdx.core import Hash
@@ -118,7 +118,7 @@ class KernelFileCollection:
         source: dict[PathStr, KernelFile] = {}
         build: dict[PathStr, KernelFile] = {}
         output: dict[PathStr, KernelFile] = {}
-        for node in iter_cmd_graph(cmd_graph):
+        for node in cmd_graph:
             is_root = node in cmd_graph.roots
             kernel_file = KernelFile.create(node.absolute_path, obj_tree, src_tree, spdx_id_generators, is_root)
             if is_root:

@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from typing import Mapping, Protocol
-from sbom.cmd_graph import CmdGraph, iter_cmd_graph
+from sbom.cmd_graph import CmdGraph
 from sbom.path_utils import PathStr
 from sbom.spdx import SpdxIdGenerator
 from sbom.spdx.build import Build
@@ -57,7 +57,7 @@ def _create_spdx_build_graph_without_sources(
             NamespaceMap(prefix=generator.prefix, namespace=generator.namespace)
             for generator in [
                 spdx_id_generators.build,
-                spdx_id_generators.source,  # SOURCE ONLY
+                spdx_id_generators.source,
                 spdx_id_generators.output,
                 spdx_id_generators.base,
             ]
@@ -71,7 +71,7 @@ def _create_spdx_build_graph_without_sources(
         software_sbomType=["build"],
     )
 
-    # Src and object tree elements (SOURCE ONLY)
+    # Src and object tree elements
     obj_tree_element = File(
         spdxId=spdx_id_generators.build.generate(),
         name="$(obj_tree)",
@@ -205,7 +205,7 @@ def _file_relationships(
 
     # Create a relationship between each node (output file) and its children (input files)
     build_and_relationship_elements: list[Build | Relationship] = [high_level_build_ancestorOf_relationship]
-    for node in iter_cmd_graph(cmd_graph):
+    for node in cmd_graph:
         if next(node.children, None) is None:
             continue
 

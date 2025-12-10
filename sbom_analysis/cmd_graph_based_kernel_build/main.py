@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+# ruff: noqa: E402
+
 from dataclasses import dataclass
 import json
 import logging
@@ -12,13 +14,13 @@ import shutil
 import sys
 from typing import Literal
 
-LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
-sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
+sys.path.insert(0, os.path.join(SRC_DIR, "../../sbom/lib"))
+sys.path.insert(0, os.path.join(SRC_DIR, "../../sbom_analysis"))
 
-from build_kernel import build_kernel  # noqa: E402
-from sbom.path_utils import PathStr, is_relative_to  # noqa: E402
-from sbom.cmd_graph.cmd_graph import build_or_load_cmd_graph, iter_cmd_graph  # noqa: E402
+from build_kernel import build_kernel
+from sbom.path_utils import PathStr, is_relative_to
+from utils.cmd_graph_serialization import build_or_load_cmd_graph
 
 
 @dataclass
@@ -71,7 +73,7 @@ def _create_cmd_graph_based_kernel_directory(
     obj_tree_str = str(obj_tree)
     cmd_graph_sources = [
         os.path.relpath(node.absolute_path, src_tree_str)
-        for node in iter_cmd_graph(cmd_graph)
+        for node in cmd_graph
         if is_relative_to(node.absolute_path, src_tree_str) and not is_relative_to(node.absolute_path, obj_tree_str)
     ]
 

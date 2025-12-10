@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
+# ruff: noqa: E402
+
 from dataclasses import asdict, dataclass
 from itertools import chain
 import json
@@ -12,18 +14,17 @@ import sys
 import gzip
 import re
 
-LIB_DIR = "../../sbom/lib"
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
-sys.path.insert(0, os.path.join(SRC_DIR, LIB_DIR))
+sys.path.insert(0, os.path.join(SRC_DIR, "../../sbom/lib"))
+sys.path.insert(0, os.path.join(SRC_DIR, "../../sbom_analysis"))
 
-from sbom.path_utils import PathStr  # noqa: E402
-from sbom.cmd_graph.cmd_graph import (  # noqa: E402
-    IncbinDependency,
-    build_cmd_graph_node,
+
+from utils.cmd_graph_serialization import build_or_load_cmd_graph
+from sbom.cmd_graph.cmd_graph_node import IncbinDependency
+from sbom.path_utils import PathStr
+from sbom.cmd_graph.cmd_graph import (
     CmdGraphNode,
     CmdGraph,
-    build_or_load_cmd_graph,
-    iter_cmd_graph,
 )
 
 
@@ -139,7 +140,7 @@ def _extend_cmd_graph_with_missing_files(
     A new graph is spanned.
     """
     cmd_graph_node_cache: dict[PathStr, CmdGraphNode] = {}
-    for node in iter_cmd_graph(cmd_graph):
+    for node in cmd_graph:
         cmd_graph_node_cache[node.absolute_path] = node
 
     # remove children of original cmd graph roots since those are definitely no missing files
@@ -151,7 +152,7 @@ def _extend_cmd_graph_with_missing_files(
         )
         if file_path_abs in cmd_graph_node_cache.keys():
             continue
-        potential_new_root = build_cmd_graph_node(
+        potential_new_root = CmdGraphNode.create(
             target_path=os.path.relpath(file_path_abs, obj_tree),
             config=config,
             cache=cmd_graph_node_cache,
@@ -187,11 +188,7 @@ def _to_missing_files_graph(
     cmd_graph_with_missing_files = _extend_cmd_graph_with_missing_files(cmd_graph, config, missing_files)
 
     # list remaining missing files that could not be found
-    found_files = {
-        node.absolute_path
-        for node in iter_cmd_graph(cmd_graph_with_missing_files)
-        if node.absolute_path in missing_files
-    }
+    found_files = {node.absolute_path for node in cmd_graph_with_missing_files if node.absolute_path in missing_files}
     logging.info(f"Found {len(found_files)} of {len(missing_files)} missing files")
     if len(found_files) < len(missing_files):
         remaining_missing_files = sorted([str(f) for f in missing_files if f not in found_files])
