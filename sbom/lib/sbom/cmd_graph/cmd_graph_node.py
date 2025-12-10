@@ -86,7 +86,7 @@ class CmdGraphNode:
             else os.path.normpath(p)
         )
 
-        if target_file_absolute in cache.keys():
+        if target_file_absolute in cache:
             return cache[target_file_absolute]
 
         if depth == 0:

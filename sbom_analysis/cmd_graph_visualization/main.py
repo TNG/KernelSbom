@@ -150,7 +150,7 @@ def _extend_cmd_graph_with_missing_files(
         file_path_abs = os.path.join(
             os.path.dirname(cmd_file_path), os.path.basename(cmd_file_path).removeprefix(".").removesuffix(".cmd")
         )
-        if file_path_abs in cmd_graph_node_cache.keys():
+        if file_path_abs in cmd_graph_node_cache:
             continue
         potential_new_root = CmdGraphNode.create(
             target_path=os.path.relpath(file_path_abs, obj_tree),

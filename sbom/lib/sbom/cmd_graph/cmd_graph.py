@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
-from itertools import chain
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Iterator
 
@@ -21,12 +21,12 @@ class CmdGraph:
 
     def __iter__(self) -> Iterator[CmdGraphNode]:
         visited: set[PathStr] = set()
-        node_stack: list[CmdGraphNode] = self.roots.copy()
+        node_stack: deque[CmdGraphNode] = deque(self.roots)
         while len(node_stack) > 0:
-            node = node_stack.pop(0)
+            node = node_stack.popleft()
             if node.absolute_path in visited:
                 continue
 
             visited.add(node.absolute_path)
-            node_stack = list(chain(node.children, node_stack))
+            node_stack.extend(node.children)
             yield node
