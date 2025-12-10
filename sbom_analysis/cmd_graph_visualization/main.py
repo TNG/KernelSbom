@@ -15,7 +15,7 @@ import gzip
 import re
 
 SRC_DIR = os.path.dirname(os.path.realpath(__file__))
-sys.path.insert(0, os.path.join(SRC_DIR, "../../sbom/lib"))
+sys.path.insert(0, os.path.join(SRC_DIR, "../../sbom"))
 sys.path.insert(0, os.path.join(SRC_DIR, "../../sbom_analysis"))
 
 
