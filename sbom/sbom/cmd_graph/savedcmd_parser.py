@@ -198,7 +198,8 @@ def _parse_ar_piped_xargs_command(command: str) -> list[PathStr]:
     printf_command, _ = command.split("|", 1)
     positionals = _tokenize_single_command_positionals_only(printf_command.strip())
     # expect positionals to be ['printf', '{prefix_path}%s ', input1, input2, ...]
-    return positionals[2:]
+    prefix_path = positionals[1].rstrip("%s ")
+    return [f"{prefix_path}{filename}" for filename in positionals[2:]]
 
 
 def _parse_gcc_or_clang_command(command: str) -> list[PathStr]:

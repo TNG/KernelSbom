@@ -31,8 +31,8 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` 
     ```bash
     export SRCARCH=x86
     python3 sbom/sbom.py \
-      --src-tree ../linux.v6.17.tinyconfig.x86 \
-      --obj-tree ../linux.v6.17.tinyconfig.x86/kernel_build \
+      --src-tree ../linux \
+      --obj-tree ../linux/kernel_build \
       --roots arch/x86/boot/bzImage \
       --generate-spdx \
       --generate-used-files \
