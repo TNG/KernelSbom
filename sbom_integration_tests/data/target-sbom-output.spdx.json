@@ -83,7 +83,7 @@
       "spdxId": "o:3",
       "creationInfo": "_:creationinfo",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3",
+      "build_buildId": "o:3",
       "build_environment": [
         {
           "type": "DictionaryEntry",
@@ -92,7 +92,7 @@
         }
       ],
       "build_configSourceUri": [
-        "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/2"
+        "o:2"
       ],
       "build_configSourceDigest": [
         {
