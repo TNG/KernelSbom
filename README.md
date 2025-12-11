@@ -31,8 +31,8 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` 
     ```bash
     export SRCARCH=x86
     python3 sbom/sbom.py \
-      --src-tree ../linux.v6.17.tinyconfig.x86 \
-      --obj-tree ../linux.v6.17.tinyconfig.x86/kernel_build \
+      --src-tree ../linux \
+      --obj-tree ../linux/kernel_build \
       --roots arch/x86/boot/bzImage \
       --generate-spdx \
       --generate-used-files \
@@ -57,7 +57,7 @@ To include `.ko` kernel modules in the provided root artifacts, you can use the 
 
 ```bash
 echo "arch/x86/boot/bzImage" >> roots.txt
-python3 sbom/module_roots.py <obj_tree>/modules.order >> roots.txt
+sed 's/\.o$/.ko/' <obj_tree>/modules.order >> roots.txt
 ```
 Then pass the roots file to the main script:
 ```bash

@@ -83,24 +83,24 @@ class KernelSbomConfig:
 def _parse_cli_arguments() -> dict[str, Any]:
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
-        description="Generate SPDX SBOM from kernel sources and build artifacts",
+        description="Generate SPDX SBOM documents for kernel builds",
     )
     parser.add_argument(
         "--src-tree",
         default="../linux",
-        help="Path to the Linux kernel source tree (default: ../linux)",
+        help="Path to the kernel source tree (default: ../linux)",
     )
     parser.add_argument(
         "--obj-tree",
         default="../linux/kernel_build",
-        help="Path to the build object tree directory (default: ../linux/kernel_build)",
+        help="Path to the build output directory (default: ../linux/kernel_build)",
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--roots",
         nargs="+",
         default="arch/x86/boot/bzImage",
-        help="Space-separated list of paths (relative to --obj-tree) on which the SBOM will be based. "
+        help="Space-separated list of paths relative to obj-tree for which the SBOM will be created.\n"
         "Cannot be used together with --roots-file. (default: arch/x86/boot/bzImage)",
     )
     group.add_argument(
@@ -111,20 +111,20 @@ def _parse_cli_arguments() -> dict[str, Any]:
         "--generate-spdx",
         action="store_true",
         default=False,
-        help="Whether to create sbom-source.spdx.json, sbom-build.spdx.json and sbom-output.spdx.json documents",
+        help="Whether to create sbom-source.spdx.json, sbom-build.spdx.json and sbom-output.spdx.json documents (default: False)",
     )
     parser.add_argument(
         "--generate-used-files",
         action="store_true",
         default=False,
-        help="Whether to create the sbom.used-files.txt file, a flat list of all source files used for the kernel build. "
-        "Note, if src-tree and obj-tree are equal it is not possible to reliably classify source files. "
+        help="Whether to create the sbom.used-files.txt file, a flat list of all source files used for the kernel build.\n"
+        "If src-tree and obj-tree are equal it is not possible to reliably classify source files.\n"
         "In this case sbom.used-files.txt will contain all files used for the kernel build including all build artifacts. (default: False)",
     )
     parser.add_argument(
         "--output-directory",
         default=".",
-        help="Path to the directory where the generated output documents will be saved. (default: .)",
+        help="Path to the directory where the generated output documents will be stored (default: .)",
     )
     parser.add_argument(
         "--debug",
@@ -139,9 +139,8 @@ def _parse_cli_arguments() -> dict[str, Any]:
         action="store_true",
         default=False,
         help=(
-            "Whether to fail if an unknown build command is encountered in a .cmd file. "
-            "If set to True, errors are logged as warnings instead. "
-            "(default: False)"
+            "Whether to fail if an unknown build command is encountered in a .cmd file.\n"
+            "If set to True, errors are logged as warnings instead. (default: False)"
         ),
     )
     parser.add_argument(
@@ -149,59 +148,60 @@ def _parse_cli_arguments() -> dict[str, Any]:
         action="store_true",
         default=False,
         help=(
-            "Write output documents even if errors occur. "
-            "The resulting documents may be incomplete. A summary of warnings "
-            "and errors can be found in the 'comment' property of the CreationInfo element. "
-            "(default: False)"
+            "Write output documents even if errors occur. The resulting documents may be incomplete.\n"
+            "A summary of warnings and errors can be found in the 'comment' property of the CreationInfo element. (default: False)"
         ),
     )
 
-    # SPDX specific settings
-    parser.add_argument(
+    # SPDX specific options
+    spdx_group = parser.add_argument_group("SPDX options", "Options for customizing SPDX document generation")
+    spdx_group.add_argument(
         "--created",
         default=str(datetime.now()),
         help="The SPDX created property to use for the CreationInfo element in ISO format (YYYY-MM-DD [HH:MM:SS]). (default: datetime.now())",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--spdxId-prefix",
         default="urn:spdx.dev:",
         help="The prefix to use for all spdxId properties. (default: urn:spdx.dev:)",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--spdxId-uuid",
         default=None,
         help="The uuid to use for all spdxId properties to make the SPDX documents reproducible. By default a random uuid is generated.",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--build-type",
         default="urn:spdx.dev:Kbuild",
         help="The SPDX buildType property to use for all Build elements. (default: urn:spdx.dev:Kbuild)",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--build-id",
         default=None,
-        help="The SPDX buildId property to use for all Build elements. If not provided the spdxId of the high level Build element is used as the buildId. (default: None)",
+        help="The SPDX buildId property to use for all Build elements.\n"
+        "If not provided the spdxId of the high level Build element is used as the buildId. (default: None)",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--package-license",
         default="NOASSERTION",
         help="The SPDX licenseExpression property to use for the LicenseExpression linked to all SPDX Package elements. (default: NOASSERTION)",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--package-version",
         default=None,
         help="The SPDX packageVersion property to use for all SPDX Package elements. (default: None)",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--package-copyright-text",
         default=None,
-        help="The SPDX copyrightText property to use for all SPDX Package elements. If not specified, and if a COPYING file exists in the source tree, the package-copyright-text is set to the content of this file. (default: None)",
+        help="The SPDX copyrightText property to use for all SPDX Package elements.\n"
+        "If not specified, and if a COPYING file exists in the source tree, the package-copyright-text is set to the content of this file. (default: None)",
     )
-    parser.add_argument(
+    spdx_group.add_argument(
         "--prettify-json",
         action="store_true",
         default=False,
-        help="Whether to pretty print the gnerated spdx.json documents (default: False)",
+        help="Whether to pretty print the generated spdx.json documents (default: False)",
     )
 
     args = vars(parser.parse_args())
