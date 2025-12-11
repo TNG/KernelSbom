@@ -24,27 +24,27 @@
       "import": [
         {
           "type": "ExternalMap",
-          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/source/4"
+          "externalSpdxId": "s:4"
         },
         {
           "type": "ExternalMap",
-          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/source/5"
+          "externalSpdxId": "s:5"
         },
         {
           "type": "ExternalMap",
-          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/source/6"
+          "externalSpdxId": "s:6"
         },
         {
           "type": "ExternalMap",
-          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/source/7"
+          "externalSpdxId": "s:7"
         },
         {
           "type": "ExternalMap",
-          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+          "externalSpdxId": "o:3"
         },
         {
           "type": "ExternalMap",
-          "externalSpdxId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/5"
+          "externalSpdxId": "o:5"
         }
       ]
     },
@@ -251,7 +251,7 @@
       "creationInfo": "_:creationinfo",
       "comment": "(dd if=arch/x86/boot/setup.o bs=4k conv=sync status=none; cat arch/x86/boot/main.o) >arch/x86/boot/bzImage",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+      "build_buildId": "o:3"
     },
     {
       "type": "Relationship",
@@ -281,7 +281,7 @@
       "creationInfo": "_:creationinfo",
       "comment": "gcc -c -o arch/x86/boot/setup.o ../arch/x86/boot/setup.c",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+      "build_buildId": "o:3"
     },
     {
       "type": "Relationship",
@@ -309,7 +309,7 @@
       "creationInfo": "_:creationinfo",
       "comment": "gcc -c -o arch/x86/boot/main.o ../arch/x86/boot/main.c",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+      "build_buildId": "o:3"
     },
     {
       "type": "Relationship",
@@ -337,7 +337,7 @@
       "creationInfo": "_:creationinfo",
       "comment": "rm -f init/built-in.a;  printf \"init/%s \" main.o version.o | xargs ar cDPrST init/built-in.a",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+      "build_buildId": "o:3"
     },
     {
       "type": "Relationship",
@@ -366,7 +366,7 @@
       "creationInfo": "_:creationinfo",
       "comment": "gcc -c -o init/main.o ../init/main.c",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+      "build_buildId": "o:3"
     },
     {
       "type": "Relationship",
@@ -394,7 +394,7 @@
       "creationInfo": "_:creationinfo",
       "comment": "gcc -c -o init/version.o ../init/version.c",
       "build_buildType": "urn:spdx.dev:Kbuild",
-      "build_buildId": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/3"
+      "build_buildId": "o:3"
     },
     {
       "type": "Relationship",
