@@ -57,7 +57,7 @@ To include `.ko` kernel modules in the provided root artifacts, you can use the 
 
 ```bash
 echo "arch/x86/boot/bzImage" >> roots.txt
-python3 sbom/module_roots.py <obj_tree>/modules.order >> roots.txt
+sed 's/\.o$/.ko/' <obj_tree>/modules.order >> roots.txt
 ```
 Then pass the roots file to the main script:
 ```bash
