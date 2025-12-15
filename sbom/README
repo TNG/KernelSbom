@@ -13,14 +13,14 @@ The kernel `CONFIG_SBOM` option enables the KernelSbom tool, a Python script `sb
 The generated SBOM documents capture:
 
 - **Final output artifacts**, typically the kernel image and modules  
-- **All source files** that contributed to the build  
+- **All source files** that contributed to the build with metadata and licensing information
 - **Details of the build process**, including intermediate artifacts and the build commands linking source files to the final output artifacts
 
 
 Requirements
 ------------
 
-Python 3.10 or later
+Python 3.10 or later. No libraries or other dependencies are required.
 
 Basic Usage
 -----------
