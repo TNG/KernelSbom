@@ -99,7 +99,7 @@ def main():
             # Replace Placeholder uuid with real uuid for spdxIds
             spdx_document = next(element for element in spdx_graph_objects if isinstance(element, SpdxDocument))
             for namespaceMap in spdx_document.namespaceMap:
-                namespaceMap.namespace.replace(PLACEHOLDER_UUID, str(spdx_id_uuid))
+                namespaceMap.namespace = namespaceMap.namespace.replace(PLACEHOLDER_UUID, str(spdx_id_uuid))
             # Serialize SPDX graph to JSON-LD
             spdx_doc = JsonLdSpdxDocument(graph=spdx_graph_objects)
             save_path = os.path.join(config.output_directory, config.spdx_file_names[kernel_sbom_kind])
