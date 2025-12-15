@@ -7,7 +7,6 @@ from datetime import datetime
 from enum import Enum
 import os
 from typing import Any
-import uuid
 from sbom.path_utils import PathStr
 
 
@@ -57,9 +56,6 @@ class KernelSbomConfig:
 
     spdxId_prefix: str
     """Prefix to use for all SPDX element IDs."""
-
-    spdxId_uuid: uuid.UUID
-    """UUID used for reproducible SPDX element IDs."""
 
     build_type: str
     """SPDX buildType property to use for all Build elements."""
@@ -163,18 +159,14 @@ def _parse_cli_arguments() -> dict[str, Any]:
     spdx_group = parser.add_argument_group("SPDX options", "Options for customizing SPDX document generation")
     spdx_group.add_argument(
         "--created",
-        default=str(datetime.now()),
-        help="The SPDX created property to use for the CreationInfo element in ISO format (YYYY-MM-DD [HH:MM:SS]). (default: datetime.now())",
+        default=None,
+        help="The SPDX created property to use for the CreationInfo element in ISO format (YYYY-MM-DD [HH:MM:SS]).\n"
+        "If not provided the last modification time of the first root output is used. (default: None)",
     )
     spdx_group.add_argument(
         "--spdxId-prefix",
         default="urn:spdx.dev:",
         help="The prefix to use for all spdxId properties. (default: urn:spdx.dev:)",
-    )
-    spdx_group.add_argument(
-        "--spdxId-uuid",
-        default=None,
-        help="The uuid to use for all spdxId properties to make the SPDX documents reproducible. By default a random uuid is generated.",
     )
     spdx_group.add_argument(
         "--build-type",
@@ -243,14 +235,16 @@ def get_config() -> KernelSbomConfig:
     fail_on_unknown_build_command = not args["do_not_fail_on_unknown_build_command"]
     write_output_on_error = args["write_output_on_error"]
 
-    try:
-        created = datetime.fromisoformat(args["created"])
-    except ValueError:
-        raise argparse.ArgumentTypeError(
-            f"Invalid date format for argument '--created': '{args['created']}'. Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
-        )
+    if args["created"] is None:
+        created = datetime.fromtimestamp(os.path.getmtime(os.path.join(obj_tree, root_paths[0])))
+    else:
+        try:
+            created = datetime.fromisoformat(args["created"])
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"Invalid date format for argument '--created': '{args['created']}'. Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
+            )
     spdxId_prefix = args["spdxId_prefix"]
-    spdxId_uuid = uuid.UUID(args["spdxId_uuid"]) if args["spdxId_uuid"] is not None else uuid.uuid4()
     build_type = args["build_type"]
     build_id = args["build_id"]
     package_license = args["package_license"]
@@ -285,7 +279,6 @@ def get_config() -> KernelSbomConfig:
         write_output_on_error=write_output_on_error,
         created=created,
         spdxId_prefix=spdxId_prefix,
-        spdxId_uuid=spdxId_uuid,
         build_type=build_type,
         build_id=build_id,
         package_license=package_license,
