@@ -21,12 +21,12 @@ class IncbinStatement:
     """Full `.incbin "<path>"` statement as it originally appeared in the file."""
 
 
-def parse_incbin(absolute_path: PathStr) -> list[IncbinStatement]:
+def parse_incbin_statements(absolute_path: PathStr) -> list[IncbinStatement]:
     """
     Parses `.incbin` directives from an `.S` assembly file.
 
     Args:
-        absolute_path (PathStr): Absolute path to the `.S` assembly file.
+        absolute_path: Absolute path to the `.S` assembly file.
 
     Returns:
         list[IncbinStatement]: Parsed `.incbin` statements.

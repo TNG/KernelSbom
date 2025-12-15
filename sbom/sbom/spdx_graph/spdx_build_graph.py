@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
-from typing import Mapping, Protocol
+from typing import Mapping
 from sbom.cmd_graph import CmdGraph
 from sbom.path_utils import PathStr
 from sbom.spdx import SpdxIdGenerator
@@ -15,12 +15,10 @@ from sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollectio
 from sbom.spdx_graph.spdx_source_graph import source_file_license_elements
 
 
-class SpdxBuildGraphConfig(Protocol):
-    build_type: str
-
-
 @dataclass
 class SpdxBuildGraph(SpdxGraph):
+    """SPDX graph representing build dependencies connecting source files and distributable output files"""
+
     @classmethod
     def create(
         cls,
@@ -29,26 +27,37 @@ class SpdxBuildGraph(SpdxGraph):
         shared_elements: SharedSpdxElements,
         high_level_build_element: Build,
         spdx_id_generators: SpdxIdGeneratorCollection,
-        config: SpdxBuildGraphConfig,
     ) -> "SpdxBuildGraph":
         if len(kernel_files.source) > 0:
-            return _create_spdx_build_graph_without_sources(
-                cmd_graph, kernel_files, shared_elements, high_level_build_element, spdx_id_generators, config
+            return _create_spdx_build_graph(
+                cmd_graph, kernel_files, shared_elements, high_level_build_element, spdx_id_generators
             )
         else:
-            return _create_spdx_build_graph_with_sources(
-                cmd_graph, kernel_files, shared_elements, high_level_build_element, spdx_id_generators, config
+            return _create_spdx_build_graph_with_mixed_sources(
+                cmd_graph, kernel_files, shared_elements, high_level_build_element, spdx_id_generators
             )
 
 
-def _create_spdx_build_graph_without_sources(
+def _create_spdx_build_graph(
     cmd_graph: CmdGraph,
     kernel_files: KernelFileCollection,
     shared_elements: SharedSpdxElements,
     high_level_build_element: Build,
     spdx_id_generators: SpdxIdGeneratorCollection,
-    config: SpdxBuildGraphConfig,
 ) -> SpdxBuildGraph:
+    """
+    Creates an SPDX build graph where source and output files are referenced from external documents.
+
+    Args:
+        cmd_graph: The dependency graph of a kernel build.
+        kernel_files: Collection of categorized kernel files involved in the build.
+        shared_elements: SPDX elements shared across multiple documents.
+        high_level_build_element: The high-level Build element referenced by the build graph.
+        spdx_id_generators: Collection of generators for SPDX element IDs.
+
+    Returns:
+        SpdxBuildGraph: The SPDX build graph connecting source files and distributable output files.
+    """
     # SpdxDocument
     build_spdx_document = SpdxDocument(
         spdxId=spdx_id_generators.build.generate(),
@@ -89,7 +98,6 @@ def _create_spdx_build_graph_without_sources(
     file_relationships = _file_relationships(
         cmd_graph=cmd_graph,
         file_elements={key: file.spdx_file_element for key, file in kernel_files.to_dict().items()},
-        build_type=config.build_type,
         high_level_build_element=high_level_build_element,
         spdx_id_generator=spdx_id_generators.build,
     )
@@ -124,14 +132,27 @@ def _create_spdx_build_graph_without_sources(
     return build_graph
 
 
-def _create_spdx_build_graph_with_sources(
+def _create_spdx_build_graph_with_mixed_sources(
     cmd_graph: CmdGraph,
     kernel_files: KernelFileCollection,
     shared_elements: SharedSpdxElements,
     high_level_build_element: Build,
     spdx_id_generators: SpdxIdGeneratorCollection,
-    config: SpdxBuildGraphConfig,
 ) -> SpdxBuildGraph:
+    """
+    Creates an SPDX build graph where only output files are referenced from an external document.
+    Source files are included directly in the build graph.
+
+    Args:
+        cmd_graph: The dependency graph of a kernel build.
+        kernel_files: Collection of categorized kernel files involved in the build.
+        shared_elements: SPDX elements shared across multiple documents.
+        high_level_build_element: The high-level Build element referenced by the build graph.
+        spdx_id_generators: Collection of generators for SPDX element IDs.
+
+    Returns:
+        SpdxBuildGraph: The SPDX build graph connecting source files and distributable output files.
+    """
     # SpdxDocument
     build_spdx_document = SpdxDocument(
         spdxId=spdx_id_generators.build.generate(),
@@ -158,7 +179,6 @@ def _create_spdx_build_graph_with_sources(
     file_relationships = _file_relationships(
         cmd_graph=cmd_graph,
         file_elements={key: file.spdx_file_element for key, file in kernel_files.to_dict().items()},
-        build_type=config.build_type,
         high_level_build_element=high_level_build_element,
         spdx_id_generator=spdx_id_generators.build,
     )
@@ -191,10 +211,21 @@ def _create_spdx_build_graph_with_sources(
 def _file_relationships(
     cmd_graph: CmdGraph,
     file_elements: Mapping[PathStr, File],
-    build_type: str,
     high_level_build_element: Build,
     spdx_id_generator: SpdxIdGenerator,
 ) -> list[Build | Relationship]:
+    """
+    Construct SPDX Build and Relationship elements representing dependency relationships in the cmd graph.
+
+    Args:
+        cmd_graph: The dependency graph of a kernel build.
+        file_elements: Mapping of filesystem paths (PathStr) to their corresponding SPDX File elements.
+        high_level_build_element: The SPDX Build element representing the overall build process/root.
+        spdx_id_generator: Generator for unique SPDX IDs.
+
+    Returns:
+        list[Build | Relationship]: List of SPDX Build and Relationship elements
+    """
     high_level_build_ancestorOf_relationship = Relationship(
         spdxId=spdx_id_generator.generate(),
         relationshipType="ancestorOf",
@@ -213,7 +244,7 @@ def _file_relationships(
         if node.cmd_file is not None:
             build_element = Build(
                 spdxId=spdx_id_generator.generate(),
-                build_buildType=build_type,
+                build_buildType=high_level_build_element.build_buildType,
                 build_buildId=high_level_build_element.build_buildId,
                 comment=node.cmd_file.savedcmd,
             )
@@ -240,8 +271,8 @@ def _file_relationships(
                 comment="\n".join([incbin_dependency.full_statement for incbin_dependency in node.incbin_dependencies]),
                 from_=file_elements[node.absolute_path],
                 to=[
-                    file_elements[incbin_depdendency.node.absolute_path]
-                    for incbin_depdendency in node.incbin_dependencies
+                    file_elements[incbin_dependency.node.absolute_path]
+                    for incbin_dependency in node.incbin_dependencies
                 ],
             )
             build_and_relationship_elements.append(incbin_dependsOn_relationship)

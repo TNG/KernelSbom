@@ -9,13 +9,14 @@ KernelSbom
 Introduction
 ------------
 
-The kernel `CONFIG_SBOM` option enables the KernelSbom tool, a Python script `sbom.py` that runs during the kernel build process after all build outputs have been generated. KernelSbom analyzes every file involved in the build and produces Software Bill of Materials (SBOM) documents in SPDX format.
+The kernel `CONFIG_SBOM` option enables the KernelSbom tool, a Python script `sbom.py` that runs during the kernel build process after all build outputs have been generated. KernelSbom analyzes every file involved in the build and produces Software Bill of Materials (SBOM) documents in SPDX 3.0.1 format.
 The generated SBOM documents capture:
 
 - **Final output artifacts**, typically the kernel image and modules
 - **All source files** that contributed to the build with metadata and licensing information
 - **Details of the build process**, including intermediate artifacts and the build commands linking source files to the final output artifacts
 
+KernelSbom is originally developed in the [KernelSbom repository](https://github.com/TNG/KernelSbom).
 
 Requirements
 ------------
@@ -70,10 +71,13 @@ For a full list of command-line options, run:
 Output Format
 -------------
 
-KernelSbom generates documents conforming to the [SPDX 3.0.1 specification](https://spdx.github.io/spdx-spec/v3.0.1/) serialized as JSON-LD.
-To reduce file size, the output documents use the JSON-LD `@context` to define custom prefixes for `spdxId` values. While this is compliant with the SPDX specification, only a limited number of tools in the current SPDX ecosystem support custom JSON-LD contexts. To simplify working with the generated SPDX documents, we recommend using the SPDX expansion tool that resolves and expands the custom context.
-(TODO: add SPDX Expansion tool reference here.)
-
+KernelSbom generates documents conforming to the [SPDX 3.0.1 specification](https://spdx.github.io/spdx-spec/v3.0.1/) serialized as JSON-LD. To reduce file size, the output documents use the JSON-LD `@context` to define custom prefixes for `spdxId` values. While this is compliant with the SPDX specification, only a limited number of tools in the current SPDX ecosystem support custom JSON-LD contexts. To allow working with such external tools the `expand-custom-context.sh` script can be used on the generated SPDX documents.
+For example:  
+```
+curl -sLO https://github.com/TNG/KernelSbom/raw/refs/heads/main/.github/scripts/sbom/expand-custom-context.sh
+chmod +x expand-custom-context.sh
+./expand-custom-context.sh sbom-source.spdx.json sbom-build.spdx.json sbom-output.spdx.json
+```
 
 How it Works
 ------------
@@ -82,9 +86,15 @@ KernelSbom operates in two major phases:
 1) **Generate the cmd graph**, an acyclic directed dependency graph.
 2) **Generate SPDX documents** based on the cmd graph.
 
-KernelSbom begins from the root artifacts specified by the user (e.g., `arch/x86/boot/bzImage`). For each root artifact, it collects all dependencies required to build that artifact. These dependencies come from multiple sources, but the primary source is the `.cmd` file of the generated artifact such as `arch/x86/boot/.bzImage.cmd`. `.cmd` files contain the exact command used to build the artifact and often include an explicit list of input dependencies.
+KernelSbom begins from the root artifacts specified by the user (e.g., `arch/x86/boot/bzImage`). For each root artifact, it collects all dependencies required to build that artifact. The dependencies come from multiple sources:
 
-By parsing the `.cmd` file, the input files can be determined. KernelSbom then recursively processes each input file, allowing it to expand the dependency chain all the way to the original source files. The result is a complete dependency graph where nodes represent files, and edges represent “file A was used to build file B” relationships.
+- **`.cmd` files**: The primary source is the `.cmd` file of the generated artifact (e.g., `arch/x86/boot/.bzImage.cmd`). These files contain the exact command used to build the artifact and often include an explicit list of input dependencies. By parsing the `.cmd` file, the full list of dependencies can be obtained.
+
+- **`.incbin` statements**: The second source are include binary `.incbin` statements in `.S` assembly files.
+
+- **Hardcoded dependencies**: Unfortunately, not all build dependencies can be found via `.cmd` files and `.incbin` statements. Some build dependencies are directly defined in Makefiles or Kbuild files. Parsing these files was considered too complex for the scope of this project. Instead, the remaining gaps of the graph are filled using a list of manually defined dependencies (see `sbom/cmd_graph/hardcoded_dependencies.py`). This list is known to be incomplete. However, analysis of the cmd graph indicates a 99% completeness. For more information about the completeness analysis, see [KernelSbom #95](https://github.com/TNG/KernelSbom/issues/95).
+
+Given the list of dependency files, KernelSbom recursively processes each file, expanding the dependency chain all the way to the version controlled source files. The result is a complete dependency graph where nodes represent files, and edges represent “file A was used to build file B” relationships.
 
 Using the cmd graph, KernelSbom produces three SPDX documents.
 For every file in the graph, KernelSbom:

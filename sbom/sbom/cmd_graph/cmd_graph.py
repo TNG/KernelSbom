@@ -11,10 +11,23 @@ from sbom.path_utils import PathStr
 
 @dataclass
 class CmdGraph:
+    """Directed acyclic graph of build dependencies primarily inferred from .cmd files produced during kernel builds"""
+
     roots: list[CmdGraphNode] = field(default_factory=list[CmdGraphNode])
 
     @classmethod
     def create(cls, root_paths: list[PathStr], config: CmdGraphNodeConfig) -> "CmdGraph":
+        """
+        Recursively builds a dependency graph starting from `root_paths`.
+        Dependencies are mainly discovered by parsing the `.cmd` files.
+
+        Args:
+            root_paths (list[PathStr]): List of paths to root outputs relative to obj_tree
+            config (CmdGraphNodeConfig): Configuration options
+
+        Returns:
+            CmdGraph: A graph of all build dependencies for the given root files.
+        """
         node_cache: dict[PathStr, CmdGraphNode] = {}
         root_nodes = [CmdGraphNode.create(root_path, config, node_cache) for root_path in root_paths]
         return CmdGraph(root_nodes)

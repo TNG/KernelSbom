@@ -9,10 +9,19 @@ from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxDocument, SpdxObject
 
 
 class JsonLdSpdxDocument:
+    """Represents an SPDX document in JSON-LD format for serialization."""
+
     context: list[str | dict[str, str]]
     graph: list[SpdxObject]
 
     def __init__(self, graph: list[SpdxObject]) -> None:
+        """
+        Initialize a JSON-LD SPDX document from a graph of SPDX objects.
+        The graph must contain a single SpdxDocument element.
+
+        Args:
+            graph: List of SPDX objects representing the complete SPDX document.
+        """
         self.graph = graph
         spdx_document = next(element for element in graph if isinstance(element, SpdxDocument))
         self.context = [
@@ -22,12 +31,25 @@ class JsonLdSpdxDocument:
         spdx_document.namespaceMap = []
 
     def to_dict(self) -> dict[str, Any]:
+        """
+        Convert the SPDX document to a dictionary representation suitable for JSON serialization.
+
+        Returns:
+            Dictionary with @context and @graph keys following JSON-LD format.
+        """
         return {
             "@context": self.context,
             "@graph": [item.to_dict() for item in self.graph],
         }
 
     def save(self, path: PathStr, prettify: bool) -> None:
+        """
+        Save the SPDX document to a JSON file.
+
+        Args:
+            path: File path where the document will be saved.
+            prettify: Whether to pretty-print the JSON with indentation.
+        """
         with open(path, "w", encoding="utf-8") as f:
             if prettify:
                 json.dump(self.to_dict(), f, indent=2)

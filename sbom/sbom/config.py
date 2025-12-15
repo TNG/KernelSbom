@@ -81,6 +81,12 @@ class KernelSbomConfig:
 
 
 def _parse_cli_arguments() -> dict[str, Any]:
+    """
+    Parse command-line arguments using argparse.
+    
+    Returns:
+        Dictionary of parsed arguments.
+    """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
         description="Generate SPDX SBOM documents for kernel builds",
@@ -209,6 +215,12 @@ def _parse_cli_arguments() -> dict[str, Any]:
 
 
 def get_config() -> KernelSbomConfig:
+    """
+    Parse command-line arguments and construct the configuration object.
+    
+    Returns:
+        KernelSbomConfig: Configuration object with all settings for SBOM generation.
+    """
     # Parse cli arguments
     args = _parse_cli_arguments()
 
@@ -284,6 +296,17 @@ def get_config() -> KernelSbomConfig:
 
 
 def _validate_path_arguments(src_tree: PathStr, obj_tree: PathStr, root_paths: list[PathStr]) -> None:
+    """
+    Validate that the provided paths exist.
+    
+    Args:
+        src_tree: Absolute path to the source tree.
+        obj_tree: Absolute path to the object tree.
+        root_paths: List of root paths relative to obj_tree.
+        
+    Raises:
+        argparse.ArgumentTypeError: If any of the paths don't exist.
+    """
     if not os.path.exists(src_tree):
         raise argparse.ArgumentTypeError(f"--src-tree {src_tree} does not exist")
     if not os.path.exists(obj_tree):

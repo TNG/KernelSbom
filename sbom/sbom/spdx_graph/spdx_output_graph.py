@@ -28,6 +28,8 @@ class SpdxOutputGraphConfig(Protocol):
 
 @dataclass
 class SpdxOutputGraph(SpdxGraph):
+    """SPDX graph representing distributable output files"""
+
     high_level_build_element: Build
 
     @classmethod
@@ -38,6 +40,16 @@ class SpdxOutputGraph(SpdxGraph):
         spdx_id_generators: SpdxIdGeneratorCollection,
         config: SpdxOutputGraphConfig,
     ) -> "SpdxOutputGraph":
+        """
+        Args:
+            root_files: List of distributable output files which act as roots of the dependency graph.
+            shared_elements: Shared SPDX elements used across multiple documents.
+            spdx_id_generators: Collection of SPDX ID generators.
+            config: Configuration options.
+
+        Returns:
+            SpdxOutputGraph: The SPDX output graph.
+        """
         # SpdxDocument
         spdx_document = SpdxDocument(
             spdxId=spdx_id_generators.output.generate(),
@@ -134,6 +146,10 @@ class SpdxOutputGraph(SpdxGraph):
 
 
 def _get_package_name(filename: str) -> str:
+    """
+    Generates a SPDX package name from a filename.
+    Kernel images (bzImage, Image) get a descriptive name, others use the basename of the file.
+    """
     KERNEL_FILENAMES = ["bzImage", "Image"]
     basename = os.path.basename(filename)
     return f"Linux Kernel ({basename})" if basename in KERNEL_FILENAMES else basename
