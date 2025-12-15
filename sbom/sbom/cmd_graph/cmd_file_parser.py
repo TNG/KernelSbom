@@ -33,11 +33,10 @@ def parse_cmd_file(cmd_file_path: PathStr) -> CmdFile | None:
 
     2. Command Only Cmd File
         (saved)?cmd_<output> := <command>
-        
+
     3. Single Dependency Cmd File
         (saved)?cmd_<output> := <command>
         <output> := <dependency>
-
 
     Args:
         cmd_file_path (Path): absolute Path to a .cmd file
