@@ -122,4 +122,9 @@ jobs:
         id: validate_sbom
         run: |
           mapfile -t generated_sboms <<< "${{ steps.run_sbom.outputs.generated_sboms }}"
+          
+          echo "Expand custom context for $spdx_document (size: $((filesize/1024/1024)) MB)"
+          .github/scripts/sbom/expand-custom-context.sh --prefix "" "${generated_sboms[@]}"
+
+          echo "Validate expanded $spdx_document (size: $((filesize/1024/1024)) MB)"
           .github/scripts/sbom/validate-spdx-documents.sh "${generated_sboms[@]}"

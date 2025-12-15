@@ -9,7 +9,6 @@ from sbom.config import KernelSpdxDocumentKind
 from sbom.cmd_graph import CmdGraph
 from sbom.path_utils import PathStr
 from sbom.spdx.core import SpdxObject
-from sbom.spdx_graph.expand_spdxIds_for_non_expandable_properties import expand_spdxIds_for_non_expandable_properties
 from sbom.spdx_graph.kernel_file import KernelFileCollection
 from sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
 from sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
@@ -69,7 +68,4 @@ def build_spdx_graphs(
     )
     spdx_graphs[KernelSpdxDocumentKind.BUILD] = build_graph.to_list()
 
-    return {
-        k: expand_spdxIds_for_non_expandable_properties(spdx_graph, spdx_id_generators)
-        for k, spdx_graph in spdx_graphs.items()
-    }
+    return spdx_graphs
