@@ -27,12 +27,16 @@ ContentIdentifierType = Literal["gitoid", "swhid"]
 
 @dataclass(kw_only=True)
 class Sbom(ElementCollection):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Classes/Sbom/"""
+
     type: str = field(init=False, default="software_Sbom")
     software_sbomType: list[SbomType] = field(default_factory=list[SbomType])
 
 
 @dataclass(kw_only=True)
 class ContentIdentifier(IntegrityMethod):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Classes/ContentIdentifier/"""
+
     type: str = field(init=False, default="software_ContentIdentifier")
     software_contentIdentifierType: ContentIdentifierType
     software_contentIdentifierValue: str
@@ -40,6 +44,8 @@ class ContentIdentifier(IntegrityMethod):
 
 @dataclass(kw_only=True)
 class SoftwareArtifact(Artifact):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Classes/SoftwareArtifact/"""
+
     type: str = field(init=False, default="software_Artifact")
     software_primaryPurpose: SoftwarePurpose | None = None
     software_additionalPurpose: list[SoftwarePurpose] = field(default_factory=list[SoftwarePurpose])
@@ -49,6 +55,8 @@ class SoftwareArtifact(Artifact):
 
 @dataclass(kw_only=True)
 class Package(SoftwareArtifact):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Classes/Package/"""
+
     type: str = field(init=False, default="software_Package")
     name: str  # type: ignore
     software_packageVersion: str | None = None
@@ -57,6 +65,8 @@ class Package(SoftwareArtifact):
 
 @dataclass(kw_only=True)
 class File(SoftwareArtifact):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Classes/File/"""
+
     type: str = field(init=False, default="software_File")
     name: str  # type: ignore
     software_fileKind: FileKindType | None = None

@@ -47,11 +47,14 @@ class SpdxObject:
 
 
 @dataclass(kw_only=True)
-class IntegrityMethod(SpdxObject): ...
+class IntegrityMethod(SpdxObject):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/IntegrityMethod/"""
 
 
 @dataclass(kw_only=True)
 class Hash(IntegrityMethod):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/Hash/"""
+
     type: str = field(init=False, default="Hash")
     hashValue: str
     algorithm: HashAlgorithm
@@ -59,6 +62,8 @@ class Hash(IntegrityMethod):
 
 @dataclass(kw_only=True)
 class Element(SpdxObject):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/Element/"""
+
     type: str = field(init=False, default="Element")
     spdxId: SpdxId
     creationInfo: str = "_:creationinfo"
@@ -69,12 +74,16 @@ class Element(SpdxObject):
 
 @dataclass(kw_only=True)
 class ExternalMap(SpdxObject):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/ExternalMap/"""
+
     type: str = field(init=False, default="ExternalMap")
     externalSpdxId: SpdxId
 
 
 @dataclass(kw_only=True)
 class NamespaceMap(SpdxObject):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/NamespaceMap/"""
+
     type: str = field(init=False, default="NamespaceMap")
     prefix: str
     namespace: str
@@ -82,6 +91,8 @@ class NamespaceMap(SpdxObject):
 
 @dataclass(kw_only=True)
 class ElementCollection(Element):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/ElementCollection/"""
+
     type: str = field(init=False, default="ElementCollection")
     element: list[Element] = field(default_factory=list[Element])
     rootElement: list[Element] = field(default_factory=list[Element])
@@ -90,6 +101,8 @@ class ElementCollection(Element):
 
 @dataclass(kw_only=True)
 class SpdxDocument(ElementCollection):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/SpdxDocument/"""
+
     type: str = field(init=False, default="SpdxDocument")
     import_: list[ExternalMap] = field(default_factory=list[ExternalMap])
     namespaceMap: list[NamespaceMap] = field(default_factory=list[NamespaceMap])
@@ -100,6 +113,8 @@ class SpdxDocument(ElementCollection):
 
 @dataclass(kw_only=True)
 class ExternalIdentifier(SpdxObject):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/ExternalIdentifier/"""
+
     type: str = field(init=False, default="ExternalIdentifier")
     externalIdentifierType: ExternalIdentifierType
     identifier: str
@@ -107,17 +122,23 @@ class ExternalIdentifier(SpdxObject):
 
 @dataclass(kw_only=True)
 class Agent(Element):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/Agent/"""
+
     type: str = field(init=False, default="Agent")
     externalIdentifier: list[ExternalIdentifier] = field(default_factory=list[ExternalIdentifier])
 
 
 @dataclass(kw_only=True)
 class SoftwareAgent(Agent):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/SoftwareAgent/"""
+
     type: str = field(init=False, default="SoftwareAgent")
 
 
 @dataclass(kw_only=True)
 class CreationInfo(SpdxObject):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/CreationInfo/"""
+
     type: str = field(init=False, default="CreationInfo")
     id: SpdxId = "_:creationinfo"
     specVersion: str = SPDX_SPEC_VERSION
@@ -131,6 +152,8 @@ class CreationInfo(SpdxObject):
 
 @dataclass(kw_only=True)
 class Relationship(Element):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/Relationship/"""
+
     type: str = field(init=False, default="Relationship")
     relationshipType: RelationshipType
     from_: Element  # underscore because 'from' is a reserved keyword
@@ -143,6 +166,8 @@ class Relationship(Element):
 
 @dataclass(kw_only=True)
 class Artifact(Element):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/Artifact/"""
+
     type: str = field(init=False, default="Artifact")
     builtTime: str | None = None
     originatedBy: list[Agent] = field(default_factory=list[Agent])
@@ -150,6 +175,8 @@ class Artifact(Element):
 
 @dataclass(kw_only=True)
 class DictionaryEntry(SpdxObject):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/DictionaryEntry/"""
+
     type: str = field(init=False, default="DictionaryEntry")
     key: str
     value: str

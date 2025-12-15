@@ -7,6 +7,8 @@ from sbom.spdx.core import DictionaryEntry, Element, Hash
 
 @dataclass(kw_only=True)
 class Build(Element):
+    """https://spdx.github.io/spdx-spec/v3.0.1/model/Build/Classes/Build/"""
+
     type: str = field(init=False, default="build_Build")
     build_buildType: str
     build_buildId: str
