@@ -72,7 +72,7 @@ Output Format
 -------------
 
 KernelSbom generates documents conforming to the [SPDX 3.0.1 specification](https://spdx.github.io/spdx-spec/v3.0.1/) serialized as JSON-LD. To reduce file size, the output documents use the JSON-LD `@context` to define custom prefixes for `spdxId` values. While this is compliant with the SPDX specification, only a limited number of tools in the current SPDX ecosystem support custom JSON-LD contexts. To allow working with such external tools the `expand-custom-context.sh` script can be used on the generated SPDX documents.
-For example:  
+For example:
 ```
 curl -sLO https://github.com/TNG/KernelSbom/raw/refs/heads/main/.github/scripts/sbom/expand-custom-context.sh
 chmod +x expand-custom-context.sh
@@ -127,27 +127,6 @@ Then use the generated roots file:
         --obj-tree ./kernel_build \
         --roots-file roots.txt \
         --generate-spdx
-
-
-
-Reproducible Builds
--------------------
-
-By default, the generated SPDX documents are non-deterministic because:
-- `spdxId` values are generated using random UUIDs
-- The `CreationInfo.created` timestamp is set to the current datetime
-
-To generate deterministic, reproducible outputs, these values must be provided explicitly.
-For example:
-
-    $ export SRCARCH=x86
-    $ python3 tools/sbom/sbom.py \
-        --src-tree ./linux \
-        --obj-tree ./kernel_build \
-        --roots arch/x86/boot/bzImage \
-        --generate-spdx \
-        --spdxId-uuid bd3ab149-b4a7-4993-8fb4-5c99093c4f28 \
-        --created "2025-12-03 11:30:00"
 
 
 Equal Source and Object Trees

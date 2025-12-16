@@ -2,8 +2,8 @@
   "@context": [
     "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
     {
-      "o": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/output/",
-      "p": "urn:spdx.dev:123e4567-e89b-12d3-a456-426614174000/"
+      "o": "urn:spdx.dev:3ccad1c4-125c-5a46-85a0-0dbb62db5f54/output/",
+      "p": "urn:spdx.dev:3ccad1c4-125c-5a46-85a0-0dbb62db5f54/"
     }
   ],
   "@graph": [

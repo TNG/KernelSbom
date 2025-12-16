@@ -36,7 +36,7 @@ class CmdFile:
 
         2. Command Only Cmd File
             (saved)?cmd_<output> := <command>
-            
+
         3. Single Dependency Cmd File
             (saved)?cmd_<output> := <command>
             <output> := <dependency>
