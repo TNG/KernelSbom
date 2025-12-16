@@ -71,22 +71,6 @@ python3 sbom/sbom.py \
   --prettify-json
 ```
 
-### Reproducibility
-By default, SPDX documents are non-deterministic. The spdxIds are generated using random UUIDs, and the `CreationInfo.created` field is set to the current datetime. To produce deterministic outputs, the options `--spdxId-uuid` and `--created` must be provided:
-```bash
-export SRCARCH=x86
-python3 sbom/sbom.py \
-    --src-tree ../linux \
-    --obj-tree ../linux/kernel_build \
-    --roots arch/x86/boot/bzImage \
-    --generate-spdx \
-    --generate-used-files \
-    --prettify-json \
-    --spdxId-uuid bd3ab149-b4a7-4993-8fb4-5c99093c4f28 \
-    --created "2025-12-03 11:30:00" \
-    --debug
-```
-
 ## SPDX Graph Visualization
 
 The following diagrams illustrate the structure of the generated SPDX documents: `sbom-source.spdx.json`, `sbom-build.spdx.json`, and `sbom-output.spdx.json`.

@@ -33,6 +33,7 @@ class CmdGraph:
         return CmdGraph(root_nodes)
 
     def __iter__(self) -> Iterator[CmdGraphNode]:
+        """Traverse the graph in breadth-first order, yielding each unique node."""
         visited: set[PathStr] = set()
         node_stack: deque[CmdGraphNode] = deque(self.roots)
         while len(node_stack) > 0:

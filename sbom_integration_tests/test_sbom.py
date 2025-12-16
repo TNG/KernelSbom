@@ -44,8 +44,6 @@ class TestSbom(unittest.TestCase):
             f"{data_path}",
             "--created",
             "2025-12-09",
-            "--spdxId-uuid",
-            "123e4567-e89b-12d3-a456-426614174000",
             "--prettify-json",
             "--generate-spdx",
             "--generate-used-files",
@@ -53,6 +51,7 @@ class TestSbom(unittest.TestCase):
     )
     def test_sbom(self):
         # Run the sbom.py script to generate the output documents
+        os.environ.clear()
         os.environ["SRCARCH"] = "x86"
         sbom_script.main()
 
