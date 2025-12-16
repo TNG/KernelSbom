@@ -13,6 +13,8 @@ from sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollectio
 
 @dataclass
 class SpdxSourceGraph(SpdxGraph):
+    """SPDX graph representing source files"""
+
     @classmethod
     def create(
         cls,
@@ -20,6 +22,15 @@ class SpdxSourceGraph(SpdxGraph):
         shared_elements: SharedSpdxElements,
         spdx_id_generators: SpdxIdGeneratorCollection,
     ) -> "SpdxSourceGraph":
+        """
+        Args:
+            source_files: List of files within the kernel source tree.
+            shared_elements: Shared SPDX elements used across multiple documents.
+            spdx_id_generators: Collection of SPDX ID generators.
+
+        Returns:
+            SpdxSourceGraph: The SPDX source graph.
+        """
         # SpdxDocument
         source_spdx_document = SpdxDocument(
             spdxId=spdx_id_generators.source.generate(),
@@ -77,13 +88,23 @@ class SpdxSourceGraph(SpdxGraph):
 
 
 def source_file_license_elements(
-    files: list[KernelFile], spdx_id_generator: SpdxIdGenerator
+    source_files: list[KernelFile], spdx_id_generator: SpdxIdGenerator
 ) -> tuple[list[LicenseExpression], list[Relationship]]:
-    source_file_license_identifiers: dict[str, LicenseExpression] = {}
-    for file in files:
-        if file.license_identifier is None or file.license_identifier in source_file_license_identifiers:
+    """
+    Creates SPDX license expressions and links them to the given source files via hasDeclaredLicense relationships.
+
+    Args:
+        source_files: List of files within the kernel source tree.
+        spdx_id_generator: Generator for unique SPDX IDs.
+
+    Returns:
+        Tuple of (license expressions, hasDeclaredLicense relationships).
+    """
+    license_expressions: dict[str, LicenseExpression] = {}
+    for file in source_files:
+        if file.license_identifier is None or file.license_identifier in license_expressions:
             continue
-        source_file_license_identifiers[file.license_identifier] = LicenseExpression(
+        license_expressions[file.license_identifier] = LicenseExpression(
             spdxId=spdx_id_generator.generate(),
             simplelicensing_licenseExpression=file.license_identifier,
         )
@@ -93,9 +114,9 @@ def source_file_license_elements(
             spdxId=spdx_id_generator.generate(),
             relationshipType="hasDeclaredLicense",
             from_=file.spdx_file_element,
-            to=[source_file_license_identifiers[file.license_identifier]],
+            to=[license_expressions[file.license_identifier]],
         )
-        for file in files
+        for file in source_files
         if file.license_identifier is not None
     ]
-    return ([*source_file_license_identifiers.values()], source_file_license_relationships)
+    return ([*license_expressions.values()], source_file_license_relationships)

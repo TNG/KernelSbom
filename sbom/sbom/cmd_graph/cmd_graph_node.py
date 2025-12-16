@@ -9,11 +9,9 @@ import os
 from typing import Iterator, Protocol
 
 from sbom import sbom_logging
-from sbom.cmd_graph.cmd_file_parser import CmdFile, parse_cmd_file
-from sbom.cmd_graph.deps_parser import parse_cmd_file_deps
+from sbom.cmd_graph.cmd_file import CmdFile
 from sbom.cmd_graph.hardcoded_dependencies import get_hardcoded_dependencies
-from sbom.cmd_graph.incbin_parser import parse_incbin
-from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
+from sbom.cmd_graph.incbin_parser import parse_incbin_statements
 from sbom.path_utils import PathStr, is_relative_to
 
 
@@ -68,11 +66,10 @@ class CmdGraphNode:
         Dependencies are mainly discovered by parsing the `.<target_path.name>.cmd` file.
 
         Args:
-            target_path (PathStr): Path to the target file relative to obj_tree.
-            config (CmdGraphNodeConfig): Config options
-            cache (dict | None): Tracks processed nodes to prevent cycles.
-            depth (int): Internal parameter to track the current recursion depth.
-            log_depth (int): Maximum recursion depth up to which info-level messages are logged.
+            target_path: Path to the target file relative to obj_tree.
+            config: Config options
+            cache: Tracks processed nodes to prevent cycles.
+            depth: Internal parameter to track the current recursion depth.
 
         Returns:
             CmdGraphNode: cmd graph node representing the target file
@@ -80,35 +77,34 @@ class CmdGraphNode:
         if cache is None:
             cache = {}
 
-        target_file_absolute = (
+        target_path_absolute = (
             os.path.realpath(p)
             if os.path.islink(p := os.path.join(config.obj_tree, target_path))
             else os.path.normpath(p)
         )
 
-        if target_file_absolute in cache:
-            return cache[target_file_absolute]
+        if target_path_absolute in cache:
+            return cache[target_path_absolute]
 
         if depth == 0:
-            logging.debug(f"Build node: {'  ' * depth}{target_path}")
-        cmd_path = _to_cmd_path(target_file_absolute)
-        cmd_file = parse_cmd_file(cmd_path) if os.path.exists(cmd_path) else None
-        node = CmdGraphNode(target_file_absolute, cmd_file)
-        cache[target_file_absolute] = node
+            logging.debug(f"Build node: {target_path}")
 
-        if not os.path.exists(target_file_absolute):
-            if is_relative_to(target_file_absolute, config.obj_tree) or is_relative_to(
-                target_file_absolute, config.src_tree
-            ):
-                sbom_logging.error(
-                    "Skip parsing '{target_path_absolute}' because file does not exist",
-                    target_path_absolute=target_file_absolute,
-                )
-            else:
-                sbom_logging.warning(
-                    "Skip parsing {target_path_absolute} because file does not exist",
-                    target_path_absolute=target_file_absolute,
-                )
+        cmd_file_path = _to_cmd_path(target_path_absolute)
+        cmd_file = CmdFile.create(cmd_file_path) if os.path.exists(cmd_file_path) else None
+        node = CmdGraphNode(target_path_absolute, cmd_file)
+        cache[target_path_absolute] = node
+
+        if not os.path.exists(target_path_absolute):
+            error_or_warning = (
+                sbom_logging.error
+                if is_relative_to(target_path_absolute, config.obj_tree)
+                or is_relative_to(target_path_absolute, config.src_tree)
+                else sbom_logging.warning
+            )
+            error_or_warning(
+                "Skip parsing '{target_path_absolute}' because file does not exist",
+                target_path_absolute=target_path_absolute,
+            )
             return node
 
         # Search for dependencies to add to the graph as child nodes. Child paths are always relative to the output tree.
@@ -116,13 +112,13 @@ class CmdGraphNode:
             return CmdGraphNode.create(child_path, config, cache, depth + 1)
 
         for hardcoded_dependency_path in get_hardcoded_dependencies(
-            target_file_absolute, config.obj_tree, config.src_tree
+            target_path_absolute, config.obj_tree, config.src_tree
         ):
             node.hardcoded_dependencies.append(_build_child_node(hardcoded_dependency_path))
 
         if cmd_file is not None:
-            for cmd_file_dependency_path in _parse_cmd_file_dependencies(
-                cmd_file, target_path, config.obj_tree, config.src_tree, config.fail_on_unknown_build_command
+            for cmd_file_dependency_path in cmd_file.get_dependencies(
+                target_path, config.obj_tree, config.fail_on_unknown_build_command
             ):
                 node.cmd_file_dependencies.append(_build_child_node(cmd_file_dependency_path))
 
@@ -132,58 +128,12 @@ class CmdGraphNode:
                     node=_build_child_node(incbin_statement.path),
                     full_statement=incbin_statement.full_statement,
                 )
-                for incbin_statement in parse_incbin(node.absolute_path)
+                for incbin_statement in parse_incbin_statements(node.absolute_path)
             ]
 
         return node
 
 
-def _parse_cmd_file_dependencies(
-    cmd_file: CmdFile, target_file: PathStr, obj_tree: PathStr, src_tree: PathStr, fail_on_unknown_build_command: bool
-) -> list[PathStr]:
-    """
-    Parses the cmd file of a given target file and returns a list of all dependency files required to build the target file.
-
-    Args:
-        cmd_file (CmdFile): The command file describing how the target file was built
-        target_file (PathStr): File being built.
-
-    Returns:
-        list[PathStr]: Resolved dependency file paths relative to `obj_tree`.
-    """
-    input_files: list[PathStr] = [
-        str(p) for p in parse_inputs_from_commands(cmd_file.savedcmd, fail_on_unknown_build_command)
-    ]
-    if cmd_file.deps:
-        input_files += [str(p) for p in parse_cmd_file_deps(cmd_file.deps)]
-    input_files = _expand_resolve_files(input_files, obj_tree)
-
-    cmd_file_dependencies: list[PathStr] = []
-    for input_file in input_files:
-        # input files are either absolute or relative to the object tree
-        if os.path.isabs(input_file):
-            input_file = os.path.relpath(input_file, obj_tree)
-        if input_file == target_file:
-            # Skip target file to prevent cycles. This is necessary because some multi stage commands first create an output and then pass it as input to the next command, e.g., objcopy.
-            continue
-        cmd_file_dependencies.append(input_file)
-
-    return cmd_file_dependencies
-
-
 def _to_cmd_path(path: PathStr) -> PathStr:
     name = os.path.basename(path)
     return path.removesuffix(name) + f".{name}.cmd"
-
-
-def _expand_resolve_files(input_files: list[PathStr], obj_tree: PathStr) -> list[PathStr]:
-    expanded_input_files: list[PathStr] = []
-    for input_file in input_files:
-        input_file_str = str(input_file)
-        if not input_file_str.startswith("@"):
-            expanded_input_files.append(input_file)
-            continue
-        with open(os.path.join(obj_tree, input_file_str[1:]), "r") as f:
-            resolve_file_content = [line.strip() for line in f.readlines() if line.strip()]
-        expanded_input_files += _expand_resolve_files(resolve_file_content, obj_tree)
-    return expanded_input_files

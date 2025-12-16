@@ -3,9 +3,6 @@
 
 
 from dataclasses import dataclass
-from typing import Literal
-
-from sbom.config import KernelSpdxDocumentKind
 from sbom.spdx.core import CreationInfo, SoftwareAgent, SpdxDocument, SpdxObject
 from sbom.spdx.software import Sbom
 from sbom.spdx.spdxId import SpdxIdGenerator
@@ -38,12 +35,3 @@ class SpdxIdGeneratorCollection:
     source: SpdxIdGenerator
     build: SpdxIdGenerator
     output: SpdxIdGenerator
-
-    def get(self, generator_kind: KernelSpdxDocumentKind | Literal["general"]) -> SpdxIdGenerator:
-        generator_mapping: dict[KernelSpdxDocumentKind | Literal["general"], SpdxIdGenerator] = {
-            "general": self.base,
-            KernelSpdxDocumentKind.SOURCE: self.source,
-            KernelSpdxDocumentKind.BUILD: self.build,
-            KernelSpdxDocumentKind.OUTPUT: self.output,
-        }
-        return generator_mapping[generator_kind]

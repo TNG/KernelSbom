@@ -82,9 +82,10 @@ def main():
 
     if not sbom_logging.has_errors() or config.write_output_on_error:
         for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
-            creation_info = next(element for element in spdx_graph if isinstance(element, CreationInfo))
+            spdx_graph_objects = spdx_graph.to_list()
+            creation_info = next(element for element in spdx_graph_objects if isinstance(element, CreationInfo))
             creation_info.comment = "\n".join([warning_summary, error_summary]).strip()
-            spdx_doc = JsonLdSpdxDocument(graph=spdx_graph)
+            spdx_doc = JsonLdSpdxDocument(graph=spdx_graph_objects)
             save_path = os.path.join(config.output_directory, config.spdx_file_names[kernel_sbom_kind])
             spdx_doc.save(save_path, config.prettify_json)
             logging.debug(f"Successfully saved {save_path}")
@@ -95,8 +96,8 @@ def main():
         logging.error(error_summary)
         if not config.write_output_on_error:
             logging.info(
-                "You can use --write-output-on-error to generate output documents even when errors occur. "
-                "Note that in this case the documents may be incomplete."
+                "Use --write-output-on-error to generate output documents even when errors occur. "
+                "Note that in this case the generated SPDX documents may be incomplete."
             )
         sys.exit(1)
 

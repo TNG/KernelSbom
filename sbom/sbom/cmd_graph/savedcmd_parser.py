@@ -4,7 +4,7 @@
 import re
 import shlex
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Union
 import sbom.sbom_logging as sbom_logging
 from sbom.path_utils import PathStr
 
@@ -18,7 +18,7 @@ class CmdParsingError(Exception):
 @dataclass
 class Option:
     name: str
-    value: Optional[str] = None  # None means flag without value
+    value: str | None = None
 
 
 @dataclass

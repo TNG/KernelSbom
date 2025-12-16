@@ -14,6 +14,16 @@ class SharedSpdxElements:
 
     @classmethod
     def create(cls, spdx_id_generator: SpdxIdGenerator, created: datetime) -> "SharedSpdxElements":
+        """
+        Creates shared SPDX elements used across multiple documents.
+
+        Args:
+            spdx_id_generator: Generator for creating SPDX IDs.
+            created: SPDX 'created' property used for the creation info.
+
+        Returns:
+            SharedSpdxElements with agent and creation info.
+        """
         agent = SoftwareAgent(
             spdxId=spdx_id_generator.generate(),
             name="KernelSbom",

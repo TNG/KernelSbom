@@ -37,7 +37,9 @@ class KernelFile:
     file_location: KernelFileLocation
     """Location of the file relative to the source/object trees."""
     name: str
-    """name of the file element. Should be relative to the source tree if file_location equals SOURCE_TREE and relative to the object tree if file_location equals OBJ_TREE. If file_location equals EXTERNAL, the absolute path is used."""
+    """Name of the file element. Should be relative to the source tree if file_location equals SOURCE_TREE
+    and relative to the object tree if file_location equals OBJ_TREE. If file_location equals EXTERNAL,
+    the absolute path is used."""
     license_identifier: str | None
     """SPDX license ID if file_location equals SOURCE_TREE or BOTH; otherwise None."""
     spdx_id_generator: SpdxIdGenerator

@@ -18,16 +18,17 @@ HARDCODED_DEPENDENCIES: dict[str, list[str]] = {
 
 def get_hardcoded_dependencies(path: PathStr, obj_tree: PathStr, src_tree: PathStr) -> list[PathStr]:
     """
-    Some files in the Linux kernel build process are not tracked by the .cmd dependency mechanism.
-    This function provides a temporary workaround by manually specifying known missing dependencies required to correctly model the build graph.
+    Some files in the kernel build process are not tracked by the .cmd dependency mechanism.
+    Parsing these dependencies programmatically is too complex for the scope of this project.
+    Therefore, this function provides manually defined dependencies to be added to the build graph.
 
     Args:
-        path (Path): absolute path to a file within the src tree or object tree.
-        obj_tree (Path): absolute Path to the base directory of the object tree.
-        src_tree (Path): absolute Path to the `linux` source directory.
+        path: absolute path to a file within the src tree or object tree.
+        obj_tree: absolute Path to the base directory of the object tree.
+        src_tree: absolute Path to the `linux` source directory.
 
     Returns:
-        list[Path]: A list of dependency file paths (relative to the object tree) required to build the file at the given path.
+        list[PathStr]: A list of dependency file paths (relative to the object tree) required to build the file at the given path.
     """
     if is_relative_to(path, obj_tree):
         path = os.path.relpath(path, obj_tree)
@@ -62,12 +63,12 @@ def get_hardcoded_dependencies(path: PathStr, obj_tree: PathStr, src_tree: PathS
 
 def _evaluate_template(template: str, variables: dict[str, Callable[[], str | None]]) -> str | None:
     for key, value_function in variables.items():
-        templateKey = "{" + key + "}"
-        if templateKey in template:
+        template_key = "{" + key + "}"
+        if template_key in template:
             value = value_function()
             if value is None:
                 return None
-            template = template.replace(templateKey, value)
+            template = template.replace(template_key, value)
     return template
 
 

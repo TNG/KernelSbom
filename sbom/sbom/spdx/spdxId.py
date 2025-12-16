@@ -19,7 +19,6 @@ class SpdxIdGenerator:
         Args:
             namespace: The full namespace to use for generated IDs.
             prefix: Optional. If provided, generated IDs will use this prefix instead of the full namespace.
-            default: Whether to use this namespace as the default namespace when generating
         """
         self._namespace = namespace
         self._prefix = prefix
