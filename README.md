@@ -29,8 +29,7 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` 
     ```
 3. Run the [sbom.py](sbom/sbom.py) script
     ```bash
-    export SRCARCH=x86
-    python3 sbom/sbom.py \
+    SRCARCH=x86 python3 sbom/sbom.py \
       --src-tree ../linux \
       --obj-tree ../linux/kernel_build \
       --roots arch/x86/boot/bzImage \
@@ -61,8 +60,7 @@ sed 's/\.o$/.ko/' <obj_tree>/modules.order >> roots.txt
 ```
 Then pass the roots file to the main script:
 ```bash
-export SRCARCH=x86
-python3 sbom/sbom.py \
+SRCARCH=x86 python3 sbom/sbom.py \
   --src-tree ../linux \
   --obj-tree ../linux/kernel_build \
   --roots-file roots.txt \
