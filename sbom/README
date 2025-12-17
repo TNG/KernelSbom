@@ -58,7 +58,6 @@ SPDX documents in the root directory of the object tree:
   build command used and establishes the relationship between
   input files and generated outputs.
 
-
 When enabling the KernelSbom tool, it is recommended to perform
 out-of-tree builds using `O=<objtree>`. KernelSbom classifies files as
 source files when they are located in the source tree and not in the
@@ -66,7 +65,6 @@ object tree. For in-tree builds, where the source and object trees are
 the same directory, this distinction can no longer be made reliably.
 In that case, KernelSbom does not generate a dedicated source SBOM.
 Instead, source files are included in the build SBOM.
-
 
 Standalone Usage
 ----------------
@@ -94,28 +92,6 @@ architecture for which the build was performed.
 For a full list of command-line options, run:
 
     $ python3 tools/sbom/sbom.py --help
-
-
-Output Format
--------------
-
-KernelSbom generates documents conforming to the
-[SPDX 3.0.1 specification](https://spdx.github.io/spdx-spec/v3.0.1/)
-serialized as JSON-LD. To reduce file size, the output documents use the
-JSON-LD `@context` to define custom prefixes for `spdxId` values. While
-this is compliant with the SPDX specification, only a limited number of
-tools in the current SPDX ecosystem support custom JSON-LD contexts.
-To allow working with such external tools the `expand-custom-context.sh`
-script can be used on the generated SPDX documents.
-For example:
-```bash
-curl -sLO https://github.com/TNG/KernelSbom/raw/refs/heads/main/.github/scripts/sbom/expand-custom-context.sh
-chmod +x expand-custom-context.sh
-./expand-custom-context.sh \
-  sbom-source.spdx.json \
-  sbom-build.spdx.json \
-  sbom-output.spdx.json
-```
 
 How it Works
 ------------
@@ -165,7 +141,6 @@ For every file in the graph, KernelSbom:
 
 Each root output file is additionally associated with an SPDX Package
 element that captures version information, license data, and copyright.
-
 
 Advanced Usage
 --------------
