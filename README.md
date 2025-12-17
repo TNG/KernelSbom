@@ -1,6 +1,6 @@
 <!--
 SPDX-License-Identifier: GPL-2.0-only OR MIT
-SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+Copyright (C) 2025 TNG Technology Consulting GmbH
 -->
 
 # KernelSbom
@@ -275,12 +275,7 @@ pip install pre-commit reuse ruff
 pre-commit install
 ```
 
-When committing, `reuse lint` is run as a pre-commit hook to ensure all files have compliant license headers.  
-If any file is missing a license header, it can be added using:
-```
-reuse annotate --license="GPL-2.0-only OR MIT" --copyright="TNG Technology Consulting GmbH" --template default <filename>
-```
-> **Note:** If the annotated file contains a shebang, `reuse annotate` will insert an empty line after it. This empty line must be removed manually.
+When committing, `reuse lint` is run as a pre-commit hook to ensure all files have compliant license headers.
 
 ## Run tests
 Unit tests can be found in `sbom/tests`. These are designed to be contributed upstream to the `linux` kernel repository.

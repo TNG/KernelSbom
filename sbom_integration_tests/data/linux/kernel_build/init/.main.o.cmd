@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: GPL-2.0-only
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+# SPDX-License-Identifier: GPL-2.0-only OR MIT
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 savedcmd_init/main.o := gcc -c -o init/main.o ../init/main.c
 

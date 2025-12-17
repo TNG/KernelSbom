@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-2.0-only
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+# SPDX-License-Identifier: GPL-2.0-only OR MIT
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 # This script expands custom namespace prefixes to their full namespace URIs
 # throughout the document and replaces the @context array with just the

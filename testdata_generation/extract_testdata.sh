@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
-# SPDX-FileCopyrightText: Maximilian Huber <maximilian.huber@tngtech.com>
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 set -euo pipefail
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 SBOM_SOURCE_FILE = $(objtree)/sbom-source.spdx.json
 SBOM_BUILD_FILE = $(objtree)/sbom-build.spdx.json

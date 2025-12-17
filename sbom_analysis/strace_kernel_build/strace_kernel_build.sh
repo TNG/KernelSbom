@@ -1,6 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0-only OR MIT
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only OR MIT
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 set -euo pipefail
 
 SRC_TREE="../../../linux.v6.17.tinyconfig.x86"  # relative to script root

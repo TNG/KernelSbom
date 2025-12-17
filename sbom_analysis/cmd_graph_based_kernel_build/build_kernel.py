@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
-
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher
