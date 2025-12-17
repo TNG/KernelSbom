@@ -82,7 +82,10 @@ class SpdxSourceGraph(SpdxGraph):
         src_tree_contains_relationship.to = source_file_elements
 
         source_graph = SpdxSourceGraph(
-            source_spdx_document, shared_elements.agent, shared_elements.creation_info, source_sbom
+            source_spdx_document,
+            shared_elements.agent,
+            shared_elements.creation_info,
+            source_sbom,
         )
         return source_graph
 
@@ -91,7 +94,8 @@ def source_file_license_elements(
     source_files: list[KernelFile], spdx_id_generator: SpdxIdGenerator
 ) -> tuple[list[LicenseExpression], list[Relationship]]:
     """
-    Creates SPDX license expressions and links them to the given source files via hasDeclaredLicense relationships.
+    Creates SPDX license expressions and links them to the given source files
+    via hasDeclaredLicense relationships.
 
     Args:
         source_files: List of files within the kernel source tree.

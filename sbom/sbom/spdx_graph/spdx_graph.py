@@ -67,7 +67,9 @@ def build_spdx_graphs(
         spdx_graphs[KernelSpdxDocumentKind.SOURCE] = source_graph
     else:
         sbom_logging.warning(
-            "Skipped creating a dedicated source SBOM because source files cannot be reliably classified when the source and object trees are identical. Added source files to the build SBOM instead."
+            "Skipped creating a dedicated source SBOM because source files cannot be "
+            "reliably classified when the source and object trees are identical. "
+            "Added source files to the build SBOM instead."
         )
 
     build_graph = SpdxBuildGraph.create(

@@ -42,7 +42,8 @@ class SpdxOutputGraph(SpdxGraph):
     ) -> "SpdxOutputGraph":
         """
         Args:
-            root_files: List of distributable output files which act as roots of the dependency graph.
+            root_files: List of distributable output files which act as roots
+                of the dependency graph.
             shared_elements: Shared SPDX elements used across multiple documents.
             spdx_id_generators: Collection of SPDX ID generators.
             config: Configuration options.
@@ -76,7 +77,10 @@ class SpdxOutputGraph(SpdxGraph):
             is_output=True,
         ).spdx_file_element
         high_level_build_element, high_level_build_element_hasOutput_relationship = _high_level_build_elements(
-            config.build_type, config.build_id, config_source_element, spdx_id_generators.output
+            config.build_type,
+            config.build_id,
+            config_source_element,
+            spdx_id_generators.output,
         )
 
         # Root file elements
@@ -156,7 +160,10 @@ def _get_package_name(filename: str) -> str:
 
 
 def _high_level_build_elements(
-    build_type: str, build_id: str | None, config_source_element: File, spdx_id_generator: SpdxIdGenerator
+    build_type: str,
+    build_id: str | None,
+    config_source_element: File,
+    spdx_id_generator: SpdxIdGenerator,
 ) -> tuple[Build, Relationship]:
     build_spdxId = spdx_id_generator.generate()
     high_level_build_element = Build(

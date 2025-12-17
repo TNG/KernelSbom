@@ -31,10 +31,12 @@ class KernelSbomConfig:
     """Whether to generate SPDX SBOM documents. If False, no SPDX files are created."""
 
     spdx_file_names: dict[KernelSpdxDocumentKind, str]
-    """If `generate_spdx` is True, defines the file names for each SPDX SBOM kind (source, build, output) to store on disk."""
+    """If `generate_spdx` is True, defines the file names for each SPDX SBOM kind
+    (source, build, output) to store on disk."""
 
     generate_used_files: bool
-    """Whether to generate a flat list of all source files used in the build. If False, no used-files document is created."""
+    """Whether to generate a flat list of all source files used in the build.
+    If False, no used-files document is created."""
 
     used_files_file_name: str
     """If `generate_used_files` is True, specifies the file name for the used-files document."""
@@ -113,15 +115,23 @@ def _parse_cli_arguments() -> dict[str, Any]:
         "--generate-spdx",
         action="store_true",
         default=False,
-        help="Whether to create sbom-source.spdx.json, sbom-build.spdx.json and sbom-output.spdx.json documents (default: False)",
+        help=(
+            "Whether to create sbom-source.spdx.json, sbom-build.spdx.json and "
+            "sbom-output.spdx.json documents (default: False)"
+        ),
     )
     parser.add_argument(
         "--generate-used-files",
         action="store_true",
         default=False,
-        help="Whether to create the sbom.used-files.txt file, a flat list of all source files used for the kernel build.\n"
-        "If src-tree and obj-tree are equal it is not possible to reliably classify source files.\n"
-        "In this case sbom.used-files.txt will contain all files used for the kernel build including all build artifacts. (default: False)",
+        help=(
+            "Whether to create the sbom.used-files.txt file, a flat list of all "
+            "source files used for the kernel build.\n"
+            "If src-tree and obj-tree are equal it is not possible to reliably "
+            "classify source files.\n"
+            "In this case sbom.used-files.txt will contain all files used for the "
+            "kernel build including all build artifacts. (default: False)"
+        ),
     )
     parser.add_argument(
         "--output-directory",
@@ -150,8 +160,10 @@ def _parse_cli_arguments() -> dict[str, Any]:
         action="store_true",
         default=False,
         help=(
-            "Write output documents even if errors occur. The resulting documents may be incomplete.\n"
-            "A summary of warnings and errors can be found in the 'comment' property of the CreationInfo element. (default: False)"
+            "Write output documents even if errors occur. The resulting documents "
+            "may be incomplete.\n"
+            "A summary of warnings and errors can be found in the 'comment' property "
+            "of the CreationInfo element. (default: False)"
         ),
     )
 
@@ -160,8 +172,12 @@ def _parse_cli_arguments() -> dict[str, Any]:
     spdx_group.add_argument(
         "--created",
         default=None,
-        help="The SPDX created property to use for the CreationInfo element in ISO format (YYYY-MM-DD [HH:MM:SS]).\n"
-        "If not provided the last modification time of the first root output is used. (default: None)",
+        help=(
+            "The SPDX created property to use for the CreationInfo element in "
+            "ISO format (YYYY-MM-DD [HH:MM:SS]).\n"
+            "If not provided the last modification time of the first root output "
+            "is used. (default: None)"
+        ),
     )
     spdx_group.add_argument(
         "--spdxId-prefix",
@@ -182,7 +198,10 @@ def _parse_cli_arguments() -> dict[str, Any]:
     spdx_group.add_argument(
         "--package-license",
         default="NOASSERTION",
-        help="The SPDX licenseExpression property to use for the LicenseExpression linked to all SPDX Package elements. (default: NOASSERTION)",
+        help=(
+            "The SPDX licenseExpression property to use for the LicenseExpression "
+            "linked to all SPDX Package elements. (default: NOASSERTION)"
+        ),
     )
     spdx_group.add_argument(
         "--package-version",
@@ -192,8 +211,12 @@ def _parse_cli_arguments() -> dict[str, Any]:
     spdx_group.add_argument(
         "--package-copyright-text",
         default=None,
-        help="The SPDX copyrightText property to use for all SPDX Package elements.\n"
-        "If not specified, and if a COPYING file exists in the source tree, the package-copyright-text is set to the content of this file. (default: None)",
+        help=(
+            "The SPDX copyrightText property to use for all SPDX Package elements.\n"
+            "If not specified, and if a COPYING file exists in the source tree,\n"
+            "the package-copyright-text is set to the content of this file. "
+            "(default: None)"
+        ),
     )
     spdx_group.add_argument(
         "--prettify-json",
@@ -242,7 +265,8 @@ def get_config() -> KernelSbomConfig:
             created = datetime.fromisoformat(args["created"])
         except ValueError:
             raise argparse.ArgumentTypeError(
-                f"Invalid date format for argument '--created': '{args['created']}'. Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
+                f"Invalid date format for argument '--created': '{args['created']}'. "
+                "Expected ISO format (YYYY-MM-DD [HH:MM:SS])."
             )
     spdxId_prefix = args["spdxId_prefix"]
     build_type = args["build_type"]

@@ -37,9 +37,10 @@ class KernelFile:
     file_location: KernelFileLocation
     """Location of the file relative to the source/object trees."""
     name: str
-    """Name of the file element. Should be relative to the source tree if file_location equals SOURCE_TREE
-    and relative to the object tree if file_location equals OBJ_TREE. If file_location equals EXTERNAL,
-    the absolute path is used."""
+    """Name of the file element. Should be relative to the source tree if
+    file_location equals SOURCE_TREE and relative to the object tree if
+    file_location equals OBJ_TREE. If file_location equals EXTERNAL, the
+    absolute path is used."""
     license_identifier: str | None
     """SPDX license ID if file_location equals SOURCE_TREE or BOTH; otherwise None."""
     spdx_id_generator: SpdxIdGenerator
@@ -114,7 +115,11 @@ class KernelFileCollection:
 
     @classmethod
     def create(
-        cls, cmd_graph: CmdGraph, obj_tree: PathStr, src_tree: PathStr, spdx_id_generators: SpdxIdGeneratorCollection
+        cls,
+        cmd_graph: CmdGraph,
+        obj_tree: PathStr,
+        src_tree: PathStr,
+        spdx_id_generators: SpdxIdGeneratorCollection,
     ) -> "KernelFileCollection":
         source: dict[PathStr, KernelFile] = {}
         build: dict[PathStr, KernelFile] = {}
@@ -122,7 +127,13 @@ class KernelFileCollection:
         root_node_paths = {node.absolute_path for node in cmd_graph.roots}
         for node in cmd_graph:
             is_root = node.absolute_path in root_node_paths
-            kernel_file = KernelFile.create(node.absolute_path, obj_tree, src_tree, spdx_id_generators, is_root)
+            kernel_file = KernelFile.create(
+                node.absolute_path,
+                obj_tree,
+                src_tree,
+                spdx_id_generators,
+                is_root,
+            )
             if is_root:
                 output[kernel_file.absolute_path] = kernel_file
             elif kernel_file.file_location == KernelFileLocation.SOURCE_TREE:
@@ -143,16 +154,19 @@ def _build_file_element(absolute_path: PathStr, name: str, spdx_id: SpdxId, file
         verifiedUsing = [Hash(algorithm="sha256", hashValue=_sha256(absolute_path))]
         content_identifier = [
             ContentIdentifier(
-                software_contentIdentifierType="gitoid", software_contentIdentifierValue=_git_blob_oid(absolute_path)
+                software_contentIdentifierType="gitoid",
+                software_contentIdentifierValue=_git_blob_oid(absolute_path),
             )
         ]
     elif file_location == KernelFileLocation.EXTERNAL:
         sbom_logging.warning(
-            "Cannot compute hash for {absolute_path} because file does not exist.", absolute_path=absolute_path
+            "Cannot compute hash for {absolute_path} because file does not exist.",
+            absolute_path=absolute_path,
         )
     else:
         sbom_logging.error(
-            "Cannot compute hash for {absolute_path} because file does not exist.", absolute_path=absolute_path
+            "Cannot compute hash for {absolute_path} because file does not exist.",
+            absolute_path=absolute_path,
         )
 
     # primary purpose
