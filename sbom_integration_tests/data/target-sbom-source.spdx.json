@@ -2,8 +2,8 @@
   "@context": [
     "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
     {
-      "s": "urn:spdx.dev:3ccad1c4-125c-5a46-85a0-0dbb62db5f54/source/",
-      "p": "urn:spdx.dev:3ccad1c4-125c-5a46-85a0-0dbb62db5f54/"
+      "s": "urn:spdx.dev:f4890f53-4343-52e4-9b9e-44919fd5749f/source/",
+      "p": "urn:spdx.dev:f4890f53-4343-52e4-9b9e-44919fd5749f/"
     }
   ],
   "@graph": [
@@ -87,7 +87,7 @@
       "verifiedUsing": [
         {
           "type": "Hash",
-          "hashValue": "3789cc0ebed37450664600fb2a69230f492248d6db676c0bcce6eee77e57a4d3",
+          "hashValue": "7f01b08fafc3ddf3e82076d50ff12048eb2fb2207b7bbee5d851f139d4670e8f",
           "algorithm": "sha256"
         }
       ],
@@ -96,7 +96,7 @@
         {
           "type": "software_ContentIdentifier",
           "software_contentIdentifierType": "gitoid",
-          "software_contentIdentifierValue": "915c114ce81bd45cfe77493438cf0377a6609777"
+          "software_contentIdentifierValue": "5060396671b6afd406dd230dc06d968c639161e4"
         }
       ]
     },
@@ -108,7 +108,7 @@
       "verifiedUsing": [
         {
           "type": "Hash",
-          "hashValue": "195786e455fadb3b94d3be5013230efd8fb0954a0302c114a8383fa30a854380",
+          "hashValue": "2feb5378a32f032dfd3590f7e35de6ac19d7b7f5b073f3b81ca09d7c0eae6344",
           "algorithm": "sha256"
         }
       ],
@@ -117,7 +117,7 @@
         {
           "type": "software_ContentIdentifier",
           "software_contentIdentifierType": "gitoid",
-          "software_contentIdentifierValue": "116481228279a417b76036354288b2c039c7d3c3"
+          "software_contentIdentifierValue": "06b6e8b0527d50514367e5a2f0ec1ab68cb44801"
         }
       ]
     },
@@ -129,7 +129,7 @@
       "verifiedUsing": [
         {
           "type": "Hash",
-          "hashValue": "13873c13f30f006bf5bbac466423e046a7ec0ddae01148613a6ab0dafa56fe41",
+          "hashValue": "9be3570429557385a15bffdd4aad077e59cffa4b93964601d0166b9e82388269",
           "algorithm": "sha256"
         }
       ],
@@ -138,7 +138,7 @@
         {
           "type": "software_ContentIdentifier",
           "software_contentIdentifierType": "gitoid",
-          "software_contentIdentifierValue": "5d1ccb92e2f8d13e580606c80a982f4b2c7016f4"
+          "software_contentIdentifierValue": "fa60dc57d6c8687b31470a614cccd52e3163ba1c"
         }
       ]
     },
@@ -150,7 +150,7 @@
       "verifiedUsing": [
         {
           "type": "Hash",
-          "hashValue": "1969da34e22908f4a7d9d78cbb7977b69839159b9948d0798ec001f51c08ced0",
+          "hashValue": "95a6f216f78368b62bee7211ad1d3fc1ea687e60b30996b850d82e2e7e8ebbfc",
           "algorithm": "sha256"
         }
       ],
@@ -159,7 +159,7 @@
         {
           "type": "software_ContentIdentifier",
           "software_contentIdentifierType": "gitoid",
-          "software_contentIdentifierValue": "b3b0cbc38d722e9ea8b6fe8edd148618579c3dd4"
+          "software_contentIdentifierValue": "a9da282f20fe6bdcaefa1d3e57977bf0664a44d5"
         }
       ]
     },
@@ -167,7 +167,7 @@
       "type": "simplelicensing_LicenseExpression",
       "spdxId": "s:8",
       "creationInfo": "_:creationinfo",
-      "simplelicensing_licenseExpression": "GPL-2.0-only"
+      "simplelicensing_licenseExpression": "GPL-2.0-only OR MIT"
     },
     {
       "type": "Relationship",

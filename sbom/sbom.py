@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 """
 Compute software bill of materials in SPDX format describing a kernel build.
@@ -26,7 +26,10 @@ def main():
     config = get_config()
 
     # Configure logging
-    logging.basicConfig(level=logging.DEBUG if config.debug else logging.INFO, format="[%(levelname)s] %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG if config.debug else logging.INFO,
+        format="[%(levelname)s] %(message)s",
+    )
 
     # Build cmd graph
     logging.debug("Start building cmd graph")
@@ -38,7 +41,9 @@ def main():
     if config.generate_used_files:
         if config.src_tree == config.obj_tree:
             sbom_logging.warning(
-                "Extracting all files from the cmd graph to {used_files_file_name} instead of only source files because source files cannot be reliably classified when the source and object trees are identical.",
+                "Extracting all files from the cmd graph to {used_files_file_name} "
+                "instead of only source files because source files cannot be "
+                "reliably classified when the source and object trees are identical.",
                 used_files_file_name=config.used_files_file_name,
             )
             used_files = [os.path.relpath(node.absolute_path, config.src_tree) for node in cmd_graph]
@@ -52,9 +57,10 @@ def main():
             ]
             logging.debug(f"Found {len(used_files)} source files in cmd graph")
         if not sbom_logging.has_errors() or config.write_output_on_error:
-            with open(os.path.join(config.output_directory, config.used_files_file_name), "w", encoding="utf-8") as f:
+            used_files_path = os.path.join(config.output_directory, config.used_files_file_name)
+            with open(used_files_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(str(file_path) for file_path in used_files))
-            logging.debug(f"Successfully saved {os.path.join(config.output_directory, config.used_files_file_name)}")
+            logging.debug(f"Successfully saved {used_files_path}")
 
     if config.generate_spdx is False:
         return
@@ -63,7 +69,8 @@ def main():
     logging.debug("Start generating SPDX graph based on cmd graph")
     start_time = time.time()
 
-    # The real uuid will be generated based on the content of the SPDX graphs to ensure that the same SPDX document is always assigned the same uuid.
+    # The real uuid will be generated based on the content of the SPDX graphs
+    # to ensure that the same SPDX document is always assigned the same uuid.
     PLACEHOLDER_UUID = "00000000-0000-0000-0000-000000000000"
     spdx_id_base_namespace = f"{config.spdxId_prefix}{PLACEHOLDER_UUID}/"
     spdx_id_generators = SpdxIdGeneratorCollection(

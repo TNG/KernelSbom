@@ -1,6 +1,6 @@
 <!--
 SPDX-License-Identifier: GPL-2.0-only OR MIT
-SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+Copyright (C) 2025 TNG Technology Consulting GmbH
 -->
 
 # KernelSbom
@@ -29,8 +29,7 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` 
     ```
 3. Run the [sbom.py](sbom/sbom.py) script
     ```bash
-    export SRCARCH=x86
-    python3 sbom/sbom.py \
+    SRCARCH=x86 python3 sbom/sbom.py \
       --src-tree ../linux \
       --obj-tree ../linux/kernel_build \
       --roots arch/x86/boot/bzImage \
@@ -61,8 +60,7 @@ sed 's/\.o$/.ko/' <obj_tree>/modules.order >> roots.txt
 ```
 Then pass the roots file to the main script:
 ```bash
-export SRCARCH=x86
-python3 sbom/sbom.py \
+SRCARCH=x86 python3 sbom/sbom.py \
   --src-tree ../linux \
   --obj-tree ../linux/kernel_build \
   --roots-file roots.txt \
@@ -277,12 +275,7 @@ pip install pre-commit reuse ruff
 pre-commit install
 ```
 
-When committing, `reuse lint` is run as a pre-commit hook to ensure all files have compliant license headers.  
-If any file is missing a license header, it can be added using:
-```
-reuse annotate --license="GPL-2.0-only OR MIT" --copyright="TNG Technology Consulting GmbH" --template default <filename>
-```
-> **Note:** If the annotated file contains a shebang, `reuse annotate` will insert an empty line after it. This empty line must be removed manually.
+When committing, `reuse lint` is run as a pre-commit hook to ensure all files have compliant license headers.
 
 ## Run tests
 Unit tests can be found in `sbom/tests`. These are designed to be contributed upstream to the `linux` kernel repository.

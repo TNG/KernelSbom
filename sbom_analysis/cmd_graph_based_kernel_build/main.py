@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 # ruff: noqa: E402
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
-# SPDX-FileCopyrightText: 2025 TNG Technology Consulting GmbH
+# Copyright (C) 2025 TNG Technology Consulting GmbH
 
 from datetime import datetime
 from typing import Protocol
@@ -67,7 +67,9 @@ def build_spdx_graphs(
         spdx_graphs[KernelSpdxDocumentKind.SOURCE] = source_graph
     else:
         sbom_logging.warning(
-            "Skipped creating a dedicated source SBOM because source files cannot be reliably classified when the source and object trees are identical. Added source files to the build SBOM instead."
+            "Skipped creating a dedicated source SBOM because source files cannot be "
+            "reliably classified when the source and object trees are identical. "
+            "Added source files to the build SBOM instead."
         )
 
     build_graph = SpdxBuildGraph.create(
