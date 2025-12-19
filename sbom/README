@@ -93,6 +93,21 @@ For a full list of command-line options, run:
 
     $ python3 tools/sbom/sbom.py --help
 
+Output Format
+-------------
+
+KernelSbom generates documents conforming to the
+[SPDX 3.0.1 specification](https://spdx.github.io/spdx-spec/v3.0.1/)
+serialized as JSON-LD.
+
+To reduce file size, the output documents use the JSON-LD `@context`
+to define custom prefixes for `spdxId` values. While this is compliant
+with the SPDX specification, only a limited number of tools in the
+current SPDX ecosystem support custom JSON-LD contexts. To use such
+tools with the generated documents, the custom JSON-LD context must
+be expanded before providing the documents.
+See https://lists.spdx.org/g/Spdx-tech/message/6064 for more information.
+
 How it Works
 ------------
 

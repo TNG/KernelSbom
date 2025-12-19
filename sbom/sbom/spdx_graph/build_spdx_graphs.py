@@ -57,14 +57,12 @@ def build_spdx_graphs(
         KernelSpdxDocumentKind.OUTPUT: output_graph,
     }
 
-    source_graph: SpdxGraph | None = None
     if len(kernel_files.source) > 0:
-        source_graph = SpdxSourceGraph.create(
+        spdx_graphs[KernelSpdxDocumentKind.SOURCE] = SpdxSourceGraph.create(
             source_files=list(kernel_files.source.values()),
             shared_elements=shared_elements,
             spdx_id_generators=spdx_id_generators,
         )
-        spdx_graphs[KernelSpdxDocumentKind.SOURCE] = source_graph
     else:
         sbom_logging.warning(
             "Skipped creating a dedicated source SBOM because source files cannot be "

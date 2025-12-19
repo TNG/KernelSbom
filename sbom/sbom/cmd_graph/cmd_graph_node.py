@@ -110,16 +110,20 @@ class CmdGraphNode:
         def _build_child_node(child_path: PathStr) -> "CmdGraphNode":
             return CmdGraphNode.create(child_path, config, cache, depth + 1)
 
-        for hardcoded_dependency_path in get_hardcoded_dependencies(
-            target_path_absolute, config.obj_tree, config.src_tree
-        ):
-            node.hardcoded_dependencies.append(_build_child_node(hardcoded_dependency_path))
+        node.hardcoded_dependencies = [
+            _build_child_node(hardcoded_dependency_path)
+            for hardcoded_dependency_path in get_hardcoded_dependencies(
+                target_path_absolute, config.obj_tree, config.src_tree
+            )
+        ]
 
         if cmd_file is not None:
-            for cmd_file_dependency_path in cmd_file.get_dependencies(
-                target_path, config.obj_tree, config.fail_on_unknown_build_command
-            ):
-                node.cmd_file_dependencies.append(_build_child_node(cmd_file_dependency_path))
+            node.cmd_file_dependencies = [
+                _build_child_node(cmd_file_dependency_path)
+                for cmd_file_dependency_path in cmd_file.get_dependencies(
+                    target_path, config.obj_tree, config.fail_on_unknown_build_command
+                )
+            ]
 
         if node.absolute_path.endswith(".S"):
             node.incbin_dependencies = [

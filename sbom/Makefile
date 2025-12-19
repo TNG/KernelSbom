@@ -22,8 +22,8 @@ $(SBOM_TARGETS) &:
       --src-tree ../../.. \
       --obj-tree $(objtree) \
       --roots $(roots) \
-      --generate-spdx \
       --output-directory $(objtree) \
+      --generate-spdx \
       --package-license "GPL-2.0 WITH Linux-syscall-note" \
       --package-version "$(KERNELVERSION)"
 
