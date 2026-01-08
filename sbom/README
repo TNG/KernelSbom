@@ -167,15 +167,15 @@ The list of all `.ko` kernel modules produced during a build can be
 extracted from the `modules.order` file within the object tree.
 For example:
 
-    $ echo "arch/x86/boot/bzImage" > roots.txt
-    $ sed 's/\.o$/.ko/' ./kernel_build/modules.order >> roots.txt
+    $ echo "arch/x86/boot/bzImage" > sbom-roots.txt
+    $ sed 's/\.o$/.ko/' ./kernel_build/modules.order >> sbom-roots.txt
 
 Then use the generated roots file:
 
     $ SRCARCH=x86 python3 tools/sbom/sbom.py \
         --src-tree . \
         --obj-tree ./kernel_build \
-        --roots-file roots.txt \
+        --roots-file sbom-roots.txt \
         --generate-spdx
 
 
