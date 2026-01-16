@@ -4,7 +4,7 @@
 from datetime import datetime
 from typing import Protocol
 
-import sbom.sbom_logging as sbom_logging
+import logging
 from sbom.config import KernelSpdxDocumentKind
 from sbom.cmd_graph import CmdGraph
 from sbom.path_utils import PathStr
@@ -64,7 +64,7 @@ def build_spdx_graphs(
             spdx_id_generators=spdx_id_generators,
         )
     else:
-        sbom_logging.warning(
+        logging.info(
             "Skipped creating a dedicated source SBOM because source files cannot be "
             "reliably classified when the source and object trees are identical. "
             "Added source files to the build SBOM instead."
