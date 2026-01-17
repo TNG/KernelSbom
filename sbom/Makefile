@@ -17,12 +17,14 @@ endif
 
 sbom: $(SBOM_TARGETS)
 
-$(SBOM_ROOTS_FILE): $(objtree)/modules.order
-	@printf "%s\n" "$(KBUILD_IMAGE)" > $@
-	@sed 's/\.o$$/.ko/' $(objtree)/modules.order >> $@
-
-$(SBOM_TARGETS) &: $(SBOM_ROOTS_FILE)
+$(SBOM_TARGETS) &:
 	@echo "  GEN     $(notdir $(SBOM_TARGETS))"
+
+	@printf "%s\n" "$(KBUILD_IMAGE)" > $(SBOM_ROOTS_FILE)
+	@if [ -f $(objtree)/modules.order ]; then \
+		sed 's/\.o$$/.ko/' $(objtree)/modules.order >> $(SBOM_ROOTS_FILE); \
+	fi
+
 	@python3 sbom.py \
       --src-tree $(srctree) \
       --obj-tree $(objtree) \
@@ -31,5 +33,7 @@ $(SBOM_TARGETS) &: $(SBOM_ROOTS_FILE)
       --generate-spdx \
       --package-license "GPL-2.0 WITH Linux-syscall-note" \
       --package-version "$(KERNELVERSION)"
+
+	@rm $(SBOM_ROOTS_FILE)
 
 .PHONY: sbom
