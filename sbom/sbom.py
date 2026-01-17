@@ -40,11 +40,10 @@ def main():
     # Save used files document
     if config.generate_used_files:
         if config.src_tree == config.obj_tree:
-            sbom_logging.warning(
-                "Extracting all files from the cmd graph to {used_files_file_name} "
+            logging.info(
+                f"Extracting all files from the cmd graph to {(config.used_files_file_name,)} "
                 "instead of only source files because source files cannot be "
                 "reliably classified when the source and object trees are identical.",
-                used_files_file_name=config.used_files_file_name,
             )
             used_files = [os.path.relpath(node.absolute_path, config.src_tree) for node in cmd_graph]
             logging.debug(f"Found {len(used_files)} files in cmd graph.")
