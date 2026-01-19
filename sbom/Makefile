@@ -15,13 +15,18 @@ else
     SBOM_TARGETS := $(SBOM_BUILD_FILE) $(SBOM_OUTPUT_FILE)
 endif
 
+SBOM_DEPS := $(objtree)/$(KBUILD_IMAGE) $(objtree)/include/generated/autoconf.h
+ifdef CONFIG_MODULES
+    SBOM_DEPS += $(objtree)/modules.order
+endif
+
 sbom: $(SBOM_TARGETS)
 
-$(SBOM_TARGETS) &:
+$(SBOM_TARGETS) &: $(SBOM_DEPS)
 	@echo "  GEN     $(notdir $(SBOM_TARGETS))"
 
 	@printf "%s\n" "$(KBUILD_IMAGE)" > $(SBOM_ROOTS_FILE)
-	@if [ -f $(objtree)/modules.order ]; then \
+	@if [ "$(CONFIG_MODULES)" = "y" ]; then \
 		sed 's/\.o$$/.ko/' $(objtree)/modules.order >> $(SBOM_ROOTS_FILE); \
 	fi
 
