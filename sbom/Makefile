@@ -19,6 +19,7 @@ ifdef CONFIG_MODULES
 endif
 
 sbom: $(SBOM_TARGETS)
+	@:
 
 $(SBOM_TARGETS) &: $(SBOM_DEPS)
 	@echo "  GEN     $(notdir $(SBOM_TARGETS))"
