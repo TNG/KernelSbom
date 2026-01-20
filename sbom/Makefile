@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
-srctree := $(abspath ../../..)
-
 SBOM_SOURCE_FILE := $(objtree)/sbom-source.spdx.json
 SBOM_BUILD_FILE := $(objtree)/sbom-build.spdx.json
 SBOM_OUTPUT_FILE := $(objtree)/sbom-output.spdx.json
@@ -10,9 +8,9 @@ SBOM_ROOTS_FILE := $(objtree)/sbom-roots.txt
 
 
 ifeq ($(srctree),$(objtree))
-    SBOM_TARGETS := $(SBOM_SOURCE_FILE) $(SBOM_BUILD_FILE) $(SBOM_OUTPUT_FILE)
-else
     SBOM_TARGETS := $(SBOM_BUILD_FILE) $(SBOM_OUTPUT_FILE)
+else
+    SBOM_TARGETS := $(SBOM_SOURCE_FILE) $(SBOM_BUILD_FILE) $(SBOM_OUTPUT_FILE)
 endif
 
 SBOM_DEPS := $(objtree)/$(KBUILD_IMAGE) $(objtree)/include/generated/autoconf.h
