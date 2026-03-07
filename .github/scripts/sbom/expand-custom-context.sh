@@ -24,17 +24,24 @@ fi
 spdx_documents=("$@")
 
 for spdx_document in "${spdx_documents[@]}"; do
-    # Extract SPDX context URL and read JSON into variable
+    # Extract SPDX context URL
     spdx_context=$(jq -r '.["@context"][0]' "$spdx_document")
-    spdx_json=$(cat "$spdx_document")
+
+    # Create a temporary sed script
+    sed_script=$(mktemp)
 
     # Replace prefixes with full namespaces
     while IFS=$'\t' read -r prefix namespace; do
+        # Escape special characters for sed
         namespace_escaped=$(printf '%s\n' "$namespace" | sed 's/[[\.*^$()+?{|]/\\&/g')
-        spdx_json=$(echo "$spdx_json" | sed "s|\"${prefix}:|\"${namespace_escaped}|g")
+        echo "s|\"${prefix}:|\"${namespace_escaped}|g" >> "$sed_script"
     done < <(jq -r '.["@context"][1] | to_entries[] | "\(.key)\t\(.value)"' "$spdx_document")
 
     # Update @context and write to file
     output_file="$(dirname "$spdx_document")/${output_prefix}$(basename "$spdx_document")"
-    echo "$spdx_json" | jq --arg ctx "$spdx_context" '.["@context"] = $ctx' > "$output_file"
+    sed -f "$sed_script" "$spdx_document" |
+    jq --arg ctx "$spdx_context" '.["@context"] = $ctx' > "$output_file"
+
+    # Clean up temporary sed script
+    rm "$sed_script"
 done
