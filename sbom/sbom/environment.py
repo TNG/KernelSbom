@@ -152,8 +152,12 @@ class Environment:
     """
 
     @classmethod
-    def KERNEL_BUILD_VARIABLES(cls) -> dict[str, str | None]:
-        return {name: os.getenv(name) for name in KERNEL_BUILD_VARIABLES_ALLOWLIST}
+    def KERNEL_BUILD_VARIABLES(cls) -> dict[str, str]:
+        return {
+            name: value.strip()
+            for name in KERNEL_BUILD_VARIABLES_ALLOWLIST
+            if (value := os.getenv(name)) is not None and value.strip()
+        }
 
     @classmethod
     def ARCH(cls) -> str | None:
