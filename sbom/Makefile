@@ -18,26 +18,23 @@ ifdef CONFIG_MODULES
     SBOM_DEPS += $(objtree)/modules.order
 endif
 
-sbom: $(SBOM_TARGETS)
-	@:
-
 $(SBOM_TARGETS) &: $(SBOM_DEPS)
-	@echo "  GEN     $(notdir $(SBOM_TARGETS))"
+	$(Q)echo "  GEN     $(notdir $(SBOM_TARGETS))"
 
-	@printf "%s\n" "$(KBUILD_IMAGE)" > $(SBOM_ROOTS_FILE)
-	@if [ "$(CONFIG_MODULES)" = "y" ]; then \
+	$(Q)printf "%s\n" "$(KBUILD_IMAGE)" > $(SBOM_ROOTS_FILE)
+	$(Q)if [ "$(CONFIG_MODULES)" = "y" ]; then \
 		sed 's/\.o$$/.ko/' $(objtree)/modules.order >> $(SBOM_ROOTS_FILE); \
 	fi
 
-	@python3 sbom.py \
-      --src-tree $(srctree) \
-      --obj-tree $(objtree) \
-      --roots-file $(SBOM_ROOTS_FILE) \
-      --output-directory $(objtree) \
-      --generate-spdx \
-      --package-license "GPL-2.0 WITH Linux-syscall-note" \
-      --package-version "$(KERNELVERSION)"
+	$(Q)$(PYTHON3) $(srctree)/scripts/sbom/sbom.py \
+		--src-tree $(abspath $(srctree)) \
+		--obj-tree $(abspath $(objtree)) \
+		--roots-file $(SBOM_ROOTS_FILE) \
+		--output-directory $(abspath $(objtree)) \
+		--generate-spdx \
+		--package-license "GPL-2.0 WITH Linux-syscall-note" \
+		--package-version "$(KERNELVERSION)"
 
-	@rm $(SBOM_ROOTS_FILE)
+	$(Q)rm $(SBOM_ROOTS_FILE)
 
-.PHONY: sbom
+$(obj)/: $(SBOM_TARGETS)
