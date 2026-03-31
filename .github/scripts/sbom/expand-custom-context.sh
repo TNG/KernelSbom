@@ -39,8 +39,10 @@ for spdx_document in "${spdx_documents[@]}"; do
 
     # Update @context and write to file
     output_file="$(dirname "$spdx_document")/${output_prefix}$(basename "$spdx_document")"
+    tmp_output=$(mktemp)
     sed -f "$sed_script" "$spdx_document" |
-    jq --arg ctx "$spdx_context" '.["@context"] = $ctx' > "$output_file"
+    jq --arg ctx "$spdx_context" '.["@context"] = $ctx' > "$tmp_output"
+    mv "$tmp_output" "$output_file"
 
     # Clean up temporary sed script
     rm "$sed_script"
