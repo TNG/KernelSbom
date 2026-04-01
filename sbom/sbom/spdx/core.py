@@ -112,20 +112,10 @@ class SpdxDocument(ElementCollection):
 
 
 @dataclass(kw_only=True)
-class ExternalIdentifier(SpdxObject):
-    """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/ExternalIdentifier/"""
-
-    type: str = field(init=False, default="ExternalIdentifier")
-    externalIdentifierType: ExternalIdentifierType
-    identifier: str
-
-
-@dataclass(kw_only=True)
 class Agent(Element):
     """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/Agent/"""
 
     type: str = field(init=False, default="Agent")
-    externalIdentifier: list[ExternalIdentifier] = field(default_factory=list[ExternalIdentifier])
 
 
 @dataclass(kw_only=True)
@@ -169,8 +159,6 @@ class Artifact(Element):
     """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/Artifact/"""
 
     type: str = field(init=False, default="Artifact")
-    builtTime: str | None = None
-    originatedBy: list[Agent] = field(default_factory=list[Agent])
 
 
 @dataclass(kw_only=True)

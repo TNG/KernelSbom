@@ -47,7 +47,6 @@ class SoftwareArtifact(Artifact):
 
     type: str = field(init=False, default="software_Artifact")
     software_primaryPurpose: SoftwarePurpose | None = None
-    software_additionalPurpose: list[SoftwarePurpose] = field(default_factory=list[SoftwarePurpose])
     software_copyrightText: str | None = None
     software_contentIdentifier: list[ContentIdentifier] = field(default_factory=list[ContentIdentifier])
 
@@ -59,7 +58,6 @@ class Package(SoftwareArtifact):
     type: str = field(init=False, default="software_Package")
     name: str  # type: ignore
     software_packageVersion: str | None = None
-    software_downloadLocation: str | None = None
 
 
 @dataclass(kw_only=True)
