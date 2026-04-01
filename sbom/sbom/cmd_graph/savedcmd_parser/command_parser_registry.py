@@ -3,9 +3,10 @@
 
 import re
 import shlex
-from typing import Callable
+from typing import Callable, Iterator
 
 import sbom.sbom_logging as sbom_logging
+from sbom.environment import Environment
 from sbom.cmd_graph.savedcmd_parser.command_splitter import IfBlock, split_commands
 from sbom.cmd_graph.savedcmd_parser.tokenizer import (
     CmdParsingError,
@@ -14,6 +15,9 @@ from sbom.cmd_graph.savedcmd_parser.tokenizer import (
     tokenize_single_command_positionals_only,
 )
 from sbom.path_utils import PathStr
+
+CommandParser = Callable[[str], list[PathStr]]
+CommandParserRegistryEntry = tuple[re.Pattern[str], CommandParser]
 
 
 def _parse_dd_command(command: str) -> list[PathStr]:
@@ -30,7 +34,7 @@ def _parse_cat_command(command: str) -> list[PathStr]:
 
 
 def _parse_compound_command(command: str) -> list[PathStr]:
-    compound_command_parsers: list[tuple[re.Pattern[str], Callable[[str], list[PathStr]]]] = [
+    compound_command_parsers: list[CommandParserRegistryEntry] = [
         (re.compile(r"dd\b"), _parse_dd_command),
         (re.compile(r"cat.*?\|"), lambda c: _parse_cat_command(c.split("|")[0])),
         (re.compile(r"cat\b[^|>]*$"), _parse_cat_command),
@@ -357,66 +361,86 @@ def _parse_gen_header(command: str) -> list[PathStr]:
     return [command_parts[i + 1]]
 
 
-# Command parser registry
-SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr]]]] = [
-    # Compound commands
-    (re.compile(r"\(.*?\)\s*>", re.DOTALL), _parse_compound_command),
-    (re.compile(r"\{.*?\}\s*>", re.DOTALL), _parse_compound_command),
-    # Standard Unix utilities and system tools
-    (re.compile(r"^rm\b"), _parse_noop),
-    (re.compile(r"^mkdir\b"), _parse_noop),
-    (re.compile(r"^touch\b"), _parse_noop),
-    (re.compile(r"^cat\b.*?[\|>]"), lambda c: _parse_cat_command(c.split("|")[0].split(">")[0])),
-    (re.compile(r"^echo[^|]*$"), _parse_noop),
-    (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
-    (re.compile(r"^sed\b"), _parse_noop),
-    (re.compile(r"^awk.*?<.*?>"), lambda c: [c.split("<")[1].split(">")[0]]),
-    (re.compile(r"^awk.*?>"), lambda c: _parse_awk(c.split(">")[0])),
-    (re.compile(r"^(/bin/)?true\b"), _parse_noop),
-    (re.compile(r"^(/bin/)?false\b"), _parse_noop),
-    (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
-    # Compilers and code generators
-    # (C/LLVM toolchain, Rust, Flex/Bison, Bindgen, Perl, etc.)
-    (re.compile(r"^([^\s]+-)?(gcc|clang)\b"), _parse_gcc_or_clang_command),
-    (re.compile(r"^([^\s]+-)?ld(\.bfd)?\b"), _parse_ld_command),
-    (re.compile(r"^printf\b.*\| xargs ([^\s]+-)?ar\b"), _parse_ar_piped_xargs_command),
-    (re.compile(r"^([^\s]+-)?ar\b"), _parse_ar_command),
-    (re.compile(r"^([^\s]+-)?nm\b.*?\|"), _parse_nm_piped_command),
-    (re.compile(r"^([^\s]+-)?objcopy\b"), _parse_objcopy_command),
-    (re.compile(r"^([^\s]+-)?strip\b"), _parse_strip_command),
-    (re.compile(r".*?rustc\b"), _parse_rustc_command),
-    (re.compile(r".*?rustdoc\b"), _parse_rustdoc_command),
-    (re.compile(r"^flex\b"), _parse_flex_command),
-    (re.compile(r"^bison\b"), _parse_bison_command),
-    (re.compile(r"^bindgen\b"), _parse_bindgen_command),
-    (re.compile(r"^perl\b"), _parse_perl_command),
-    # Kernel-specific build scripts and tools
-    (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
-    (re.compile(r"sh (.*/)?syscallhdr\.sh\b"), _parse_syscallhdr_command),
-    (re.compile(r"sh (.*/)?syscalltbl\.sh\b"), _parse_syscalltbl_command),
-    (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
-    (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
-    (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
-    (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
-    (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
-    (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
-    (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
-    (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
-    (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
-    (re.compile(r"^(.*/)?tools/build\b"), _parse_tools_build_command),
-    (re.compile(r"^(.*/)?certs/extract-cert"), _parse_extract_cert_command),
-    (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
-    (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
-    (re.compile(r"^(.*/)?kernel/pi/relacheck"), _parse_relacheck),
-    (re.compile(r"^(.*/)?gen-hyprel\b"), _parse_gen_hyprel_command),
-    (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [c.split(" ")[1]]),
-    (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
-    (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
-    (re.compile(r"^(.*/)polgen\b"), _parse_noop),
-    (re.compile(r"make -f .*/arch/x86/Makefile\.postlink"), _parse_noop),
-    (re.compile(r"^(.*/)?raid6/mktables\s+>"), _parse_noop),
-    (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
-    (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
-    (re.compile(r"^(.*/)?gen_header.py"), _parse_gen_header),
-    (re.compile(r"^(.*/)?scripts/rustdoc_test_gen"), _parse_noop),
-]
+class CommandParserRegistry:
+    """
+    Registry mapping command patterns to their input-file parsers.
+    """
+
+    def __init__(self, entries: list[CommandParserRegistryEntry]) -> None:
+        self._entries = entries
+
+    def __iter__(self) -> Iterator[CommandParserRegistryEntry]:
+        return iter(self._entries)
+
+    @staticmethod
+    def create() -> "CommandParserRegistry":
+        cc_pattern = Environment.CC() or r"([^\s]+-)?(gcc|clang)"
+        ld_pattern = Environment.LD() or r"([^\s]+-)?ld"
+        ar_pattern = Environment.AR() or r"([^\s]+-)?ar"
+        nm_pattern = Environment.NM() or r"([^\s]+-)?nm"
+        objcopy_pattern = Environment.OBJCOPY() or r"([^\s]+-)?objcopy"
+        strip_pattern = Environment.STRIP() or r"([^\s]+-)?strip"
+
+        entries: list[CommandParserRegistryEntry] = [
+            # Compound commands
+            (re.compile(r"\(.*?\)\s*>", re.DOTALL), _parse_compound_command),
+            (re.compile(r"\{.*?\}\s*>", re.DOTALL), _parse_compound_command),
+            # Standard Unix utilities and system tools
+            (re.compile(r"^rm\b"), _parse_noop),
+            (re.compile(r"^mkdir\b"), _parse_noop),
+            (re.compile(r"^touch\b"), _parse_noop),
+            (re.compile(r"^cat\b.*?[\|>]"), lambda c: _parse_cat_command(c.split("|")[0].split(">")[0])),
+            (re.compile(r"^echo[^|]*$"), _parse_noop),
+            (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
+            (re.compile(r"^sed\b"), _parse_noop),
+            (re.compile(r"^awk.*?<.*?>"), lambda c: [c.split("<")[1].split(">")[0]]),
+            (re.compile(r"^awk.*?>"), lambda c: _parse_awk(c.split(">")[0])),
+            (re.compile(r"^(/bin/)?true\b"), _parse_noop),
+            (re.compile(r"^(/bin/)?false\b"), _parse_noop),
+            (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
+            # Compilers and code generators
+            # (C/LLVM toolchain, Rust, Flex/Bison, Bindgen, Perl, etc.)
+            (re.compile(rf"^{cc_pattern}\b"), _parse_gcc_or_clang_command),
+            (re.compile(rf"^{ld_pattern}\b"), _parse_ld_command),
+            (re.compile(rf"^printf\b.*\| xargs {ar_pattern}\b"), _parse_ar_piped_xargs_command),
+            (re.compile(rf"^{ar_pattern}\b"), _parse_ar_command),
+            (re.compile(rf"^{nm_pattern}\b.*?\|"), _parse_nm_piped_command),
+            (re.compile(rf"^{objcopy_pattern}\b"), _parse_objcopy_command),
+            (re.compile(rf"^{strip_pattern}\b"), _parse_strip_command),
+            (re.compile(r".*?rustc\b"), _parse_rustc_command),
+            (re.compile(r".*?rustdoc\b"), _parse_rustdoc_command),
+            (re.compile(r"^flex\b"), _parse_flex_command),
+            (re.compile(r"^bison\b"), _parse_bison_command),
+            (re.compile(r"^bindgen\b"), _parse_bindgen_command),
+            (re.compile(r"^perl\b"), _parse_perl_command),
+            # Kernel-specific build scripts and tools
+            (re.compile(r"^(.*/)?link-vmlinux\.sh\b"), _parse_link_vmlinux_command),
+            (re.compile(r"sh (.*/)?syscallhdr\.sh\b"), _parse_syscallhdr_command),
+            (re.compile(r"sh (.*/)?syscalltbl\.sh\b"), _parse_syscalltbl_command),
+            (re.compile(r"sh (.*/)?mkcapflags\.sh\b"), _parse_mkcapflags_command),
+            (re.compile(r"sh (.*/)?orc_hash\.sh\b"), _parse_orc_hash_command),
+            (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
+            (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
+            (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
+            (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
+            (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
+            (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
+            (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
+            (re.compile(r"^(.*/)?tools/build\b"), _parse_tools_build_command),
+            (re.compile(r"^(.*/)?certs/extract-cert"), _parse_extract_cert_command),
+            (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
+            (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
+            (re.compile(r"^(.*/)?kernel/pi/relacheck"), _parse_relacheck),
+            (re.compile(r"^(.*/)?gen-hyprel\b"), _parse_gen_hyprel_command),
+            (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [c.split(" ")[1]]),
+            (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
+            (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
+            (re.compile(r"^(.*/)polgen\b"), _parse_noop),
+            (re.compile(r"make -f .*/arch/x86/Makefile\.postlink"), _parse_noop),
+            (re.compile(r"^(.*/)?raid6/mktables\s+>"), _parse_noop),
+            (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
+            (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
+            (re.compile(r"^(.*/)?gen_header.py"), _parse_gen_header),
+            (re.compile(r"^(.*/)?scripts/rustdoc_test_gen"), _parse_noop),
+        ]
+        return CommandParserRegistry(entries)

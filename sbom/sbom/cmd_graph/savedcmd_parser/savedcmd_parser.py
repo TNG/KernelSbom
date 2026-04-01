@@ -4,18 +4,25 @@
 from typing import Any
 import sbom.sbom_logging as sbom_logging
 from sbom.cmd_graph.savedcmd_parser.command_splitter import IfBlock, split_commands
-from sbom.cmd_graph.savedcmd_parser.single_command_parsers import SINGLE_COMMAND_PARSERS
+from sbom.cmd_graph.savedcmd_parser.command_parser_registry import CommandParserRegistry
 from sbom.cmd_graph.savedcmd_parser.tokenizer import CmdParsingError
 from sbom.path_utils import PathStr
 
+DEFAULT_COMMAND_PARSER_REGISTRY = CommandParserRegistry.create()
 
-def parse_inputs_from_commands(commands: str, fail_on_unknown_build_command: bool) -> list[PathStr]:
+
+def parse_inputs_from_commands(
+    commands: str,
+    fail_on_unknown_build_command: bool,
+    registry: CommandParserRegistry | None = None,
+) -> list[PathStr]:
     """
     Extract input files referenced in a set of command-line commands.
 
     Args:
         commands (str): Command line expression to parse.
         fail_on_unknown_build_command (bool): Whether to fail if an unknown build command is encountered. If False, errors are logged as warnings.
+        registry (CommandParserRegistry | None): Registry of single command parsers.
 
     Returns:
         list[PathStr]: List of input file paths required by the commands.
@@ -27,10 +34,13 @@ def parse_inputs_from_commands(commands: str, fail_on_unknown_build_command: boo
         else:
             sbom_logging.warning(message, **kwargs)
 
+    if registry is None:
+        registry = DEFAULT_COMMAND_PARSER_REGISTRY
+
     input_files: list[PathStr] = []
     for single_command in split_commands(commands):
         if isinstance(single_command, IfBlock):
-            inputs = parse_inputs_from_commands(single_command.then_statement, fail_on_unknown_build_command)
+            inputs = parse_inputs_from_commands(single_command.then_statement, fail_on_unknown_build_command, registry)
             if inputs:
                 log_error_or_warning(
                     "Skipped parsing command {then_statement} because input files in IfBlock 'then' statement are not supported",
@@ -38,9 +48,7 @@ def parse_inputs_from_commands(commands: str, fail_on_unknown_build_command: boo
                 )
             continue
 
-        matched_parser = next(
-            (parser for pattern, parser in SINGLE_COMMAND_PARSERS if pattern.match(single_command)), None
-        )
+        matched_parser = next((parser for pattern, parser in registry if pattern.match(single_command)), None)
         if matched_parser is None:
             log_error_or_warning(
                 "Skipped parsing command {single_command} because no matching parser was found",
