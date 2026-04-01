@@ -1,16 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
+import os
 import unittest
 
 from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
+from sbom.cmd_graph.savedcmd_parser.command_parser_registry import CommandParserRegistry
 import sbom.sbom_logging as sbom_logging
 
 
 class TestSavedCmdParser(unittest.TestCase):
-    def _assert_parsing(self, cmd: str, expected: str) -> None:
+    def _assert_parsing(self, cmd: str, expected: str, registry: CommandParserRegistry | None = None) -> None:
         sbom_logging.init()
-        parsed = parse_inputs_from_commands(cmd, fail_on_unknown_build_command=False)
+        parsed = parse_inputs_from_commands(cmd, fail_on_unknown_build_command=False, registry=registry)
         target = [] if expected == "" else expected.split(" ")
         self.assertEqual(parsed, target)
         errors = sbom_logging._error_logger.messages  # type: ignore
@@ -109,6 +111,13 @@ class TestSavedCmdParser(unittest.TestCase):
         cmd = "gcc -Wp,-MMD,arch/x86/boot/compressed/.mkpiggy.d -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu11   -I ../scripts/include -I../tools/include  -I arch/x86/boot/compressed   -o arch/x86/boot/compressed/mkpiggy ../arch/x86/boot/compressed/mkpiggy.c"
         expected = "../arch/x86/boot/compressed/mkpiggy.c"
         self._assert_parsing(cmd, expected)
+
+    def test_gcc_with_ccache(self):
+        os.environ["CC"] = "ccache gcc"
+        registry = CommandParserRegistry.create()
+        cmd = "ccache gcc   -o arch/x86/tools/relocs arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+        expected = "arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+        self._assert_parsing(cmd, expected, registry)
 
     def test_clang(self):
         cmd = """clang -Wp,-MMD,arch/x86/entry/.entry_64_compat.o.d -nostdinc -I../arch/x86/include -I./arch/x86/include/generated -I../include -I./include -I../arch/x86/include/uapi -I./arch/x86/include/generated/uapi -I../include/uapi -I./include/generated/uapi -include ../include/linux/compiler-version.h -include ../include/linux/kconfig.h -D__KERNEL__ --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option -Werror=ignored-optimization-argument -Werror=option-ignored -Werror=unused-command-line-argument -fmacro-prefix-map=../= -Werror -D__ASSEMBLY__ -fno-PIE -m64 -I../arch/x86/entry -Iarch/x86/entry    -DKBUILD_MODFILE='"arch/x86/entry/entry_64_compat"' -DKBUILD_MODNAME='"entry_64_compat"' -D__KBUILD_MODNAME=kmod_entry_64_compat -c -o arch/x86/entry/entry_64_compat.o ../arch/x86/entry/entry_64_compat.S"""
