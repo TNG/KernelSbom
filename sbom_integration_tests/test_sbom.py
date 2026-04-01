@@ -42,8 +42,6 @@ class TestSbom(unittest.TestCase):
             "arch/x86/boot/bzImage",
             "--output-directory",
             f"{data_path}",
-            "--created",
-            "2025-12-09",
             "--prettify-json",
             "--generate-spdx",
             "--generate-used-files",
