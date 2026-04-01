@@ -259,6 +259,13 @@ def _parse_relacheck(command: str) -> list[PathStr]:
     return [positionals[1]]
 
 
+def _parse_gen_hyprel_command(command: str) -> list[PathStr]:
+    gen_hyprel_command, _ = command.split(">", 1)
+    command_parts = shlex.split(gen_hyprel_command)
+    # expect command_parts to be ["gen-hyprel", input]
+    return [command_parts[1]]
+
+
 def _parse_perl_command(command: str) -> list[PathStr]:
     positionals = tokenize_single_command_positionals_only(command.strip())
     # expect positionals to be ["perl", input]
@@ -401,6 +408,7 @@ SINGLE_COMMAND_PARSERS: list[tuple[re.Pattern[str], Callable[[str], list[PathStr
     (re.compile(r"^(.*/)?scripts/dtc/dtc\b"), _parse_dtc_command),
     (re.compile(r"^(.*/)?pnmtologo\b"), _parse_pnm_to_logo_command),
     (re.compile(r"^(.*/)?kernel/pi/relacheck"), _parse_relacheck),
+    (re.compile(r"^(.*/)?gen-hyprel\b"), _parse_gen_hyprel_command),
     (re.compile(r"^drivers/gpu/drm/radeon/mkregtable"), lambda c: [c.split(" ")[1]]),
     (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
     (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),

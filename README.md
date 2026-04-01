@@ -128,8 +128,6 @@ flowchart TD
 
     end
 
-    PACKAGE -->|originatedBy| AGENT
-
     subgraph BUILD_GRAPH["sbom-build.spdx.json"]
         BUILD_DOC["SpdxDocument"]
         BUILD_SBOM["Sbom"]
@@ -209,8 +207,6 @@ flowchart TD
         PACKAGE -->|hasDistributionArtifact| BZIMAGE
         PACKAGE -->|hasDeclaredLicense| PACKAGE_LICENSEEXPRESSION
     end
-
-    PACKAGE -->|originatedBy| AGENT
 
     %% SPDX DOCUMENTS
     subgraph BUILD_GRAPH["sbom-build.spdx.json"]
