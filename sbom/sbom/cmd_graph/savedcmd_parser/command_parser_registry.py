@@ -374,12 +374,17 @@ class CommandParserRegistry:
 
     @staticmethod
     def create() -> "CommandParserRegistry":
-        cc_pattern = Environment.CC() or r"([^\s]+-)?(gcc|clang)"
-        ld_pattern = Environment.LD() or r"([^\s]+-)?ld"
-        ar_pattern = Environment.AR() or r"([^\s]+-)?ar"
-        nm_pattern = Environment.NM() or r"([^\s]+-)?nm"
-        objcopy_pattern = Environment.OBJCOPY() or r"([^\s]+-)?objcopy"
-        strip_pattern = Environment.STRIP() or r"([^\s]+-)?strip"
+        def env_or_default_pattern(env_value: str | None, default_pattern: str) -> str:
+            if env_value is None or not env_value.strip():
+                return default_pattern
+            return rf"(?:{re.escape(env_value.strip())}|{default_pattern})"
+
+        cc_pattern = env_or_default_pattern(Environment.CC(), r"([^\s]+-)?(gcc|clang)")
+        ld_pattern = env_or_default_pattern(Environment.LD(), r"([^\s]+-)?ld")
+        ar_pattern = env_or_default_pattern(Environment.AR(), r"([^\s]+-)?ar")
+        nm_pattern = env_or_default_pattern(Environment.NM(), r"([^\s]+-)?nm")
+        objcopy_pattern = env_or_default_pattern(Environment.OBJCOPY(), r"([^\s]+-)?objcopy")
+        strip_pattern = env_or_default_pattern(Environment.STRIP(), r"([^\s]+-)?strip")
 
         entries: list[CommandParserRegistryEntry] = [
             # Compound commands
@@ -400,13 +405,36 @@ class CommandParserRegistry:
             (re.compile(r"^openssl\s+req.*?-new.*?-keyout"), _parse_noop),
             # Compilers and code generators
             # (C/LLVM toolchain, Rust, Flex/Bison, Bindgen, Perl, etc.)
-            (re.compile(rf"^{cc_pattern}\b"), _parse_gcc_or_clang_command),
-            (re.compile(rf"^{ld_pattern}\b"), _parse_ld_command),
-            (re.compile(rf"^printf\b.*\| xargs {ar_pattern}\b"), _parse_ar_piped_xargs_command),
-            (re.compile(rf"^{ar_pattern}\b"), _parse_ar_command),
-            (re.compile(rf"^{nm_pattern}\b.*?\|"), _parse_nm_piped_command),
-            (re.compile(rf"^{objcopy_pattern}\b"), _parse_objcopy_command),
-            (re.compile(rf"^{strip_pattern}\b"), _parse_strip_command),
+            (
+                re.compile(rf"^{cc_pattern}\b"),
+                lambda command: _parse_gcc_or_clang_command(re.sub(rf"^{cc_pattern}\b", "gcc", command, count=1)),
+            ),
+            (
+                re.compile(rf"^{ld_pattern}\b"),
+                lambda command: _parse_ld_command(re.sub(rf"^{ld_pattern}\b", "ld", command, count=1)),
+            ),
+            (
+                re.compile(rf"^printf\b.*\| xargs {ar_pattern}\b"),
+                lambda command: _parse_ar_piped_xargs_command(
+                    re.sub(rf"xargs {ar_pattern}\b", "xargs ar", command, count=1)
+                ),
+            ),
+            (
+                re.compile(rf"^{ar_pattern}\b"),
+                lambda command: _parse_ar_command(re.sub(rf"^{ar_pattern}\b", "ar", command, count=1)),
+            ),
+            (
+                re.compile(rf"^{nm_pattern}\b.*?\|"),
+                lambda command: _parse_nm_piped_command(re.sub(rf"^{nm_pattern}\b", "nm", command, count=1)),
+            ),
+            (
+                re.compile(rf"^{objcopy_pattern}\b"),
+                lambda command: _parse_objcopy_command(re.sub(rf"^{objcopy_pattern}\b", "objcopy", command, count=1)),
+            ),
+            (
+                re.compile(rf"^{strip_pattern}\b"),
+                lambda command: _parse_strip_command(re.sub(rf"^{strip_pattern}\b", "strip", command, count=1)),
+            ),
             (re.compile(r".*?rustc\b"), _parse_rustc_command),
             (re.compile(r".*?rustdoc\b"), _parse_rustdoc_command),
             (re.compile(r"^flex\b"), _parse_flex_command),
