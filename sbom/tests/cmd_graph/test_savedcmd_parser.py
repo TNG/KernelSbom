@@ -119,6 +119,11 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
         self._assert_parsing(cmd, expected, registry)
 
+    def test_gcc_dts_preprocessing(self):
+        cmd = "gcc -E -Wp,-MMD,drivers/of/.empty_root.dtb.d.pre.tmp -nostdinc -I ../scripts/dtc/include-prefixes -undef -D__DTS__ -x assembler-with-cpp -o drivers/of/.empty_root.dtb.dts.tmp ../drivers/of/empty_root.dts"
+        expected = "../drivers/of/empty_root.dts"
+        self._assert_parsing(cmd, expected)
+
     def test_clang(self):
         cmd = """clang -Wp,-MMD,arch/x86/entry/.entry_64_compat.o.d -nostdinc -I../arch/x86/include -I./arch/x86/include/generated -I../include -I./include -I../arch/x86/include/uapi -I./arch/x86/include/generated/uapi -I../include/uapi -I./include/generated/uapi -include ../include/linux/compiler-version.h -include ../include/linux/kconfig.h -D__KERNEL__ --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option -Werror=ignored-optimization-argument -Werror=option-ignored -Werror=unused-command-line-argument -fmacro-prefix-map=../= -Werror -D__ASSEMBLY__ -fno-PIE -m64 -I../arch/x86/entry -Iarch/x86/entry    -DKBUILD_MODFILE='"arch/x86/entry/entry_64_compat"' -DKBUILD_MODNAME='"entry_64_compat"' -D__KBUILD_MODNAME=kmod_entry_64_compat -c -o arch/x86/entry/entry_64_compat.o ../arch/x86/entry/entry_64_compat.S"""
         expected = "../arch/x86/entry/entry_64_compat.S"

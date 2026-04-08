@@ -128,9 +128,9 @@ def _parse_ar_piped_xargs_command(command: str) -> list[PathStr]:
 
 def _parse_gcc_or_clang_command(command: str) -> list[PathStr]:
     parts = shlex.split(command)
-    # compile mode: expect last positional argument ending in `.c` or `.S` to be the input file
+    # compile mode: expect last positional argument ending in a source file extension to be the input file
     for part in reversed(parts):
-        if not part.startswith("-") and any(part.endswith(suffix) for suffix in [".c", ".S"]):
+        if not part.startswith("-") and any(part.endswith(suffix) for suffix in [".c", ".S", ".dts"]):
             return [part]
 
     # linking mode: expect all .o files to be the inputs
