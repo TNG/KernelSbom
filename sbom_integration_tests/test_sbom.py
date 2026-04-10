@@ -4,6 +4,8 @@
 # pyright: reportMissingImports=false
 # ruff: noqa: E402
 
+from datetime import datetime
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -29,6 +31,19 @@ from sbom.path_utils import PathStr
 class TestSbom(unittest.TestCase):
     data_path: PathStr = os.path.abspath(Path(__file__).parent / "data")
 
+    @staticmethod
+    def _set_root_artifact_mtime_for_expected_creation(data_path: PathStr) -> None:
+        """SPDX CreationInfo.created is derived from root paths' mtimes; git clone does not preserve them."""
+        target_output = Path(data_path) / "target-sbom-output.spdx.json"
+        with open(target_output, encoding="utf-8") as f:
+            graph = json.load(f)["@graph"]
+        creation = next(item for item in graph if item.get("type") == "CreationInfo")
+        created_str: str = creation["created"]
+        dt = datetime.strptime(created_str, "%Y-%m-%dT%H:%M:%SZ")
+        mtime = dt.timestamp()
+        bzimage = Path(data_path) / "linux/kernel_build/arch/x86/boot/bzImage"
+        os.utime(bzimage, (mtime, mtime))
+
     @patch.object(
         sys,
         "argv",
@@ -51,6 +66,7 @@ class TestSbom(unittest.TestCase):
         # Run the sbom.py script to generate the output documents
         os.environ.clear()
         os.environ["SRCARCH"] = "x86"
+        self._set_root_artifact_mtime_for_expected_creation(self.data_path)
         sbom_script.main()
 
         # Assert generated output documents are binary equal to the target documents
