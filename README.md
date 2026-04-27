@@ -256,7 +256,7 @@ flowchart TD
 - `sbom/`
   - `sbom.py` - The main script responsible for generating the SBOM
   - `sbom/sbom/` - Library modules used by the main script
-  - `sbom/tests/` - Unit tests for the library modules
+- `tests/` - Unit and integration tests
 - `sbom_analysis/` - Additional scripts for analyzing the outputs produced by the main script.
   - [sbom_analysis/cmd_graph_based_kernel_build/](sbom_analysis/cmd_graph_based_kernel_build/README.md) - Validation of cmd graph completeness by rebuilding the linux kernel only with files referenced in the cmd graph.
   - [sbom_analysis/cmd_graph_visualization/](sbom_analysis/cmd_graph_visualization/README.md) - Interactive visualization of the cmd graph
@@ -279,12 +279,24 @@ pre-commit install
 When committing, `reuse lint` is run as a pre-commit hook to ensure all files have compliant license headers.
 
 ## Run tests
-Unit tests can be found in `sbom/tests`. These are designed to be contributed upstream to the `linux` kernel repository.
-Integration tests are located in `sbom_integration_tests`. These tests are not intended for inclusion in the kernel repository, as they require a larger number of additional files.
+Unit tests can be found in `tests`. These are designed to be contributed upstream to the `linux` kernel repository.
+Integration tests are located in `tests/integration`. These tests are not intended for inclusion in the kernel repository, as they require a larger number of additional files.
+
+```bash
+python3 -m tests
+```
+
+Run unit + integration tests:
+
+```bash
+SRCARCH=x86 python3 -m tests --integration
+```
+
+Or explicitly:
 
 ```bash
 # Run unit tests
-python3 -m unittest discover -v -s sbom -p "test_*.py"
+python3 -m unittest discover -v -s tests -p "test_*.py"
 # Run integration tests
-python3 -m unittest discover -v -s sbom_integration_tests -p "test_*.py"
+python3 -m unittest discover -v -s tests/integration -p "test_*.py"
 ```
