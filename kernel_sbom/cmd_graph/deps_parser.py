@@ -2,8 +2,8 @@
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
 import re
-import sbom.sbom_logging as sbom_logging
-from sbom.path_utils import PathStr
+import kernel_sbom.sbom_logging as sbom_logging
+from kernel_sbom.path_utils import PathStr
 
 # Match dependencies on config files
 # Example match: "$(wildcard include/config/CONFIG_SOMETHING)"

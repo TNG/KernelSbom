@@ -5,15 +5,15 @@ from datetime import datetime
 from typing import Protocol
 
 import logging
-from sbom.config import KernelSpdxDocumentKind
-from sbom.cmd_graph import CmdGraph
-from sbom.path_utils import PathStr
-from sbom.spdx_graph.kernel_file import KernelFileCollection
-from sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
-from sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
-from sbom.spdx_graph.spdx_source_graph import SpdxSourceGraph
-from sbom.spdx_graph.spdx_build_graph import SpdxBuildGraph
-from sbom.spdx_graph.spdx_output_graph import SpdxOutputGraph
+from kernel_sbom.config import KernelSpdxDocumentKind
+from kernel_sbom.cmd_graph import CmdGraph
+from kernel_sbom.path_utils import PathStr
+from kernel_sbom.spdx_graph.kernel_file import KernelFileCollection
+from kernel_sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
+from kernel_sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
+from kernel_sbom.spdx_graph.spdx_source_graph import SpdxSourceGraph
+from kernel_sbom.spdx_graph.spdx_build_graph import SpdxBuildGraph
+from kernel_sbom.spdx_graph.spdx_output_graph import SpdxOutputGraph
 
 
 class SpdxGraphConfig(Protocol):

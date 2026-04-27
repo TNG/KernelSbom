@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass, field
 from typing import Literal
-from sbom.spdx.core import Artifact, ElementCollection, IntegrityMethod
+from kernel_sbom.spdx.core import Artifact, ElementCollection, IntegrityMethod
 
 
 SbomType = Literal["source", "build"]

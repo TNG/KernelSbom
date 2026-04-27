@@ -4,10 +4,10 @@
 import os
 import re
 from dataclasses import dataclass, field
-from sbom.cmd_graph.deps_parser import parse_cmd_file_deps
-from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
-import sbom.sbom_logging as sbom_logging
-from sbom.path_utils import PathStr
+from kernel_sbom.cmd_graph.deps_parser import parse_cmd_file_deps
+from kernel_sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
+import kernel_sbom.sbom_logging as sbom_logging
+from kernel_sbom.path_utils import PathStr
 
 SAVEDCMD_PATTERN = re.compile(r"^(saved)?cmd_.*?:=\s*(?P<full_command>.+)$")
 SOURCE_PATTERN = re.compile(r"^source.*?:=\s*(?P<source_file>.+)$")

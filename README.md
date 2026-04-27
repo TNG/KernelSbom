@@ -271,6 +271,7 @@ Activate the venv and install build dependencies:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+pip install -e .
 pip install pre-commit reuse ruff
 pre-commit install
 ```

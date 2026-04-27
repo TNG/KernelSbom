@@ -5,8 +5,8 @@ import re
 import shlex
 from dataclasses import dataclass
 from typing import Any, Callable, Union
-import sbom.sbom_logging as sbom_logging
-from sbom.path_utils import PathStr
+import kernel_sbom.sbom_logging as sbom_logging
+from kernel_sbom.path_utils import PathStr
 
 
 class CmdParsingError(Exception):

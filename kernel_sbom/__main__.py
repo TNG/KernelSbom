@@ -12,13 +12,13 @@ import os
 import sys
 import time
 import uuid
-import sbom.sbom_logging as sbom_logging
-from sbom.config import get_config
-from sbom.path_utils import is_relative_to
-from sbom.spdx import JsonLdSpdxDocument, SpdxIdGenerator
-from sbom.spdx.core import CreationInfo, SpdxDocument
-from sbom.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs
-from sbom.cmd_graph import CmdGraph
+import kernel_sbom.sbom_logging as sbom_logging
+from kernel_sbom.config import get_config
+from kernel_sbom.path_utils import is_relative_to
+from kernel_sbom.spdx import JsonLdSpdxDocument, SpdxIdGenerator
+from kernel_sbom.spdx.core import CreationInfo, SpdxDocument
+from kernel_sbom.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs
+from kernel_sbom.cmd_graph import CmdGraph
 
 
 def main():
@@ -124,6 +124,5 @@ def main():
         sys.exit(1)
 
 
-# Call main method
 if __name__ == "__main__":
     main()

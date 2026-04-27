@@ -2,7 +2,7 @@
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass, field
-from sbom.spdx.core import DictionaryEntry, Element, Hash
+from kernel_sbom.spdx.core import DictionaryEntry, Element, Hash
 
 
 @dataclass(kw_only=True)

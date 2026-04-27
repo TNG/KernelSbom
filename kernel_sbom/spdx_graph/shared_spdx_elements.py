@@ -3,8 +3,8 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from sbom.spdx.core import CreationInfo, SoftwareAgent
-from sbom.spdx.spdxId import SpdxIdGenerator
+from kernel_sbom.spdx.core import CreationInfo, SoftwareAgent
+from kernel_sbom.spdx.spdxId import SpdxIdGenerator
 
 
 @dataclass(frozen=True)

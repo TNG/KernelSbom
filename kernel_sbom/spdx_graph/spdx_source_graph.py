@@ -2,13 +2,13 @@
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
-from sbom.spdx import SpdxIdGenerator
-from sbom.spdx.core import Element, NamespaceMap, Relationship, SpdxDocument
-from sbom.spdx.simplelicensing import LicenseExpression
-from sbom.spdx.software import File, Sbom
-from sbom.spdx_graph.kernel_file import KernelFile
-from sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
-from sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
+from kernel_sbom.spdx import SpdxIdGenerator
+from kernel_sbom.spdx.core import Element, NamespaceMap, Relationship, SpdxDocument
+from kernel_sbom.spdx.simplelicensing import LicenseExpression
+from kernel_sbom.spdx.software import File, Sbom
+from kernel_sbom.spdx_graph.kernel_file import KernelFile
+from kernel_sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
+from kernel_sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
 
 
 @dataclass

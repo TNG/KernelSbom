@@ -4,16 +4,16 @@
 from dataclasses import dataclass
 import os
 from typing import Protocol
-from sbom.environment import Environment
-from sbom.path_utils import PathStr
-from sbom.spdx.build import Build
-from sbom.spdx.core import DictionaryEntry, NamespaceMap, Relationship, SpdxDocument
-from sbom.spdx.simplelicensing import LicenseExpression
-from sbom.spdx.software import File, Package, Sbom
-from sbom.spdx.spdxId import SpdxIdGenerator
-from sbom.spdx_graph.kernel_file import KernelFile
-from sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
-from sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
+from kernel_sbom.environment import Environment
+from kernel_sbom.path_utils import PathStr
+from kernel_sbom.spdx.build import Build
+from kernel_sbom.spdx.core import DictionaryEntry, NamespaceMap, Relationship, SpdxDocument
+from kernel_sbom.spdx.simplelicensing import LicenseExpression
+from kernel_sbom.spdx.software import File, Package, Sbom
+from kernel_sbom.spdx.spdxId import SpdxIdGenerator
+from kernel_sbom.spdx_graph.kernel_file import KernelFile
+from kernel_sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
+from kernel_sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
 
 
 class SpdxOutputGraphConfig(Protocol):

@@ -6,13 +6,13 @@ from enum import Enum
 import hashlib
 import os
 import re
-from sbom.cmd_graph import CmdGraph
-from sbom.path_utils import PathStr, is_relative_to
-from sbom.spdx import SpdxId, SpdxIdGenerator
-from sbom.spdx.core import Hash
-from sbom.spdx.software import ContentIdentifier, File, SoftwarePurpose
-import sbom.sbom_logging as sbom_logging
-from sbom.spdx_graph.spdx_graph_model import SpdxIdGeneratorCollection
+from kernel_sbom.cmd_graph import CmdGraph
+from kernel_sbom.path_utils import PathStr, is_relative_to
+from kernel_sbom.spdx import SpdxId, SpdxIdGenerator
+from kernel_sbom.spdx.core import Hash
+from kernel_sbom.spdx.software import ContentIdentifier, File, SoftwarePurpose
+import kernel_sbom.sbom_logging as sbom_logging
+from kernel_sbom.spdx_graph.spdx_graph_model import SpdxIdGeneratorCollection
 
 
 class KernelFileLocation(Enum):

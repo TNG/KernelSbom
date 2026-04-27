@@ -7,10 +7,9 @@ KernelSbom
 Introduction
 ------------
 
-KernelSbom is a Python script ``scripts/sbom/sbom.py`` that can be
-executed after a successful kernel build. When invoked, KernelSbom
-analyzes all files involved in the build and generates Software Bill of
-Materials (SBOM) documents in SPDX 3.0.1 format.
+KernelSbom is a tool ``kernel-sbom`` that can be executed after a successful
+kernel build. When invoked, KernelSbom analyzes all files involved in the build
+and generates Software Bill of Materials (SBOM) documents in SPDX 3.0.1 format.
 The generated SBOM documents capture:
 
 * **Final output artifacts**, typically the kernel image and modules
@@ -67,12 +66,12 @@ Instead, source files are included in the build SBOM.
 Standalone Usage
 ----------------
 
-KernelSbom can also be used as a standalone script to generate
+KernelSbom can also be used as a standalone tool to generate
 SPDX documents for specific build outputs. For example, after a
 successful x86 kernel build, KernelSbom can generate SPDX documents
 for the ``bzImage`` kernel image::
 
-    $ SRCARCH=x86 python3 scripts/sbom/sbom.py \
+    $ SRCARCH=x86 kernel-sbom \
         --src-tree . \
         --obj-tree ./kernel_build \
         --roots arch/x86/boot/bzImage \
@@ -89,7 +88,7 @@ architecture for which the build was performed.
 
 For a full list of command-line options, run::
 
-    $ python3 scripts/sbom/sbom.py --help
+    $ kernel-sbom --help
 
 Output Format
 -------------
@@ -134,7 +133,7 @@ from multiple sources:
   Parsing these files is considered too complex for the scope of this
   project. Instead, the remaining gaps of the graph are filled using a
   list of manually defined dependencies, see
-  ``scripts/sbom/sbom/cmd_graph/hardcoded_dependencies.py``. This list is
+  ``kernel_sbom/cmd_graph/hardcoded_dependencies.py``. This list is
   known to be incomplete. However, analysis of the cmd graph indicates a
   ~99% completeness. For more information about the completeness analysis,
   see `KernelSbom #95 <https://github.com/TNG/KernelSbom/issues/95>`_.
@@ -171,7 +170,7 @@ For example::
 
 Then use the generated roots file::
 
-    $ SRCARCH=x86 python3 scripts/sbom/sbom.py \
+    $ SRCARCH=x86 kernel-sbom \
         --src-tree . \
         --obj-tree ./kernel_build \
         --roots-file sbom-roots.txt \

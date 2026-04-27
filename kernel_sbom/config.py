@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 import os
 from typing import Any
-from sbom.path_utils import PathStr
+from kernel_sbom.path_utils import PathStr
 
 
 class KernelSpdxDocumentKind(Enum):

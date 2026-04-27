@@ -4,7 +4,7 @@
 import unittest
 from pathlib import Path
 import tempfile
-from sbom.spdx_graph.kernel_file import _parse_spdx_license_identifier  # type: ignore
+from kernel_sbom.spdx_graph.kernel_file import _parse_spdx_license_identifier  # type: ignore
 
 
 class TestKernelFile(unittest.TestCase):

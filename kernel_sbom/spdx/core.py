@@ -4,7 +4,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
-from sbom.spdx.spdxId import SpdxId
+from kernel_sbom.spdx.spdxId import SpdxId
 
 SPDX_SPEC_VERSION = "3.0.1"
 

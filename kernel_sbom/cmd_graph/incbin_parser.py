@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 import re
 
-from sbom.path_utils import PathStr
+from kernel_sbom.path_utils import PathStr
 
 INCBIN_PATTERN = re.compile(r'\s*\.incbin\s+"(?P<path>[^"]+)"')
 """Regex pattern for matching `.incbin "<path>"` statements."""

@@ -3,16 +3,16 @@
 
 from dataclasses import dataclass
 from typing import Mapping
-from sbom.cmd_graph import CmdGraph
-from sbom.path_utils import PathStr
-from sbom.spdx import SpdxIdGenerator
-from sbom.spdx.build import Build
-from sbom.spdx.core import ExternalMap, NamespaceMap, Relationship, SpdxDocument
-from sbom.spdx.software import File, Sbom
-from sbom.spdx_graph.kernel_file import KernelFileCollection
-from sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
-from sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
-from sbom.spdx_graph.spdx_source_graph import source_file_license_elements
+from kernel_sbom.cmd_graph import CmdGraph
+from kernel_sbom.path_utils import PathStr
+from kernel_sbom.spdx import SpdxIdGenerator
+from kernel_sbom.spdx.build import Build
+from kernel_sbom.spdx.core import ExternalMap, NamespaceMap, Relationship, SpdxDocument
+from kernel_sbom.spdx.software import File, Sbom
+from kernel_sbom.spdx_graph.kernel_file import KernelFileCollection
+from kernel_sbom.spdx_graph.shared_spdx_elements import SharedSpdxElements
+from kernel_sbom.spdx_graph.spdx_graph_model import SpdxGraph, SpdxIdGeneratorCollection
+from kernel_sbom.spdx_graph.spdx_source_graph import source_file_license_elements
 
 
 @dataclass

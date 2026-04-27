@@ -3,8 +3,8 @@
 
 import json
 from typing import Any
-from sbom.path_utils import PathStr
-from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxDocument, SpdxObject
+from kernel_sbom.path_utils import PathStr
+from kernel_sbom.spdx.core import SPDX_SPEC_VERSION, SpdxDocument, SpdxObject
 
 
 class JsonLdSpdxDocument:

@@ -23,7 +23,7 @@ sbom_script = util.module_from_spec(sbom_py_spec)
 sbom_py_spec.loader.exec_module(sbom_script)
 
 # Imports from the sbom package
-from sbom.path_utils import PathStr
+from kernel_sbom.path_utils import PathStr
 
 
 class TestSbom(unittest.TestCase):

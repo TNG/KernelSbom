@@ -5,8 +5,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Iterator
 
-from sbom.cmd_graph.cmd_graph_node import CmdGraphNode, CmdGraphNodeConfig
-from sbom.path_utils import PathStr
+from kernel_sbom.cmd_graph.cmd_graph_node import CmdGraphNode, CmdGraphNodeConfig
+from kernel_sbom.path_utils import PathStr
 
 
 @dataclass

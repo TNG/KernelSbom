@@ -7,11 +7,11 @@ import logging
 import os
 from typing import Iterator, Protocol
 
-from sbom import sbom_logging
-from sbom.cmd_graph.cmd_file import CmdFile
-from sbom.cmd_graph.hardcoded_dependencies import get_hardcoded_dependencies
-from sbom.cmd_graph.incbin_parser import parse_incbin_statements
-from sbom.path_utils import PathStr, is_relative_to
+from kernel_sbom import sbom_logging
+from kernel_sbom.cmd_graph.cmd_file import CmdFile
+from kernel_sbom.cmd_graph.hardcoded_dependencies import get_hardcoded_dependencies
+from kernel_sbom.cmd_graph.incbin_parser import parse_incbin_statements
+from kernel_sbom.path_utils import PathStr, is_relative_to
 
 
 @dataclass

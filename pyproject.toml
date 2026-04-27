@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-only OR MIT
+# Copyright (C) 2025 TNG Technology Consulting GmbH
+
+[build-system]
+requires = ["flit_core"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "kernel-sbom"
+description = "Generate SPDX-format Software Bill of Materials for Linux kernel builds"
+readme = "README.md"
+authors = [
+    {name = "TNG Technology Consulting GmbH"}
+]
+license = {text = "GPL-2.0-only OR MIT"}
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+[project.scripts]
+kernel-sbom = "kernel_sbom.__main__:main"

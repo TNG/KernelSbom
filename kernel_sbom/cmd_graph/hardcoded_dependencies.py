@@ -3,9 +3,9 @@
 
 import os
 from typing import Callable
-import sbom.sbom_logging as sbom_logging
-from sbom.path_utils import PathStr, is_relative_to
-from sbom.environment import Environment
+import kernel_sbom.sbom_logging as sbom_logging
+from kernel_sbom.path_utils import PathStr, is_relative_to
+from kernel_sbom.environment import Environment
 
 HARDCODED_DEPENDENCIES: dict[str, list[str]] = {
     # defined in linux/Kbuild

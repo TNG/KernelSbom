@@ -2,9 +2,9 @@
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
-from sbom.spdx.core import CreationInfo, SoftwareAgent, SpdxDocument, SpdxObject
-from sbom.spdx.software import Sbom
-from sbom.spdx.spdxId import SpdxIdGenerator
+from kernel_sbom.spdx.core import CreationInfo, SoftwareAgent, SpdxDocument, SpdxObject
+from kernel_sbom.spdx.software import Sbom
+from kernel_sbom.spdx.spdxId import SpdxIdGenerator
 
 
 @dataclass

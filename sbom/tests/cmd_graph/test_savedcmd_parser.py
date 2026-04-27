@@ -3,8 +3,8 @@
 
 import unittest
 
-from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
-import sbom.sbom_logging as sbom_logging
+from kernel_sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
+import kernel_sbom.sbom_logging as sbom_logging
 
 
 class TestSavedCmdParser(unittest.TestCase):
