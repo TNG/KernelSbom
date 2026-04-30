@@ -122,7 +122,7 @@ def _parse_ar_piped_xargs_command(command: str) -> list[PathStr]:
     printf_command, _ = command.split("|", 1)
     positionals = tokenize_single_command_positionals_only(printf_command.strip())
     # expect positionals to be ['printf', '{prefix_path}%s ', input1, input2, ...]
-    prefix_path = positionals[1].rstrip("%s ")
+    prefix_path = positionals[1].removesuffix("%s ")
     return [f"{prefix_path}{filename}" for filename in positionals[2:]]
 
 
