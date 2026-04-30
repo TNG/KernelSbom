@@ -255,7 +255,7 @@ def _parse_pnm_to_logo_command(command: str) -> list[PathStr]:
 
 def _parse_relacheck(command: str) -> list[PathStr]:
     positionals = tokenize_single_command_positionals_only(command)
-    # expect positionals to be ["relachek", input, log_reference]
+    # expect positionals to be ["relacheck", input, log_reference]
     return [positionals[1]]
 
 
