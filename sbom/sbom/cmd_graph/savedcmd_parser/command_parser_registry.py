@@ -71,11 +71,11 @@ def _parse_compound_command(command: str) -> list[PathStr]:
             continue
         try:
             input_files += parser(inner_command)
-        except CmdParsingError as e:
+        except (CmdParsingError, IndexError) as e:
             sbom_logging.error(
                 "Skip parsing inner command {inner_command} of compound command because of command parsing error: {error_message}",
                 inner_command=inner_command,
-                error_message=e.message,
+                error_message=str(e),
             )
     return input_files
 
@@ -84,10 +84,6 @@ def _parse_objcopy_command(command: str) -> list[PathStr]:
     command_parts = tokenize_single_command(command, flag_options=["-S", "-w"])
     positionals = [part.value for part in command_parts if isinstance(part, Positional)]
     # expect positionals to be ['objcopy', input_file] or ['objcopy', input_file, output_file]
-    if not (len(positionals) == 2 or len(positionals) == 3):
-        raise CmdParsingError(
-            f"Invalid objcopy command format: expected 2 or 3 positional arguments, got {len(positionals)} ({positionals})"
-        )
     return [positionals[1]]
 
 
@@ -357,7 +353,9 @@ def _parse_bindgen_command(command: str) -> list[PathStr]:
 def _parse_gen_header(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     # expect command parts to be ["python3", path/to/gen_headers.py, ..., "--xml", input]
-    i = next(i for i, token in enumerate(command_parts) if token == "--xml")
+    i = next((i for i, token in enumerate(command_parts) if token == "--xml"), None)
+    if i is None:
+        raise CmdParsingError(f"Expected --xml input file in gen_headers command but got {command}")
     return [command_parts[i + 1]]
 
 
