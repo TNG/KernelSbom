@@ -10,6 +10,7 @@ from sbom.environment import Environment
 from sbom.cmd_graph.savedcmd_parser.command_splitter import IfBlock, split_commands
 from sbom.cmd_graph.savedcmd_parser.tokenizer import (
     CmdParsingError,
+    Option,
     Positional,
     tokenize_single_command,
     tokenize_single_command_positionals_only,
@@ -231,9 +232,12 @@ def _parse_sed_command(command: str) -> list[PathStr]:
 
 def _parse_awk(command: str) -> list[PathStr]:
     command_parts = tokenize_single_command(command)
+    options = [p for p in command_parts if isinstance(p, Option)]
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
-    # expect positionals to be ["awk", input1, input2, ...]
-    return positionals[1:]
+    has_script_file = any(p.name == "-f" for p in options)
+    # With -f option: expect ["awk", input1, input2, ...]
+    # Without -f option: expect ["awk", inline_program, input1, input2, ...]
+    return positionals[1:] if has_script_file else positionals[2:]
 
 
 def _parse_nm_piped_command(command: str) -> list[PathStr]:
