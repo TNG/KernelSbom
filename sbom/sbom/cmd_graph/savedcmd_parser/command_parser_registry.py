@@ -44,7 +44,7 @@ def _parse_compound_command(command: str) -> list[PathStr]:
         (re.compile(r"sed\b"), _parse_sed_command),
         (
             re.compile(r"(.*/)scripts/bin2c\s*<"),
-            lambda c: [input] if (input := c.split("<")[1].strip()) != "/dev/null" else [],
+            lambda c: [input] if (input := c.split("<")[1].split(">")[0].strip()) != "/dev/null" else [],
         ),
         (re.compile(r"^:$"), _parse_noop),
     ]
