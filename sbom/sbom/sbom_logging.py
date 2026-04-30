@@ -3,7 +3,7 @@
 
 import logging
 import inspect
-from typing import Any, Literal
+from typing import Literal
 
 
 class MessageLogger:
@@ -19,9 +19,11 @@ class MessageLogger:
         self.messages = {}
         self.repeated_logs_limit = repeated_logs_limit
 
-    def log(self, template: str, /, **kwargs: Any) -> None:
+    def log(self, template: str, /, **kwargs: str) -> None:
         """Log a message based on a template and optional variables."""
-        message = template.format(**kwargs)
+        message = template
+        for key, value in kwargs.items():
+            message = message.replace("{" + key + "}", value)
         if template not in self.messages:
             self.messages[template] = []
         if len(self.messages[template]) < self.repeated_logs_limit:
@@ -52,12 +54,12 @@ _warning_logger: MessageLogger
 _error_logger: MessageLogger
 
 
-def warning(msg_template: str, /, **kwargs: Any) -> None:
+def warning(msg_template: str, /, **kwargs: str) -> None:
     """Log a warning message."""
     _warning_logger.log(msg_template, **kwargs)
 
 
-def error(msg_template: str, /, **kwargs: Any) -> None:
+def error(msg_template: str, /, **kwargs: str) -> None:
     """Log an error message including file, line, and function context."""
     frame = inspect.currentframe()
     caller_frame = frame.f_back if frame else None

@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
-from typing import Any
 import sbom.sbom_logging as sbom_logging
 from sbom.cmd_graph.savedcmd_parser.command_splitter import IfBlock, split_commands
 from sbom.cmd_graph.savedcmd_parser.command_parser_registry import CommandParserRegistry
@@ -28,7 +27,7 @@ def parse_inputs_from_commands(
         list[PathStr]: List of input file paths required by the commands.
     """
 
-    def log_error_or_warning(message: str, /, **kwargs: Any) -> None:
+    def log_error_or_warning(message: str, /, **kwargs: str) -> None:
         if fail_on_unknown_build_command:
             sbom_logging.error(message, **kwargs)
         else:
