@@ -33,7 +33,7 @@ class SpdxObject:
         d: dict[str, Any] = {}
         for field_name in self.__dataclass_fields__:
             value = getattr(self, field_name)
-            if not value:
+            if value is None or value == [] or value == "":
                 continue
 
             if isinstance(value, Element):
