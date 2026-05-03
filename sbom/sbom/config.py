@@ -3,7 +3,7 @@
 
 import argparse
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import os
 from typing import Any
@@ -250,7 +250,8 @@ def get_config() -> KernelSbomConfig:
     write_output_on_error = args["write_output_on_error"]
 
     created = datetime.fromtimestamp(
-        max([os.path.getmtime(os.path.join(obj_tree, root_path)) for root_path in root_paths])
+        max([os.path.getmtime(os.path.join(obj_tree, root_path)) for root_path in root_paths]),
+        tz=timezone.utc,
     )
     spdxId_prefix = args["spdxId_prefix"]
     build_type = args["build_type"]

@@ -2,7 +2,7 @@
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from sbom.spdx.core import CreationInfo, SoftwareAgent
 from sbom.spdx.spdxId import SpdxIdGenerator
 
@@ -28,5 +28,5 @@ class SharedSpdxElements:
             spdxId=spdx_id_generator.generate(),
             name="KernelSbom",
         )
-        creation_info = CreationInfo(createdBy=[agent], created=created.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        creation_info = CreationInfo(createdBy=[agent], created=created.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
         return SharedSpdxElements(agent=agent, creation_info=creation_info)

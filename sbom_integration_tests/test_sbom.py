@@ -4,7 +4,7 @@
 # pyright: reportMissingImports=false
 # ruff: noqa: E402
 
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sys
@@ -39,7 +39,7 @@ class TestSbom(unittest.TestCase):
             graph = json.load(f)["@graph"]
         creation = next(item for item in graph if item.get("type") == "CreationInfo")
         created_str: str = creation["created"]
-        dt = datetime.strptime(created_str, "%Y-%m-%dT%H:%M:%SZ")
+        dt = datetime.strptime(created_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
         mtime = dt.timestamp()
         bzimage = Path(data_path) / "linux/kernel_build/arch/x86/boot/bzImage"
         os.utime(bzimage, (mtime, mtime))
