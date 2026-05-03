@@ -235,6 +235,8 @@ def get_config() -> KernelSbomConfig:
     if args["roots_file"]:
         with open(args["roots_file"], "rt") as f:
             root_paths = [root.strip() for root in f.readlines()]
+        if len(root_paths) == 0:
+            parser.error("--roots-file must contain at least one path")
     else:
         root_paths = args["roots"]
     _validate_path_arguments(parser, src_tree, obj_tree, root_paths)
@@ -314,5 +316,5 @@ def _validate_path_arguments(
     if not os.path.exists(obj_tree):
         parser.error(f"--obj-tree {obj_tree} does not exist")
     for root_path in root_paths:
-        if not os.path.exists(os.path.join(obj_tree, root_path)):
-            parser.error(f"path to root artifact {os.path.join(obj_tree, root_path)} does not exist")
+        if not os.path.isfile(root_path_absolute := os.path.join(obj_tree, root_path)):
+            parser.error(f"path to root artifact {root_path_absolute} is not a file")
