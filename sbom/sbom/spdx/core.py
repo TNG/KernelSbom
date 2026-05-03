@@ -68,7 +68,7 @@ class Element(SpdxObject):
     spdxId: SpdxId
     creationInfo: str = "_:creationinfo"
     name: str | None = None
-    verifiedUsing: list[Hash] = field(default_factory=list[Hash])
+    verifiedUsing: list[Hash] = field(default_factory=list)
     comment: str | None = None
 
 
@@ -94,9 +94,9 @@ class ElementCollection(Element):
     """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/ElementCollection/"""
 
     type: str = field(init=False, default="ElementCollection")
-    element: list[Element] = field(default_factory=list[Element])
-    rootElement: list[Element] = field(default_factory=list[Element])
-    profileConformance: list[ProfileIdentifierType] = field(default_factory=list[ProfileIdentifierType])
+    element: list[Element] = field(default_factory=list)
+    rootElement: list[Element] = field(default_factory=list)
+    profileConformance: list[ProfileIdentifierType] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
@@ -104,8 +104,8 @@ class SpdxDocument(ElementCollection):
     """https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Classes/SpdxDocument/"""
 
     type: str = field(init=False, default="SpdxDocument")
-    import_: list[ExternalMap] = field(default_factory=list[ExternalMap])
-    namespaceMap: list[NamespaceMap] = field(default_factory=list[NamespaceMap])
+    import_: list[ExternalMap] = field(default_factory=list)
+    namespaceMap: list[NamespaceMap] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {("import" if k == "import_" else k): v for k, v in super().to_dict().items()}

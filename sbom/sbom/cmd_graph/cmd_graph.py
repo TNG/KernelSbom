@@ -13,7 +13,7 @@ from sbom.path_utils import PathStr
 class CmdGraph:
     """Directed acyclic graph of build dependencies primarily inferred from .cmd files produced during kernel builds"""
 
-    roots: list[CmdGraphNode] = field(default_factory=list[CmdGraphNode])
+    roots: list[CmdGraphNode] = field(default_factory=list)
 
     @classmethod
     def create(cls, root_paths: list[PathStr], config: CmdGraphNodeConfig) -> "CmdGraph":

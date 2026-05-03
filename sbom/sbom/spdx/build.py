@@ -12,6 +12,6 @@ class Build(Element):
     type: str = field(init=False, default="build_Build")
     build_buildType: str
     build_buildId: str
-    build_environment: list[DictionaryEntry] = field(default_factory=list[DictionaryEntry])
-    build_configSourceUri: list[str] = field(default_factory=list[str])
-    build_configSourceDigest: list[Hash] = field(default_factory=list[Hash])
+    build_environment: list[DictionaryEntry] = field(default_factory=list)
+    build_configSourceUri: list[str] = field(default_factory=list)
+    build_configSourceDigest: list[Hash] = field(default_factory=list)

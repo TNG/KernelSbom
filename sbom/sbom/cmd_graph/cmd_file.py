@@ -18,8 +18,8 @@ class CmdFile:
     cmd_file_path: PathStr
     savedcmd: str
     source: PathStr | None = None
-    deps: list[str] = field(default_factory=list[str])
-    make_rules: list[str] = field(default_factory=list[str])
+    deps: list[str] = field(default_factory=list)
+    make_rules: list[str] = field(default_factory=list)
 
     @classmethod
     def create(cls, cmd_file_path: PathStr) -> "CmdFile | None":

@@ -29,7 +29,7 @@ class Sbom(ElementCollection):
     """https://spdx.github.io/spdx-spec/v3.0.1/model/Software/Classes/Sbom/"""
 
     type: str = field(init=False, default="software_Sbom")
-    software_sbomType: list[SbomType] = field(default_factory=list[SbomType])
+    software_sbomType: list[SbomType] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)
@@ -48,7 +48,7 @@ class SoftwareArtifact(Artifact):
     type: str = field(init=False, default="software_Artifact")
     software_primaryPurpose: SoftwarePurpose | None = None
     software_copyrightText: str | None = None
-    software_contentIdentifier: list[ContentIdentifier] = field(default_factory=list[ContentIdentifier])
+    software_contentIdentifier: list[ContentIdentifier] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)

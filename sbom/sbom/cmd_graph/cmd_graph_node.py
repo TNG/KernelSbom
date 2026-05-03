@@ -36,9 +36,9 @@ class CmdGraphNode:
     cmd_file: CmdFile | None = None
     """Parsed .cmd file describing how the file at absolute_path was built, or None if not available."""
 
-    cmd_file_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
-    incbin_dependencies: list[IncbinDependency] = field(default_factory=list[IncbinDependency])
-    hardcoded_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
+    cmd_file_dependencies: list["CmdGraphNode"] = field(default_factory=list)
+    incbin_dependencies: list[IncbinDependency] = field(default_factory=list)
+    hardcoded_dependencies: list["CmdGraphNode"] = field(default_factory=list)
 
     @property
     def children(self) -> Iterator["CmdGraphNode"]:
