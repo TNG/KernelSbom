@@ -19,10 +19,10 @@ WILDCARD_PATTERN = re.compile(r"\$\(wildcard (?P<path>[^)]+)\)")
 
 # Match ordinary paths:
 # - ^(\/)?: Optionally starts with a '/'
-# - (([\w\-\., ]*)\/)*: Zero or more directory levels
-# - [\w\-\., ]+$: Path component (file or directory)
+# - (([\w\-\.,+~=@ ]*)\/)*: Zero or more directory levels
+# - [\w\-\.,+~=@ ]+$: Path component (file or directory)
 # Example matches: "/foo/bar.c", "dir1/dir2/file.txt", "plainfile"
-VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\., ]*)\/)*[\w\-\., ]+$")
+VALID_PATH_PATTERN = re.compile(r"^(\/)?(([\w\-\.,+~=@ ]*)\/)*[\w\-\.,+~=@ ]+$")
 
 
 def parse_cmd_file_deps(deps: list[str]) -> list[PathStr]:
