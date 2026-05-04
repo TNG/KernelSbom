@@ -181,29 +181,23 @@ def _build_file_element(absolute_path: PathStr, name: str, spdx_id: SpdxId, file
     )
 
 
-def _sha256(path: PathStr) -> str:
-    """Compute the SHA-256 hash of a file."""
-    with open(path, "rb") as f:
-        data = f.read()
-    return hashlib.sha256(data).hexdigest()
-
-
-def _git_blob_oid(file_path: str) -> str:
-    """
-    Compute the Git blob object ID (SHA-1) for a file, like `git hash-object`.
-
-    Args:
-        file_path: Path to the file.
-
-    Returns:
-        SHA-1 hash (hex) of the Git blob object.
-    """
+def _sha256(file_path: PathStr, chunk_size: int = 1 << 20) -> str:
+    """Compute the SHA-256 hex digest of a file, reading it in chunks of chunk_size bytes."""
+    h = hashlib.sha256()
     with open(file_path, "rb") as f:
-        content = f.read()
-    header = f"blob {len(content)}\0".encode()
-    store = header + content
-    sha1_hash = hashlib.sha1(store).hexdigest()
-    return sha1_hash
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _git_blob_oid(file_path: str, chunk_size: int = 1 << 20) -> str:
+    """Compute the Git blob object ID (SHA-1 hex) for a file, like `git hash-object`, reading it in chunks of chunk_size bytes."""
+    h = hashlib.sha1()
+    h.update(f"blob {os.path.getsize(file_path)}\0".encode())
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 # REUSE-IgnoreStart
