@@ -201,27 +201,33 @@ def _git_blob_oid(file_path: str, chunk_size: int = 1 << 20) -> str:
 
 
 # REUSE-IgnoreStart
-SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(r"SPDX-License-Identifier:\s*(?P<id>.*?)(?:\s*(\*/|$))")
+SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(
+    r"SPDX-License-Identifier:"   # literal tag
+    r"\s*"                        # optional whitespace after colon
+    r"(?P<id>.*?)"                # license expression (non-greedy, stops before terminator)
+    r"(?:\s*"                     # optional whitespace before terminator (not captured)
+    r"(-->|\*/|$))",              # terminator: XML "-->", C-style "*/", or end of line
+    re.MULTILINE,                 # match end of each line, not just end of string
+)
 # REUSE-IgnoreEnd
 
 
-def _parse_spdx_license_identifier(absolute_path: str, max_lines: int = 5) -> str | None:
+def _parse_spdx_license_identifier(absolute_path: str, max_bytes: int = 512) -> str | None:
     """
-    Extracts the SPDX-License-Identifier from the first few lines of a source file.
+    Extracts the SPDX-License-Identifier from the beginning of a source file.
 
     Args:
         absolute_path: Path to the source file.
-        max_lines: Number of lines to scan from the top (default: 5).
+        max_bytes: Maximum number of bytes to scan for the license identifier.
 
     Returns:
         The license identifier string (e.g., 'GPL-2.0-only') if found, otherwise None.
     """
     try:
         with open(absolute_path, "r") as f:
-            for _ in range(max_lines):
-                match = SPDX_LICENSE_IDENTIFIER_PATTERN.search(f.readline())
-                if match:
-                    return match.group("id")
+            match = SPDX_LICENSE_IDENTIFIER_PATTERN.search(f.read(max_bytes))
+            if match:
+                return match.group("id")
     except (UnicodeDecodeError, OSError):
         return None
     return None
