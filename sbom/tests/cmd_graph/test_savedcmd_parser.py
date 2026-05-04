@@ -323,6 +323,12 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "arch/x86/entry/vdso/vdso64.so.dbg arch/x86/entry/vdso/vdso64.so"
         self._assert_parsing(cmd, expected)
 
+    # vdsomunge command tests
+    def test_vdsomunge(self):
+        cmd = "arch/arm64/kernel/vdso32/../../../arm/vdso/vdsomunge arch/arm64/kernel/vdso32/vdso.so.raw arch/arm64/kernel/vdso32/vdso32.so.dbg"
+        expected = "arch/arm64/kernel/vdso32/vdso.so.raw"
+        self._assert_parsing(cmd, expected)
+
     # mkpiggy command tests
     def test_mkpiggy(self):
         cmd = "arch/x86/boot/compressed/mkpiggy arch/x86/boot/compressed/vmlinux.bin.gz > arch/x86/boot/compressed/piggy.S"

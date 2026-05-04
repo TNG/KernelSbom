@@ -203,6 +203,12 @@ def _parse_vdso2c_command(command: str) -> list[PathStr]:
     return [positionals[1], positionals[2]]
 
 
+def _parse_vdsomunge_command(command: str) -> list[PathStr]:
+    positionals = tokenize_single_command_positionals_only(command)
+    # expect positionals to be ['vdsomunge', input, output]
+    return [positionals[1]]
+
+
 def _parse_ld_command(command: str) -> list[PathStr]:
     command_parts = tokenize_single_command(
         command=command.strip(),
@@ -461,6 +467,7 @@ class CommandParserRegistry:
             (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
             (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
             (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
+            (re.compile(r"(.*/)?vdsomunge\b"), _parse_vdsomunge_command),
             (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
             (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
             (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),

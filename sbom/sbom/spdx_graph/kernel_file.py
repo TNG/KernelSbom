@@ -249,7 +249,7 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
         return "source"
 
     # Libraries
-    if ends_with([".a", ".so", ".rlib"]):
+    if ends_with([".a", ".so", ".so.raw", ".rlib"]):
         return "library"
 
     # Archives
