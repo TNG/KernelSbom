@@ -2,8 +2,8 @@
   "@context": [
     "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
     {
-      "o": "urn:spdx.dev:f4890f53-4343-52e4-9b9e-44919fd5749f/output/",
-      "p": "urn:spdx.dev:f4890f53-4343-52e4-9b9e-44919fd5749f/"
+      "o": "urn:spdx.dev:5b5d1487-cef1-5aa8-a8ee-c680b6726afb/output/",
+      "p": "urn:spdx.dev:5b5d1487-cef1-5aa8-a8ee-c680b6726afb/"
     }
   ],
   "@graph": [
@@ -34,7 +34,7 @@
       "createdBy": [
         "p:0"
       ],
-      "created": "2025-12-09T00:00:00Z"
+      "created": "2025-12-11T07:54:56Z"
     },
     {
       "type": "software_Sbom",
@@ -139,9 +139,6 @@
       "creationInfo": "_:creationinfo",
       "name": "Linux Kernel (bzImage)",
       "comment": "Architecture=x86",
-      "originatedBy": [
-        "p:0"
-      ],
       "software_primaryPurpose": "application"
     },
     {

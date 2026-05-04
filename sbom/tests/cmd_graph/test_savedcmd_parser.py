@@ -348,6 +348,12 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "arch/arm64/kernel/pi/idreg-override.pi.o"
         self._assert_parsing(cmd, expected)
 
+    # gen-hyprel command tests
+    def test_gen_hyprel(self):
+        cmd = "arch/arm64/kvm/hyp/nvhe/gen-hyprel arch/arm64/kvm/hyp/nvhe/kvm_nvhe.tmp.o > arch/arm64/kvm/hyp/nvhe/hyp-reloc.S"
+        expected = "arch/arm64/kvm/hyp/nvhe/kvm_nvhe.tmp.o"
+        self._assert_parsing(cmd, expected)
+
     # mkregtable command tests
     def test_mkregtable(self):
         cmd = "drivers/gpu/drm/radeon/mkregtable ../drivers/gpu/drm/radeon/reg_srcs/r100 > drivers/gpu/drm/radeon/r100_reg_safe.h"
