@@ -150,7 +150,7 @@ class KernelFileCollection:
 def _build_file_element(absolute_path: PathStr, name: str, spdx_id: SpdxId, file_location: KernelFileLocation) -> File:
     verifiedUsing: list[Hash] = []
     content_identifier: list[ContentIdentifier] = []
-    if os.path.exists(absolute_path):
+    if os.path.isfile(absolute_path):
         verifiedUsing = [Hash(algorithm="sha256", hashValue=_sha256(absolute_path))]
         content_identifier = [
             ContentIdentifier(
