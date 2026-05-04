@@ -117,8 +117,8 @@ def _create_spdx_build_graph(
 
     build_spdx_document.import_ = [
         *(
-            ExternalMap(externalSpdxId=file_element.spdx_file_element.spdxId)
-            for file_element in kernel_files.source.values()
+            ExternalMap(externalSpdxId=file.spdx_file_element.spdxId)
+            for file in (*kernel_files.source.values(), *kernel_files.external.values())
         ),
         ExternalMap(externalSpdxId=high_level_build_element.spdxId),
         *(ExternalMap(externalSpdxId=file.spdx_file_element.spdxId) for file in kernel_files.output.values()),
@@ -191,6 +191,7 @@ def _create_spdx_build_graph_with_mixed_sources(
 
     # File elements
     build_file_elements = [file.spdx_file_element for file in kernel_files.build.values()]
+    external_file_elements = [file.spdx_file_element for file in kernel_files.external.values()]
     file_relationships = _file_relationships(
         cmd_graph=cmd_graph,
         file_elements={key: file.spdx_file_element for key, file in kernel_files.to_dict().items()},
@@ -214,6 +215,7 @@ def _create_spdx_build_graph_with_mixed_sources(
     build_sbom.rootElement = [*root_file_elements]
     build_sbom.element = [
         *build_file_elements,
+        *external_file_elements,
         *source_file_license_identifiers,
         *source_file_license_relationships,
         *file_relationships,

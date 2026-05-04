@@ -64,7 +64,7 @@ class KernelFile:
         if not is_in_src_tree and not is_in_obj_tree:
             file_element_name = str(absolute_path)
             file_location = KernelFileLocation.EXTERNAL
-            spdx_id_generator = spdx_id_generators.build
+            spdx_id_generator = spdx_id_generators.source if src_tree != obj_tree else spdx_id_generators.build
         elif is_in_src_tree and src_tree == obj_tree:
             file_element_name = os.path.relpath(absolute_path, obj_tree)
             file_location = KernelFileLocation.BOTH
@@ -112,6 +112,7 @@ class KernelFileCollection:
     source: dict[PathStr, KernelFile]
     build: dict[PathStr, KernelFile]
     output: dict[PathStr, KernelFile]
+    external: dict[PathStr, KernelFile]
 
     @classmethod
     def create(
@@ -124,6 +125,7 @@ class KernelFileCollection:
         source: dict[PathStr, KernelFile] = {}
         build: dict[PathStr, KernelFile] = {}
         output: dict[PathStr, KernelFile] = {}
+        external: dict[PathStr, KernelFile] = {}
         root_node_paths = {node.absolute_path for node in cmd_graph.roots}
         for node in cmd_graph:
             is_root = node.absolute_path in root_node_paths
@@ -138,13 +140,15 @@ class KernelFileCollection:
                 output[kernel_file.absolute_path] = kernel_file
             elif kernel_file.file_location == KernelFileLocation.SOURCE_TREE:
                 source[kernel_file.absolute_path] = kernel_file
+            elif kernel_file.file_location == KernelFileLocation.EXTERNAL:
+                external[kernel_file.absolute_path] = kernel_file
             else:
                 build[kernel_file.absolute_path] = kernel_file
 
-        return KernelFileCollection(source, build, output)
+        return KernelFileCollection(source, build, output, external)
 
     def to_dict(self) -> dict[PathStr, KernelFile]:
-        return {**self.source, **self.build, **self.output}
+        return {**self.source, **self.build, **self.output, **self.external}
 
 
 def _build_file_element(absolute_path: PathStr, name: str, spdx_id: SpdxId, file_location: KernelFileLocation) -> File:
