@@ -166,3 +166,27 @@ class Environment:
     @classmethod
     def SRCARCH(cls) -> str | None:
         return os.getenv("SRCARCH")
+
+    @classmethod
+    def CC(cls) -> str | None:
+        return os.getenv("CC")
+
+    @classmethod
+    def LD(cls) -> str | None:
+        return os.getenv("LD")
+
+    @classmethod
+    def AR(cls) -> str | None:
+        return os.getenv("AR")
+
+    @classmethod
+    def NM(cls) -> str | None:
+        return os.getenv("NM")
+
+    @classmethod
+    def OBJCOPY(cls) -> str | None:
+        return os.getenv("OBJCOPY")
+
+    @classmethod
+    def STRIP(cls) -> str | None:
+        return os.getenv("STRIP")
