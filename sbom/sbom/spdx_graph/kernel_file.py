@@ -257,11 +257,11 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
         return "archive"
 
     # Applications
-    if ends_with(["bzImage", "Image"]):
+    if ends_with(["bzImage", "Image", ".efi"]):
         return "application"
 
     # Executables / machine code
-    if ends_with([".bin", ".elf", "vmlinux", "vmlinux.unstripped", "bpfilter_umh"]):
+    if ends_with([".bin", ".elf", "vmlinux", "vmlinux.unstripped", "vmlinuz", "bpfilter_umh"]):
         return "executable"
 
     # Kernel modules
