@@ -64,7 +64,7 @@ class KernelFile:
         if not is_in_src_tree and not is_in_obj_tree:
             file_element_name = str(absolute_path)
             file_location = KernelFileLocation.EXTERNAL
-            spdx_id_generator = spdx_id_generators.build
+            spdx_id_generator = spdx_id_generators.source if src_tree != obj_tree else spdx_id_generators.build
         elif is_in_src_tree and src_tree == obj_tree:
             file_element_name = os.path.relpath(absolute_path, obj_tree)
             file_location = KernelFileLocation.BOTH
@@ -112,6 +112,7 @@ class KernelFileCollection:
     source: dict[PathStr, KernelFile]
     build: dict[PathStr, KernelFile]
     output: dict[PathStr, KernelFile]
+    external: dict[PathStr, KernelFile]
 
     @classmethod
     def create(
@@ -124,6 +125,7 @@ class KernelFileCollection:
         source: dict[PathStr, KernelFile] = {}
         build: dict[PathStr, KernelFile] = {}
         output: dict[PathStr, KernelFile] = {}
+        external: dict[PathStr, KernelFile] = {}
         root_node_paths = {node.absolute_path for node in cmd_graph.roots}
         for node in cmd_graph:
             is_root = node.absolute_path in root_node_paths
@@ -138,19 +140,21 @@ class KernelFileCollection:
                 output[kernel_file.absolute_path] = kernel_file
             elif kernel_file.file_location == KernelFileLocation.SOURCE_TREE:
                 source[kernel_file.absolute_path] = kernel_file
+            elif kernel_file.file_location == KernelFileLocation.EXTERNAL:
+                external[kernel_file.absolute_path] = kernel_file
             else:
                 build[kernel_file.absolute_path] = kernel_file
 
-        return KernelFileCollection(source, build, output)
+        return KernelFileCollection(source, build, output, external)
 
     def to_dict(self) -> dict[PathStr, KernelFile]:
-        return {**self.source, **self.build, **self.output}
+        return {**self.source, **self.build, **self.output, **self.external}
 
 
 def _build_file_element(absolute_path: PathStr, name: str, spdx_id: SpdxId, file_location: KernelFileLocation) -> File:
     verifiedUsing: list[Hash] = []
     content_identifier: list[ContentIdentifier] = []
-    if os.path.exists(absolute_path):
+    if os.path.isfile(absolute_path):
         verifiedUsing = [Hash(algorithm="sha256", hashValue=_sha256(absolute_path))]
         content_identifier = [
             ContentIdentifier(
@@ -181,53 +185,53 @@ def _build_file_element(absolute_path: PathStr, name: str, spdx_id: SpdxId, file
     )
 
 
-def _sha256(path: PathStr) -> str:
-    """Compute the SHA-256 hash of a file."""
-    with open(path, "rb") as f:
-        data = f.read()
-    return hashlib.sha256(data).hexdigest()
-
-
-def _git_blob_oid(file_path: str) -> str:
-    """
-    Compute the Git blob object ID (SHA-1) for a file, like `git hash-object`.
-
-    Args:
-        file_path: Path to the file.
-
-    Returns:
-        SHA-1 hash (hex) of the Git blob object.
-    """
+def _sha256(file_path: PathStr, chunk_size: int = 1 << 20) -> str:
+    """Compute the SHA-256 hex digest of a file, reading it in chunks of chunk_size bytes."""
+    h = hashlib.sha256()
     with open(file_path, "rb") as f:
-        content = f.read()
-    header = f"blob {len(content)}\0".encode()
-    store = header + content
-    sha1_hash = hashlib.sha1(store).hexdigest()
-    return sha1_hash
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _git_blob_oid(file_path: str, chunk_size: int = 1 << 20) -> str:
+    """Compute the Git blob object ID (SHA-1 hex) for a file, like `git hash-object`, reading it in chunks of chunk_size bytes."""
+    h = hashlib.sha1()
+    h.update(f"blob {os.path.getsize(file_path)}\0".encode())
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 # REUSE-IgnoreStart
-SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(r"SPDX-License-Identifier:\s*(?P<id>.*?)(?:\s*(\*/|$))")
+SPDX_LICENSE_IDENTIFIER_PATTERN = re.compile(
+    r"SPDX-License-Identifier:"   # literal tag
+    r"\s*"                        # optional whitespace after colon
+    r"(?P<id>.*?)"                # license expression (non-greedy, stops before terminator)
+    r"(?:\s*"                     # optional whitespace before terminator (not captured)
+    r"(-->|\*/|$))",              # terminator: XML "-->", C-style "*/", or end of line
+    re.MULTILINE,                 # match end of each line, not just end of string
+)
 # REUSE-IgnoreEnd
 
 
-def _parse_spdx_license_identifier(absolute_path: str, max_lines: int = 5) -> str | None:
+def _parse_spdx_license_identifier(absolute_path: str, max_bytes: int = 512) -> str | None:
     """
-    Extracts the SPDX-License-Identifier from the first few lines of a source file.
+    Extracts the SPDX-License-Identifier from the beginning of a source file.
 
     Args:
         absolute_path: Path to the source file.
-        max_lines: Number of lines to scan from the top (default: 5).
+        max_bytes: Maximum number of bytes to scan for the license identifier.
 
     Returns:
         The license identifier string (e.g., 'GPL-2.0-only') if found, otherwise None.
     """
     try:
         with open(absolute_path, "r") as f:
-            for _ in range(max_lines):
-                match = SPDX_LICENSE_IDENTIFIER_PATTERN.search(f.readline())
-                if match:
-                    return match.group("id")
+            match = SPDX_LICENSE_IDENTIFIER_PATTERN.search(f.read(max_bytes))
+            if match:
+                return match.group("id")
     except (UnicodeDecodeError, OSError):
         return None
     return None

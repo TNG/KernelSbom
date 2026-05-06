@@ -10,7 +10,6 @@ from sbom.spdx.core import SPDX_SPEC_VERSION, SpdxDocument, SpdxObject
 class JsonLdSpdxDocument:
     """Represents an SPDX document in JSON-LD format for serialization."""
 
-    context: list[str | dict[str, str]]
     graph: list[SpdxObject]
 
     def __init__(self, graph: list[SpdxObject]) -> None:
@@ -22,12 +21,14 @@ class JsonLdSpdxDocument:
             graph: List of SPDX objects representing the complete SPDX document.
         """
         self.graph = graph
-        spdx_document = next(element for element in graph if isinstance(element, SpdxDocument))
-        self.context = [
+
+    @property
+    def context(self) -> list[str | dict[str, str]]:
+        spdx_document = next(element for element in self.graph if isinstance(element, SpdxDocument))
+        return [
             f"https://spdx.org/rdf/{SPDX_SPEC_VERSION}/spdx-context.jsonld",
-            {namespaceMap.prefix: namespaceMap.namespace for namespaceMap in spdx_document.namespaceMap},
+            {ns.prefix: ns.namespace for ns in spdx_document.namespaceMap},
         ]
-        spdx_document.namespaceMap = []
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -36,9 +37,14 @@ class JsonLdSpdxDocument:
         Returns:
             Dictionary with @context and @graph keys following JSON-LD format.
         """
+        def _item_to_dict(item: SpdxObject) -> dict:
+            d = item.to_dict()
+            if isinstance(item, SpdxDocument):
+                d.pop("namespaceMap", None)
+            return d
         return {
             "@context": self.context,
-            "@graph": [item.to_dict() for item in self.graph],
+            "@graph": [_item_to_dict(item) for item in self.graph],
         }
 
     def save(self, path: PathStr, prettify: bool) -> None:

@@ -10,6 +10,7 @@ from sbom.environment import Environment
 from sbom.cmd_graph.savedcmd_parser.command_splitter import IfBlock, split_commands
 from sbom.cmd_graph.savedcmd_parser.tokenizer import (
     CmdParsingError,
+    Option,
     Positional,
     tokenize_single_command,
     tokenize_single_command_positionals_only,
@@ -44,7 +45,7 @@ def _parse_compound_command(command: str) -> list[PathStr]:
         (re.compile(r"sed\b"), _parse_sed_command),
         (
             re.compile(r"(.*/)scripts/bin2c\s*<"),
-            lambda c: [input] if (input := c.split("<")[1].strip()) != "/dev/null" else [],
+            lambda c: [input] if (input := c.split("<")[1].split(">")[0].strip()) != "/dev/null" else [],
         ),
         (re.compile(r"^:$"), _parse_noop),
     ]
@@ -71,11 +72,11 @@ def _parse_compound_command(command: str) -> list[PathStr]:
             continue
         try:
             input_files += parser(inner_command)
-        except CmdParsingError as e:
+        except (CmdParsingError, IndexError) as e:
             sbom_logging.error(
                 "Skip parsing inner command {inner_command} of compound command because of command parsing error: {error_message}",
                 inner_command=inner_command,
-                error_message=e.message,
+                error_message=str(e),
             )
     return input_files
 
@@ -84,10 +85,6 @@ def _parse_objcopy_command(command: str) -> list[PathStr]:
     command_parts = tokenize_single_command(command, flag_options=["-S", "-w"])
     positionals = [part.value for part in command_parts if isinstance(part, Positional)]
     # expect positionals to be ['objcopy', input_file] or ['objcopy', input_file, output_file]
-    if not (len(positionals) == 2 or len(positionals) == 3):
-        raise CmdParsingError(
-            f"Invalid objcopy command format: expected 2 or 3 positional arguments, got {len(positionals)} ({positionals})"
-        )
     return [positionals[1]]
 
 
@@ -122,7 +119,7 @@ def _parse_ar_piped_xargs_command(command: str) -> list[PathStr]:
     printf_command, _ = command.split("|", 1)
     positionals = tokenize_single_command_positionals_only(printf_command.strip())
     # expect positionals to be ['printf', '{prefix_path}%s ', input1, input2, ...]
-    prefix_path = positionals[1].rstrip("%s ")
+    prefix_path = positionals[1].removesuffix("%s ")
     return [f"{prefix_path}{filename}" for filename in positionals[2:]]
 
 
@@ -235,9 +232,12 @@ def _parse_sed_command(command: str) -> list[PathStr]:
 
 def _parse_awk(command: str) -> list[PathStr]:
     command_parts = tokenize_single_command(command)
+    options = [p for p in command_parts if isinstance(p, Option)]
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
-    # expect positionals to be ["awk", input1, input2, ...]
-    return positionals[1:]
+    has_script_file = any(p.name == "-f" for p in options)
+    # With -f option: expect ["awk", input1, input2, ...]
+    # Without -f option: expect ["awk", inline_program, input1, input2, ...]
+    return positionals[1:] if has_script_file else positionals[2:]
 
 
 def _parse_nm_piped_command(command: str) -> list[PathStr]:
@@ -259,7 +259,7 @@ def _parse_pnm_to_logo_command(command: str) -> list[PathStr]:
 
 def _parse_relacheck(command: str) -> list[PathStr]:
     positionals = tokenize_single_command_positionals_only(command)
-    # expect positionals to be ["relachek", input, log_reference]
+    # expect positionals to be ["relacheck", input, log_reference]
     return [positionals[1]]
 
 
@@ -357,7 +357,9 @@ def _parse_bindgen_command(command: str) -> list[PathStr]:
 def _parse_gen_header(command: str) -> list[PathStr]:
     command_parts = shlex.split(command)
     # expect command parts to be ["python3", path/to/gen_headers.py, ..., "--xml", input]
-    i = next(i for i, token in enumerate(command_parts) if token == "--xml")
+    i = next((i for i, token in enumerate(command_parts) if token == "--xml"), None)
+    if i is None:
+        raise CmdParsingError(f"Expected --xml input file in gen_headers command but got {command}")
     return [command_parts[i + 1]]
 
 

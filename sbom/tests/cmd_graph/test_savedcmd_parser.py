@@ -3,6 +3,7 @@
 
 import os
 import unittest
+from unittest.mock import patch
 
 from sbom.cmd_graph.savedcmd_parser import parse_inputs_from_commands
 from sbom.cmd_graph.savedcmd_parser.command_parser_registry import CommandParserRegistry
@@ -113,12 +114,12 @@ class TestSavedCmdParser(unittest.TestCase):
         self._assert_parsing(cmd, expected)
 
     def test_gcc_with_env_override(self):
-        os.environ["CC"] = "ccache gcc"
-        registry = CommandParserRegistry.create()
-        cmd = "gcc   -o arch/x86/tools/relocs arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
-        expected = "arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
-        self._assert_parsing(cmd, expected, registry)
-        self._assert_parsing(f"ccache {cmd}", expected, registry)
+        with patch.dict(os.environ, {"CC": "ccache gcc"}):
+            registry = CommandParserRegistry.create()
+            cmd = "gcc   -o arch/x86/tools/relocs arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+            expected = "arch/x86/tools/relocs_32.o arch/x86/tools/relocs_64.o arch/x86/tools/relocs_common.o"
+            self._assert_parsing(cmd, expected, registry)
+            self._assert_parsing(f"ccache {cmd}", expected, registry)
 
     def test_gcc_dts_preprocessing(self):
         cmd = "gcc -E -Wp,-MMD,drivers/of/.empty_root.dtb.d.pre.tmp -nostdinc -I ../scripts/dtc/include-prefixes -undef -D__DTS__ -x assembler-with-cpp -o drivers/of/.empty_root.dtb.dts.tmp ../drivers/of/empty_root.dts"
@@ -137,12 +138,12 @@ class TestSavedCmdParser(unittest.TestCase):
         self._assert_parsing(cmd, expected)
 
     def test_ld_with_env_override(self):
-        os.environ["LD"] = "some-tool ld"
-        registry = CommandParserRegistry.create()
-        cmd = 'ld -o arch/x86/entry/vdso/vdso64.so.dbg -shared --hash-style=both --build-id=sha1 --no-undefined  --eh-frame-hdr -Bsymbolic -z noexecstack -m elf_x86_64 -soname linux-vdso.so.1 -z max-page-size=4096 -T arch/x86/entry/vdso/vdso.lds arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o; if readelf -rW arch/x86/entry/vdso/vdso64.so.dbg | grep -v _NONE | grep -q " R_\w*_"; then (echo >&2 "arch/x86/entry/vdso/vdso64.so.dbg: dynamic relocations are not supported"; rm -f arch/x86/entry/vdso/vdso64.so.dbg; /bin/false); fi'  # type: ignore
-        expected = "arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o"
-        self._assert_parsing(cmd, expected, registry)
-        self._assert_parsing(f"some-tool {cmd}", expected, registry)
+        with patch.dict(os.environ, {"LD": "some-tool ld"}):
+            registry = CommandParserRegistry.create()
+            cmd = 'ld -o arch/x86/entry/vdso/vdso64.so.dbg -shared --hash-style=both --build-id=sha1 --no-undefined  --eh-frame-hdr -Bsymbolic -z noexecstack -m elf_x86_64 -soname linux-vdso.so.1 -z max-page-size=4096 -T arch/x86/entry/vdso/vdso.lds arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o; if readelf -rW arch/x86/entry/vdso/vdso64.so.dbg | grep -v _NONE | grep -q " R_\w*_"; then (echo >&2 "arch/x86/entry/vdso/vdso64.so.dbg: dynamic relocations are not supported"; rm -f arch/x86/entry/vdso/vdso64.so.dbg; /bin/false); fi'  # type: ignore
+            expected = "arch/x86/entry/vdso/vdso-note.o arch/x86/entry/vdso/vclock_gettime.o arch/x86/entry/vdso/vgetcpu.o arch/x86/entry/vdso/vgetrandom.o arch/x86/entry/vdso/vgetrandom-chacha.o"
+            self._assert_parsing(cmd, expected, registry)
+            self._assert_parsing(f"some-tool {cmd}", expected, registry)
 
     def test_ld_whole_archive(self):
         cmd = "ld -m elf_x86_64 -z noexecstack -r -o vmlinux.o   --whole-archive vmlinux.a --no-whole-archive --start-group  --end-group"

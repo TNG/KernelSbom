@@ -3,7 +3,7 @@
 
 import argparse
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import os
 from typing import Any
@@ -78,17 +78,13 @@ class KernelSbomConfig:
     """Whether to pretty-print generated SPDX JSON documents."""
 
 
-def _parse_cli_arguments() -> dict[str, Any]:
+def _parse_cli_arguments(parser: argparse.ArgumentParser) -> dict[str, Any]:
     """
     Parse command-line arguments using argparse.
 
     Returns:
         Dictionary of parsed arguments.
     """
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawTextHelpFormatter,
-        description="Generate SPDX SBOM documents for kernel builds",
-    )
     parser.add_argument(
         "--src-tree",
         default="../linux",
@@ -226,8 +222,11 @@ def get_config() -> KernelSbomConfig:
     Returns:
         KernelSbomConfig: Configuration object with all settings for SBOM generation.
     """
-    # Parse cli arguments
-    args = _parse_cli_arguments()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter,
+        description="Generate SPDX SBOM documents for kernel builds",
+    )
+    args = _parse_cli_arguments(parser)
 
     # Extract and validate cli arguments
     src_tree = os.path.realpath(args["src_tree"])
@@ -236,9 +235,11 @@ def get_config() -> KernelSbomConfig:
     if args["roots_file"]:
         with open(args["roots_file"], "rt") as f:
             root_paths = [root.strip() for root in f.readlines()]
+        if len(root_paths) == 0:
+            parser.error("--roots-file must contain at least one path")
     else:
         root_paths = args["roots"]
-    _validate_path_arguments(src_tree, obj_tree, root_paths)
+    _validate_path_arguments(parser, src_tree, obj_tree, root_paths)
 
     generate_spdx = args["generate_spdx"]
     generate_used_files = args["generate_used_files"]
@@ -249,7 +250,8 @@ def get_config() -> KernelSbomConfig:
     write_output_on_error = args["write_output_on_error"]
 
     created = datetime.fromtimestamp(
-        max([os.path.getmtime(os.path.join(obj_tree, root_path)) for root_path in root_paths])
+        max([os.path.getmtime(os.path.join(obj_tree, root_path)) for root_path in root_paths]),
+        tz=timezone.utc,
     )
     spdxId_prefix = args["spdxId_prefix"]
     build_type = args["build_type"]
@@ -295,24 +297,25 @@ def get_config() -> KernelSbomConfig:
     )
 
 
-def _validate_path_arguments(src_tree: PathStr, obj_tree: PathStr, root_paths: list[PathStr]) -> None:
+def _validate_path_arguments(
+    parser: argparse.ArgumentParser,
+    src_tree: PathStr,
+    obj_tree: PathStr,
+    root_paths: list[PathStr],
+) -> None:
     """
     Validate that the provided paths exist.
 
     Args:
+        parser: The argument parser, used to emit well-formatted error messages.
         src_tree: Absolute path to the source tree.
         obj_tree: Absolute path to the object tree.
         root_paths: List of root paths relative to obj_tree.
-
-    Raises:
-        argparse.ArgumentTypeError: If any of the paths don't exist.
     """
     if not os.path.exists(src_tree):
-        raise argparse.ArgumentTypeError(f"--src-tree {src_tree} does not exist")
+        parser.error(f"--src-tree {src_tree} does not exist")
     if not os.path.exists(obj_tree):
-        raise argparse.ArgumentTypeError(f"--obj-tree {obj_tree} does not exist")
+        parser.error(f"--obj-tree {obj_tree} does not exist")
     for root_path in root_paths:
-        if not os.path.exists(os.path.join(obj_tree, root_path)):
-            raise argparse.ArgumentTypeError(
-                f"path to root artifact {os.path.join(obj_tree, root_path)} does not exist"
-            )
+        if not os.path.isfile(root_path_absolute := os.path.join(obj_tree, root_path)):
+            parser.error(f"path to root artifact {root_path_absolute} is not a file")

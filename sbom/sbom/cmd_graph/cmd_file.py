@@ -18,8 +18,8 @@ class CmdFile:
     cmd_file_path: PathStr
     savedcmd: str
     source: PathStr | None = None
-    deps: list[str] = field(default_factory=list[str])
-    make_rules: list[str] = field(default_factory=list[str])
+    deps: list[str] = field(default_factory=list)
+    make_rules: list[str] = field(default_factory=list)
 
     @classmethod
     def create(cls, cmd_file_path: PathStr) -> "CmdFile | None":
@@ -39,7 +39,7 @@ class CmdFile:
 
         3. Single Dependency Cmd File
             (saved)?cmd_<output> := <command>
-            <output> := <dependency>
+            <output> : <dependency>
 
         Args:
             cmd_file_path (Path): absolute Path to a .cmd file
@@ -51,7 +51,7 @@ class CmdFile:
             lines = [line.strip() for line in f.readlines() if line.strip() != "" and not line.startswith("#")]
 
         # savedcmd
-        match = SAVEDCMD_PATTERN.match(lines[0])
+        match = SAVEDCMD_PATTERN.match(lines[0] if lines else "")
         if match is None:
             sbom_logging.error(
                 "Skip parsing '{cmd_file_path}' because no 'savedcmd_' command was found.", cmd_file_path=cmd_file_path
@@ -65,7 +65,13 @@ class CmdFile:
 
         # Single Dependency Cmd File
         if len(lines) == 2:
-            dep = lines[1].split(":")[1].strip()
+            parts = lines[1].split(":", 1)
+            if len(parts) != 2:
+                sbom_logging.error(
+                    "Skip parsing '{cmd_file_path}'. Expected dependency line '<output>: <dependency>' but got {second_line}", cmd_file_path=cmd_file_path, second_line=lines[1]
+                )
+                return None
+            dep = parts[1].strip()
             return CmdFile(cmd_file_path, savedcmd, deps=[dep])
 
         # Full Cmd File
@@ -143,7 +149,14 @@ def _expand_resolve_files(input_files: list[PathStr], obj_tree: PathStr) -> list
         if not input_file.startswith("@"):
             expanded_input_files.append(input_file)
             continue
-        with open(os.path.join(obj_tree, input_file.lstrip("@")), "rt") as f:
+        resolve_file_path = os.path.join(obj_tree, input_file.lstrip("@"))
+        if not os.path.exists(resolve_file_path):
+            sbom_logging.error(
+                "Skip resolving '{resolve_file_path}' because the response file does not exist.",
+                resolve_file_path=resolve_file_path,
+            )
+            continue
+        with open(resolve_file_path, "rt") as f:
             resolve_file_content = [line_stripped for line in f.readlines() if (line_stripped := line.strip())]
         expanded_input_files += _expand_resolve_files(resolve_file_content, obj_tree)
     return expanded_input_files

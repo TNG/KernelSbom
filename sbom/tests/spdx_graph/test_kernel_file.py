@@ -22,6 +22,7 @@ class TestKernelFile(unittest.TestCase):
             ("// SPDX-License-Identifier: GPL-2.0-only", "GPL-2.0-only"),
             ("/* SPDX-License-Identifier: GPL-2.0-or-later OR MIT */", "GPL-2.0-or-later OR MIT"),
             ("/* SPDX-License-Identifier: Apache-2.0 */\n extra text", "Apache-2.0"),
+            ("<!-- SPDX-License-Identifier: GPL-2.0 -->", "GPL-2.0"),
             ("int main() { return 0; }", None),
         ]
         # REUSE-IgnoreEnd

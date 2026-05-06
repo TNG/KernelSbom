@@ -11,7 +11,7 @@ from sbom import sbom_logging
 from sbom.cmd_graph.cmd_file import CmdFile
 from sbom.cmd_graph.hardcoded_dependencies import get_hardcoded_dependencies
 from sbom.cmd_graph.incbin_parser import parse_incbin_statements
-from sbom.path_utils import PathStr, is_relative_to
+from sbom.path_utils import PathStr, has_link, is_relative_to
 
 
 @dataclass
@@ -36,9 +36,9 @@ class CmdGraphNode:
     cmd_file: CmdFile | None = None
     """Parsed .cmd file describing how the file at absolute_path was built, or None if not available."""
 
-    cmd_file_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
-    incbin_dependencies: list[IncbinDependency] = field(default_factory=list[IncbinDependency])
-    hardcoded_dependencies: list["CmdGraphNode"] = field(default_factory=list["CmdGraphNode"])
+    cmd_file_dependencies: list["CmdGraphNode"] = field(default_factory=list)
+    incbin_dependencies: list[IncbinDependency] = field(default_factory=list)
+    hardcoded_dependencies: list["CmdGraphNode"] = field(default_factory=list)
 
     @property
     def children(self) -> Iterator["CmdGraphNode"]:
@@ -78,7 +78,7 @@ class CmdGraphNode:
 
         target_path_absolute = (
             os.path.realpath(p)
-            if os.path.islink(p := os.path.join(config.obj_tree, target_path))
+            if has_link(p:=os.path.join(config.obj_tree, target_path))
             else os.path.normpath(p)
         )
 

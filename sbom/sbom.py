@@ -41,7 +41,7 @@ def main():
     if config.generate_used_files:
         if config.src_tree == config.obj_tree:
             logging.info(
-                f"Extracting all files from the cmd graph to {(config.used_files_file_name,)} "
+                f"Extracting all files from the cmd graph to {config.used_files_file_name} "
                 "instead of only source files because source files cannot be "
                 "reliably classified when the source and object trees are identical.",
             )

@@ -19,12 +19,14 @@ class SpdxSourceGraph(SpdxGraph):
     def create(
         cls,
         source_files: list[KernelFile],
+        external_files: list[KernelFile],
         shared_elements: SharedSpdxElements,
         spdx_id_generators: SpdxIdGeneratorCollection,
     ) -> "SpdxSourceGraph":
         """
         Args:
             source_files: List of files within the kernel source tree.
+            external_files: Files outside both source and object trees.
             shared_elements: Shared SPDX elements used across multiple documents.
             spdx_id_generators: Collection of SPDX ID generators.
 
@@ -63,6 +65,7 @@ class SpdxSourceGraph(SpdxGraph):
 
         # Source file elements
         source_file_elements: list[Element] = [file.spdx_file_element for file in source_files]
+        external_file_elements: list[Element] = [file.spdx_file_element for file in external_files]
 
         # Source file license elements
         source_file_license_identifiers, source_file_license_relationships = source_file_license_elements(
@@ -76,6 +79,7 @@ class SpdxSourceGraph(SpdxGraph):
             src_tree_element,
             src_tree_contains_relationship,
             *source_file_elements,
+            *external_file_elements,
             *source_file_license_identifiers,
             *source_file_license_relationships,
         ]

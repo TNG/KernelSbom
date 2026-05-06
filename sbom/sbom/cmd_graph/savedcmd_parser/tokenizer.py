@@ -8,9 +8,7 @@ from typing import Union
 
 
 class CmdParsingError(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
+    pass
 
 
 @dataclass

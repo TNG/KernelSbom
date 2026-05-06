@@ -14,7 +14,11 @@ HARDCODED_DEPENDENCIES: dict[str, list[str]] = {
     "include/generated/bounds.h": ["kernel/bounds.s"],
     "include/generated/asm-offsets.h": ["arch/{arch}/kernel/asm-offsets.s"],
 }
-
+"""
+Maps file paths to the list of dependencies required to build them
+which are not tracked by the .cmd dependency mechanism.
+Paths are relative to either the source tree or the object tree.
+"""
 
 def get_hardcoded_dependencies(path: PathStr, obj_tree: PathStr, src_tree: PathStr) -> list[PathStr]:
     """
@@ -49,8 +53,8 @@ def get_hardcoded_dependencies(path: PathStr, obj_tree: PathStr, src_tree: PathS
             continue
         if os.path.exists(os.path.join(obj_tree, dependency)):
             dependencies.append(dependency)
-        elif os.path.exists(os.path.join(src_tree, dependency)):
-            dependencies.append(os.path.relpath(dependency, obj_tree))
+        elif os.path.exists(dependency_absolute := os.path.join(src_tree, dependency)):
+            dependencies.append(os.path.relpath(dependency_absolute, obj_tree))
         else:
             sbom_logging.error(
                 "Skip hardcoded dependency '{dependency}' for '{path}' because the dependency lies neither in the src tree nor the object tree.",

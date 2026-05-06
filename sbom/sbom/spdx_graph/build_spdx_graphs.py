@@ -60,6 +60,7 @@ def build_spdx_graphs(
     if len(kernel_files.source) > 0:
         spdx_graphs[KernelSpdxDocumentKind.SOURCE] = SpdxSourceGraph.create(
             source_files=list(kernel_files.source.values()),
+            external_files=list(kernel_files.external.values()),
             shared_elements=shared_elements,
             spdx_id_generators=spdx_id_generators,
         )
