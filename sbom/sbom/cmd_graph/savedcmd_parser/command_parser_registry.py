@@ -96,6 +96,12 @@ def _parse_link_vmlinux_command(command: str) -> list[PathStr]:
     return ["vmlinux.a"]
 
 
+def _parse_cp_command(command: str) -> list[PathStr]:
+    positionals = tokenize_single_command_positionals_only(command)
+    # expect positionals to be ["cp", input1, ..., destination]
+    return positionals[1:-1]
+
+
 def _parse_noop(command: str) -> list[PathStr]:
     """
     No-op parser for commands with no input files (e.g., 'rm', 'true').
@@ -195,6 +201,12 @@ def _parse_vdso2c_command(command: str) -> list[PathStr]:
     positionals = tokenize_single_command_positionals_only(command)
     # expect positionals to be ['vdso2c', raw_input, stripped_input, output]
     return [positionals[1], positionals[2]]
+
+
+def _parse_vdsomunge_command(command: str) -> list[PathStr]:
+    positionals = tokenize_single_command_positionals_only(command)
+    # expect positionals to be ['vdsomunge', input, output]
+    return [positionals[1]]
 
 
 def _parse_ld_command(command: str) -> list[PathStr]:
@@ -396,6 +408,8 @@ class CommandParserRegistry:
             (re.compile(r"^rm\b"), _parse_noop),
             (re.compile(r"^mkdir\b"), _parse_noop),
             (re.compile(r"^touch\b"), _parse_noop),
+            (re.compile(r"^cp\b"), _parse_cp_command),
+            (re.compile(r"^truncate\b"), _parse_noop),
             (re.compile(r"^cat\b.*?[\|>]"), lambda c: _parse_cat_command(c.split("|")[0].split(">")[0])),
             (re.compile(r"^echo[^|]*$"), _parse_noop),
             (re.compile(r"^sed.*?>"), lambda c: _parse_sed_command(c.split(">")[0])),
@@ -453,6 +467,7 @@ class CommandParserRegistry:
             (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
             (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
             (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
+            (re.compile(r"(.*/)?vdsomunge\b"), _parse_vdsomunge_command),
             (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
             (re.compile(r"^(.*/)?relocs\b"), _parse_relocs_command),
             (re.compile(r"^(.*/)?mk_elfconfig.*?<.*?>"), _parse_mk_elfconfig_command),
