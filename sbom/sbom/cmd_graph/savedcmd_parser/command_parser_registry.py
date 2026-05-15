@@ -390,6 +390,13 @@ def _parse_syscallnr_command(command: str) -> list[PathStr]:
     return [positionals[2]]
 
 
+def _parse_gen_kernel_hwcaps_command(command: str) -> list[PathStr]:
+    command_parts = tokenize_single_command(command.strip(), flag_options=["-e"])
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be ["sh", path/to/gen-kernel-hwcaps.sh, input]
+    return [positionals[2]]
+
+
 class CommandParserRegistry:
     """
     Registry mapping command patterns to their input-file parsers.
@@ -483,6 +490,7 @@ class CommandParserRegistry:
             (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
             (re.compile(r"(bash|sh) (.*/)?mkuboot\.sh\b"), _parse_mkuboot_command),
             (re.compile(r"sh (.*/)?syscallnr\.sh\b"), _parse_syscallnr_command),
+            (re.compile(r"(/bin/)?sh (.*/)?gen-kernel-hwcaps\.sh\b"), lambda c: _parse_gen_kernel_hwcaps_command(c.split(">")[0])),
             (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
             (re.compile(r"(.*/)?vdsomunge\b"), _parse_vdsomunge_command),
             (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),

@@ -329,6 +329,12 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "../arch/arm/tools/syscall.tbl"
         self._assert_parsing(cmd, expected)
 
+    # gen-kernel-hwcaps.sh command tests
+    def test_gen_kernel_hwcaps(self):
+        cmd = "/bin/sh -e ../arch/arm64/tools/gen-kernel-hwcaps.sh ../arch/arm64/include/uapi/asm/hwcap.h > arch/arm64/include/generated/asm/kernel-hwcap.h"
+        expected = "../arch/arm64/include/uapi/asm/hwcap.h"
+        self._assert_parsing(cmd, expected)
+
     # vdso2c command tests
     def test_vdso2c(self):
         cmd = "arch/x86/entry/vdso/vdso2c arch/x86/entry/vdso/vdso64.so.dbg arch/x86/entry/vdso/vdso64.so arch/x86/entry/vdso/vdso-image-64.c"
