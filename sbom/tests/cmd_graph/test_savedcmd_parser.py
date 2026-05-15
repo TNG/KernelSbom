@@ -16,7 +16,7 @@ class TestSavedCmdParser(unittest.TestCase):
         parsed = parse_inputs_from_commands(cmd, fail_on_unknown_build_command=False, registry=registry)
         target = [] if expected == "" else expected.split(" ")
         self.assertEqual(parsed, target)
-        errors = sbom_logging._error_logger.messages  # type: ignore
+        errors = sbom_logging._error_logger._message_counts # type: ignore
         self.assertEqual(errors, {})
 
     # Compound command tests
