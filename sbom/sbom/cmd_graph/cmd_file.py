@@ -128,8 +128,8 @@ class CmdFile:
                 # Skip target file to prevent cycles. This is necessary because some multi stage commands first create an output and then pass it as input to the next command, e.g., objcopy.
                 continue
             cmd_file_dependencies.append(input_file)
-
-        return cmd_file_dependencies
+        unique_cmd_file_dependencies = list(dict.fromkeys(cmd_file_dependencies))
+        return unique_cmd_file_dependencies
 
 
 def _expand_resolve_files(input_files: list[PathStr], obj_tree: PathStr) -> list[PathStr]:
