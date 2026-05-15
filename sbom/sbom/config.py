@@ -99,9 +99,8 @@ def _parse_cli_arguments(parser: argparse.ArgumentParser) -> dict[str, Any]:
     group.add_argument(
         "--roots",
         nargs="+",
-        default="arch/x86/boot/bzImage",
         help="Space-separated list of paths relative to obj-tree for which the SBOM will be created.\n"
-        "Cannot be used together with --roots-file. (default: arch/x86/boot/bzImage)",
+        "Cannot be used together with --roots-file.",
     )
     group.add_argument(
         "--roots-file",
