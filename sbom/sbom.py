@@ -21,6 +21,21 @@ from sbom.spdx_graph import SpdxIdGeneratorCollection, build_spdx_graphs
 from sbom.cmd_graph import CmdGraph
 
 
+def _exit_with_summary(write_output_on_error: bool = False) -> None:
+    warning_summary = sbom_logging.summarize_warnings()
+    error_summary = sbom_logging.summarize_errors()
+    if warning_summary:
+        logging.warning(warning_summary)
+    if error_summary:
+        logging.error(error_summary)
+        if not write_output_on_error:
+            logging.info(
+                "Use --write-output-on-error to generate output documents even when errors occur. "
+                "Note that in this case the generated documents may be incomplete."
+            )
+        sys.exit(1)
+
+
 def main():
     # Read config
     config = get_config()
@@ -62,6 +77,7 @@ def main():
             logging.debug(f"Successfully saved {used_files_path}")
 
     if config.generate_spdx is False:
+        _exit_with_summary(config.write_output_on_error)
         return
 
     # Build SPDX Documents
@@ -92,16 +108,15 @@ def main():
     )
     logging.debug(f"Generated SPDX graph in {time.time() - start_time} seconds")
 
-    # Report collected warnings and errors in case of failure
-    warning_summary = sbom_logging.summarize_warnings()
-    error_summary = sbom_logging.summarize_errors()
-
     if not sbom_logging.has_errors() or config.write_output_on_error:
         for kernel_sbom_kind, spdx_graph in spdx_graphs.items():
             spdx_graph_objects = spdx_graph.to_list()
             # Add warning and error summary to creation info comment
             creation_info = next(element for element in spdx_graph_objects if isinstance(element, CreationInfo))
-            creation_info.comment = "\n".join([warning_summary, error_summary]).strip()
+            creation_info.comment = "\n".join([
+                sbom_logging.summarize_warnings(),
+                sbom_logging.summarize_errors(),
+            ]).strip()
             # Replace Placeholder uuid with real uuid for spdxIds
             spdx_document = next(element for element in spdx_graph_objects if isinstance(element, SpdxDocument))
             for namespaceMap in spdx_document.namespaceMap:
@@ -112,16 +127,7 @@ def main():
             spdx_doc.save(save_path, config.prettify_json)
             logging.debug(f"Successfully saved {save_path}")
 
-    if warning_summary:
-        logging.warning(warning_summary)
-    if error_summary:
-        logging.error(error_summary)
-        if not config.write_output_on_error:
-            logging.info(
-                "Use --write-output-on-error to generate output documents even when errors occur. "
-                "Note that in this case the generated SPDX documents may be incomplete."
-            )
-        sys.exit(1)
+    _exit_with_summary(config.write_output_on_error)
 
 
 # Call main method
