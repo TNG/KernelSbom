@@ -317,6 +317,18 @@ class TestSavedCmdParser(unittest.TestCase):
         expected = "../usr/default_cpio_list"
         self._assert_parsing(cmd, expected)
 
+    # mkuboot.sh command tests
+    def test_mkuboot(self):
+        cmd = "bash ../scripts/mkuboot.sh -A arm -O linux -C none -T kernel -a 0x8000 -e 0x8000 -n 'Linux-6.15.0' -d arch/arm/boot/zImage arch/arm/boot/uImage"
+        expected = "arch/arm/boot/zImage"
+        self._assert_parsing(cmd, expected)
+
+    # syscallnr.sh command tests
+    def test_syscallnr(self):
+        cmd = "sh ../arch/arm/tools/syscallnr.sh ../arch/arm/tools/syscall.tbl arch/arm/include/generated/asm/unistd-nr.h"
+        expected = "../arch/arm/tools/syscall.tbl"
+        self._assert_parsing(cmd, expected)
+
     # vdso2c command tests
     def test_vdso2c(self):
         cmd = "arch/x86/entry/vdso/vdso2c arch/x86/entry/vdso/vdso64.so.dbg arch/x86/entry/vdso/vdso64.so arch/x86/entry/vdso/vdso-image-64.c"

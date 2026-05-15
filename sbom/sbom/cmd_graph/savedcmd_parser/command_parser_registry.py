@@ -374,6 +374,21 @@ def _parse_gen_header(command: str) -> list[PathStr]:
         raise CmdParsingError(f"Expected --xml input file in gen_headers command but got {command}")
     return [command_parts[i + 1]]
 
+def _parse_mkuboot_command(command: str) -> list[PathStr]:
+    command_parts = tokenize_single_command(command)
+    # mkuboot.sh passes all args to mkimage; -d specifies the data/input image file
+    for part in command_parts:
+        if isinstance(part, Option) and part.name == "-d" and part.value is not None:
+            return [part.value]
+    raise CmdParsingError("Could not find -d (data file) option in mkuboot.sh command")
+
+
+def _parse_syscallnr_command(command: str) -> list[PathStr]:
+    command_parts = tokenize_single_command(command.strip())
+    positionals = [p.value for p in command_parts if isinstance(p, Positional)]
+    # expect positionals to be ["sh", path/to/syscallnr.sh, input, output]
+    return [positionals[2]]
+
 
 class CommandParserRegistry:
     """
@@ -466,6 +481,8 @@ class CommandParserRegistry:
             (re.compile(r"sh (.*/)?xen-hypercalls\.sh\b"), _parse_xen_hypercalls_command),
             (re.compile(r"sh (.*/)?gen_initramfs\.sh\b"), _parse_gen_initramfs_command),
             (re.compile(r"sh (.*/)?checkundef\.sh\b"), _parse_noop),
+            (re.compile(r"(bash|sh) (.*/)?mkuboot\.sh\b"), _parse_mkuboot_command),
+            (re.compile(r"sh (.*/)?syscallnr\.sh\b"), _parse_syscallnr_command),
             (re.compile(r"(.*/)?vdso2c\b"), _parse_vdso2c_command),
             (re.compile(r"(.*/)?vdsomunge\b"), _parse_vdsomunge_command),
             (re.compile(r"^(.*/)?mkpiggy.*?>"), _parse_mkpiggy_command),
