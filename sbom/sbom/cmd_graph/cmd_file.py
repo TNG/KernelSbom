@@ -149,7 +149,7 @@ def _expand_resolve_files(input_files: list[PathStr], obj_tree: PathStr) -> list
         if not input_file.startswith("@"):
             expanded_input_files.append(input_file)
             continue
-        resolve_file_path = os.path.join(obj_tree, input_file.lstrip("@"))
+        resolve_file_path = os.path.join(obj_tree, input_file.removeprefix("@"))
         if not os.path.exists(resolve_file_path):
             sbom_logging.error(
                 "Skip resolving '{resolve_file_path}' because the response file does not exist.",
