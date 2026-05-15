@@ -44,16 +44,20 @@ def _unwrap_outer_parentheses(s: str) -> str:
 def _find_first_top_level_command_separator(
     commands: str, separators: list[str] = [";", "&&"]
 ) -> tuple[int | None, int | None]:
+    def is_escaped(index: int) -> bool:
+        preceding = commands[:index]
+        return (len(preceding) - len(preceding.rstrip("\\"))) % 2 == 1
+
     in_single_quote = False
     in_double_quote = False
     in_curly_braces = 0
     in_braces = 0
     for i, char in enumerate(commands):
-        if char == "'" and not in_double_quote:
-            # Toggle single quote state (unless inside double quotes)
+        if char == "'" and not in_double_quote and not is_escaped(i):
+            # Toggle single quote state (unless inside double quotes or escaped)
             in_single_quote = not in_single_quote
-        elif char == '"' and not in_single_quote:
-            # Toggle double quote state (unless inside single quotes)
+        elif char == '"' and not in_single_quote and not is_escaped(i):
+            # Toggle double quote state (unless inside single quotes or escaped)
             in_double_quote = not in_double_quote
 
         if in_single_quote or in_double_quote:
