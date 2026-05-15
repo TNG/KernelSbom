@@ -232,7 +232,7 @@ def get_config() -> KernelSbomConfig:
     obj_tree = os.path.realpath(args["obj_tree"])
     root_paths = []
     if args["roots_file"]:
-        with open(args["roots_file"], "rt") as f:
+        with open(args["roots_file"], "rt", encoding="utf-8") as f:
             root_paths = [root.strip() for root in f.readlines()]
         if len(root_paths) == 0:
             parser.error("--roots-file must contain at least one path")
@@ -261,7 +261,7 @@ def get_config() -> KernelSbomConfig:
     if args["package_copyright_text"] is not None:
         package_copyright_text = args["package_copyright_text"]
     elif os.path.isfile(copying_path := os.path.join(src_tree, "COPYING")):
-        with open(copying_path, "r") as f:
+        with open(copying_path, "r", encoding="utf-8") as f:
             package_copyright_text = f.read()
     prettify_json = args["prettify_json"]
 

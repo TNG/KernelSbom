@@ -47,7 +47,7 @@ class CmdFile:
         Returns:
             cmd_file (CmdFile): Parsed cmd file.
         """
-        with open(cmd_file_path, "rt") as f:
+        with open(cmd_file_path, "rt", encoding="utf-8") as f:
             lines = [line.strip() for line in f.readlines() if line.strip() != "" and not line.startswith("#")]
 
         # savedcmd
@@ -156,7 +156,7 @@ def _expand_resolve_files(input_files: list[PathStr], obj_tree: PathStr) -> list
                 resolve_file_path=resolve_file_path,
             )
             continue
-        with open(resolve_file_path, "rt") as f:
+        with open(resolve_file_path, "rt", encoding="utf-8") as f:
             resolve_file_content = [line_stripped for line in f.readlines() if (line_stripped := line.strip())]
         expanded_input_files += _expand_resolve_files(resolve_file_content, obj_tree)
     return expanded_input_files
