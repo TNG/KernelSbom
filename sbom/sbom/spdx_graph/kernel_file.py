@@ -253,7 +253,7 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
         return "library"
 
     # Archives
-    if ends_with([".xz", ".cpio", ".gz", ".tar", ".zip"]):
+    if ends_with([".xz", ".cpio", ".gz", ".tar", ".zip", "piggy_data"]):
         return "archive"
 
     # Applications
@@ -295,6 +295,7 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
             "x509_revocation_list",
             "cpucaps",
             "sysreg",
+            "mach-types",
         ]
     ) or includes_path_segments(["drivers/gpu/drm/radeon/reg_srcs/"]):
         return "data"
