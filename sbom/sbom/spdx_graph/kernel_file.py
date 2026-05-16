@@ -228,7 +228,7 @@ def _parse_spdx_license_identifier(absolute_path: str, max_bytes: int = 512) -> 
         The license identifier string (e.g., 'GPL-2.0-only') if found, otherwise None.
     """
     try:
-        with open(absolute_path, "r") as f:
+        with open(absolute_path, "r", encoding="utf-8") as f:
             match = SPDX_LICENSE_IDENTIFIER_PATTERN.search(f.read(max_bytes))
             if match:
                 return match.group("id")

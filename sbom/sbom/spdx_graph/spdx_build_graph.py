@@ -262,9 +262,6 @@ def _file_relationships(
     # and its children (input files)
     build_and_relationship_elements: list[Build | Relationship] = [high_level_build_ancestorOf_relationship]
     for node in cmd_graph:
-        if next(node.children, None) is None:
-            continue
-
         # .cmd file dependencies
         if node.cmd_file is not None:
             build_element = Build(
@@ -273,23 +270,25 @@ def _file_relationships(
                 build_buildId=high_level_build_element.build_buildId,
                 comment=node.cmd_file.savedcmd,
             )
-            hasInput_relationship = Relationship(
-                spdxId=spdx_id_generator.generate(),
-                relationshipType="hasInput",
-                from_=build_element,
-                to=[file_elements[child_node.absolute_path] for child_node in node.children],
-            )
+            build_and_relationship_elements.append(build_element)
+
+            if node.cmd_file_dependencies:
+                hasInput_relationship = Relationship(
+                    spdxId=spdx_id_generator.generate(),
+                    relationshipType="hasInput",
+                    from_=build_element,
+                    to=[file_elements[dep.absolute_path] for dep in node.cmd_file_dependencies],
+                )
+                build_and_relationship_elements.append(hasInput_relationship)
+
             hasOutput_relationship = Relationship(
                 spdxId=spdx_id_generator.generate(),
                 relationshipType="hasOutput",
                 from_=build_element,
                 to=[file_elements[node.absolute_path]],
             )
-            build_and_relationship_elements += [
-                build_element,
-                hasInput_relationship,
-                hasOutput_relationship,
-            ]
+            build_and_relationship_elements.append(hasOutput_relationship)
+
             high_level_build_ancestorOf_relationship.to.append(build_element)
 
         # incbin dependencies

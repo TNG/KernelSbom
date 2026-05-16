@@ -256,7 +256,7 @@ def _parse_nm_piped_command(command: str) -> list[PathStr]:
     nm_command, _ = command.split("|", 1)
     command_parts = tokenize_single_command(
         command=nm_command.strip(),
-        flag_options=["p", "--defined-only"],
+        flag_options=["-p", "--defined-only"],
     )
     positionals = [p.value for p in command_parts if isinstance(p, Positional)]
     # expect positionals to be ["nm", input1, input2, ...]

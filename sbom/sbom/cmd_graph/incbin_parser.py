@@ -31,7 +31,7 @@ def parse_incbin_statements(absolute_path: PathStr) -> list[IncbinStatement]:
     Returns:
         list[IncbinStatement]: Parsed `.incbin` statements.
     """
-    with open(absolute_path, "rt") as f:
+    with open(absolute_path, "rt", encoding="utf-8") as f:
         content = f.read()
     return [
         IncbinStatement(

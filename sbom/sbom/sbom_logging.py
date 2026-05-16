@@ -6,61 +6,65 @@ import inspect
 from typing import Literal
 
 
-class MessageLogger:
-    """Logger that prints the first occurrence of each message immediately
-    and keeps track of repeated messages for a final summary."""
+MessageTemplate = str
 
-    messages: dict[str, list[str]]
-    repeated_logs_limit: int
+
+class MessageLogger:
+    """Logger that surpresses repeated messages and stores a summary of all logged messages."""
+
+    _messages: dict[MessageTemplate, list[str]]
+    _message_counts: dict[MessageTemplate, int]
+    _repeated_logs_limit: int
     """Maximum number of repeated messages of the same type to log before suppressing further output."""
 
     def __init__(self, level: Literal["error", "warning"], repeated_logs_limit: int = 3) -> None:
         self._level = level
-        self.messages = {}
-        self.repeated_logs_limit = repeated_logs_limit
+        self._messages = {}
+        self._message_counts = {}
+        self._repeated_logs_limit = repeated_logs_limit
 
-    def log(self, template: str, /, **kwargs: str) -> None:
-        """Log a message based on a template and optional variables."""
+    def log(self, template: MessageTemplate, /, **kwargs: str) -> None:
+        """Log a message based on a template and optional variables. Example: `log("Missing {path}", path=str(p))`."""
         message = template
         for key, value in kwargs.items():
             message = message.replace("{" + key + "}", value)
-        if template not in self.messages:
-            self.messages[template] = []
-        if len(self.messages[template]) < self.repeated_logs_limit:
+        if template not in self._messages:
+            self._messages[template] = []
+            self._message_counts[template] = 0
+        self._message_counts[template] += 1
+        if self._message_counts[template] <= self._repeated_logs_limit:
             if self._level == "error":
                 logging.error(message)
             elif self._level == "warning":
                 logging.warning(message)
-        self.messages[template].append(message)
+            self._messages[template].append(message)
 
     def get_summary(self) -> str:
-        """Return summary of collected messages."""
-        if len(self.messages) == 0:
+        if len(self._messages) == 0:
             return ""
         summary: list[str] = [f"Summarize {self._level}s:"]
-        for msgs in self.messages.values():
-            for i, msg in enumerate(msgs):
-                if i < self.repeated_logs_limit:
-                    summary.append(msg)
-                    continue
-                summary.append(
-                    f"... (Found {len(msgs) - i} more {'instances' if (len(msgs) - i) != 1 else 'instance'} of this {self._level})"
-                )
-                break
+        for template, messages in self._messages.items():
+            for message in messages:
+                summary.append(message)
+            n_suppressed_messages = self._message_counts[template] - self._repeated_logs_limit
+            if n_suppressed_messages > 0:
+                instances = "instance" if n_suppressed_messages == 1 else "instances"
+                summary.append(f"... (Found {n_suppressed_messages} more {instances} of this {self._level})")
         return "\n".join(summary)
+
+    def has_messages(self) -> bool:
+        return len(self._message_counts) > 0
 
 
 _warning_logger: MessageLogger
 _error_logger: MessageLogger
 
 
-def warning(msg_template: str, /, **kwargs: str) -> None:
-    """Log a warning message."""
+def warning(msg_template: MessageTemplate, /, **kwargs: str) -> None:
     _warning_logger.log(msg_template, **kwargs)
 
 
-def error(msg_template: str, /, **kwargs: str) -> None:
-    """Log an error message including file, line, and function context."""
+def error(msg_template: MessageTemplate, /, **kwargs: str) -> None:
     frame = inspect.currentframe()
     caller_frame = frame.f_back if frame else None
     info = inspect.getframeinfo(caller_frame) if caller_frame else None
@@ -78,7 +82,7 @@ def summarize_errors() -> str:
 
 
 def has_errors() -> bool:
-    return len(_error_logger.messages) > 0
+    return _error_logger.has_messages()
 
 
 def init() -> None:

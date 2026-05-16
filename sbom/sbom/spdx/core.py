@@ -2,7 +2,7 @@
 # Copyright (C) 2025 TNG Technology Consulting GmbH
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+
 from typing import Any, Literal
 from sbom.spdx.spdxId import SpdxId
 
@@ -133,7 +133,7 @@ class CreationInfo(SpdxObject):
     id: SpdxId = "_:creationinfo"
     specVersion: str = SPDX_SPEC_VERSION
     createdBy: list[Agent]
-    created: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    created: str
     comment: str | None = None
 
     def to_dict(self) -> dict[str, Any]:

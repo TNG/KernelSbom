@@ -47,7 +47,7 @@ class CmdFile:
         Returns:
             cmd_file (CmdFile): Parsed cmd file.
         """
-        with open(cmd_file_path, "rt") as f:
+        with open(cmd_file_path, "rt", encoding="utf-8") as f:
             lines = [line.strip() for line in f.readlines() if line.strip() != "" and not line.startswith("#")]
 
         # savedcmd
@@ -128,8 +128,8 @@ class CmdFile:
                 # Skip target file to prevent cycles. This is necessary because some multi stage commands first create an output and then pass it as input to the next command, e.g., objcopy.
                 continue
             cmd_file_dependencies.append(input_file)
-
-        return cmd_file_dependencies
+        unique_cmd_file_dependencies = list(dict.fromkeys(cmd_file_dependencies))
+        return unique_cmd_file_dependencies
 
 
 def _expand_resolve_files(input_files: list[PathStr], obj_tree: PathStr) -> list[PathStr]:
@@ -149,14 +149,14 @@ def _expand_resolve_files(input_files: list[PathStr], obj_tree: PathStr) -> list
         if not input_file.startswith("@"):
             expanded_input_files.append(input_file)
             continue
-        resolve_file_path = os.path.join(obj_tree, input_file.lstrip("@"))
+        resolve_file_path = os.path.join(obj_tree, input_file.removeprefix("@"))
         if not os.path.exists(resolve_file_path):
             sbom_logging.error(
                 "Skip resolving '{resolve_file_path}' because the response file does not exist.",
                 resolve_file_path=resolve_file_path,
             )
             continue
-        with open(resolve_file_path, "rt") as f:
+        with open(resolve_file_path, "rt", encoding="utf-8") as f:
             resolve_file_content = [line_stripped for line in f.readlines() if (line_stripped := line.strip())]
         expanded_input_files += _expand_resolve_files(resolve_file_content, obj_tree)
     return expanded_input_files
