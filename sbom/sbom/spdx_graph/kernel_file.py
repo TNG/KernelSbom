@@ -245,7 +245,7 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
         return any(segment in absolute_path for segment in path_segments)
 
     # Source code
-    if ends_with([".c", ".h", ".S", ".s", ".rs", ".pl", "gen_smb2_mapping"]):
+    if ends_with([".c", ".h", ".S", ".s", ".rs", ".pl", "gen_smb1_mapping", "gen_smb2_mapping"]):
         return "source"
 
     # Libraries
