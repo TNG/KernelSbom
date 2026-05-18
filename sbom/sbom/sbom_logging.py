@@ -10,7 +10,7 @@ MessageTemplate = str
 
 
 class MessageLogger:
-    """Logger that surpresses repeated messages and stores a summary of all logged messages."""
+    """Logger that suppresses repeated messages and stores a summary of all logged messages."""
 
     _messages: dict[MessageTemplate, list[str]]
     _message_counts: dict[MessageTemplate, int]
