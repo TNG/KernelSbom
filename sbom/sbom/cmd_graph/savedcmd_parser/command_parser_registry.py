@@ -506,7 +506,7 @@ class CommandParserRegistry:
             (re.compile(r"(.*/)?genheaders\b"), _parse_noop),
             (re.compile(r"^(.*/)?mkcpustr\s+>"), _parse_noop),
             (re.compile(r"^(.*/)polgen\b"), _parse_noop),
-            (re.compile(r"make -f .*/arch/x86/Makefile\.postlink"), _parse_noop),
+            (re.compile(r"make -f .*/arch/[^/]+/Makefile\.postlink"), _parse_noop),
             (re.compile(r"^(.*/)?raid6/mktables\s+>"), _parse_noop),
             (re.compile(r"^(.*/)?objtool\b"), _parse_noop),
             (re.compile(r"^(.*/)?module/gen_test_kallsyms.sh"), _parse_noop),
