@@ -7,7 +7,7 @@ Copyright (C) 2025 TNG Technology Consulting GmbH
 
 This manually triggered workflow downloads a Linux kernel archive from:
 
-https://fileshare.tngtech.com/d/e69946da808b41f88047/
+~~https://fileshare.tngtech.com/d/e69946da808b41f88047/~~ (the file share link is not available anymore)
 
 The archive includes:
 - The full Linux source tree
