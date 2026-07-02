@@ -261,7 +261,18 @@ def _get_primary_purpose(absolute_path: PathStr) -> SoftwarePurpose | None:
         return "application"
 
     # Executables / machine code
-    if ends_with([".bin", ".elf", "vmlinux", "vmlinux.unstripped", "vmlinuz", "bpfilter_umh"]):
+    if ends_with(
+        [
+            ".bin",
+            ".elf",
+            "vmlinux",
+            "vmlinux.unstripped",
+            "vmlinux.syms",
+            "vmlinuz",
+            "bpfilter_umh",
+            "purgatory",
+        ]
+    ):
         return "executable"
 
     # Kernel modules
