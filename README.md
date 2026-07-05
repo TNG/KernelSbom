@@ -5,8 +5,7 @@ Copyright (C) 2025 TNG Technology Consulting GmbH
 
 # KernelSbom
 
-A script to generate an SPDX-format Software Bill of Materials (SBOM) for the linux kernel build.
-The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
+A script to generate an SPDX 3 Software Bill of Materials (SBOM) for Linux kernel builds. The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
 
 ## How to use
 1. Provide a linux source and object tree by cloning the [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) repo and building your own config
@@ -16,7 +15,8 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` 
     make <config> O=kernel_build
     make -j$(nproc) O=kernel_build
     ```
-2. Clone the repository 
+    For a minimal example use `tinyconfig` or `defconfig`. See [here](https://github.com/torvalds/linux/blob/7404ce51637231382873d0b55edabc2f3b841a9d/scripts/kconfig/Makefile#L129) for all available options.
+2. Next to the linux source tree clone the KernelSbom repository 
     ```
     git clone git@github.com:TNG/KernelSbom.git
     cd KernelSbom
@@ -46,7 +46,7 @@ If the `--generate-used-files` flag is enabled, the script also produces **`sbom
 
 ### Kernel Modules
 
-To include `.ko` kernel modules in the provided root artifacts, you can use the helper script below to generate a `roots.txt` file:
+To include `.ko` kernel modules in the provided root artifacts, the following commands can be used to generate a `roots.txt` file:
 
 ```bash
 echo "arch/x86/boot/bzImage" >> roots.txt
@@ -66,6 +66,8 @@ SRCARCH=x86 python3 sbom/sbom.py \
 ## SPDX Graph Visualization
 
 The following diagrams illustrate the structure of the generated SPDX documents: `sbom-source.spdx.json`, `sbom-build.spdx.json`, and `sbom-output.spdx.json`.
+
+**Note:** For an interactive Graph visualization [spdx3_viz](https://github.com/kartben/spdx3_viz) can be used.
 
 ### Separate Source and Object Trees
 ```mermaid
