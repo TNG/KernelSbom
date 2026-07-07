@@ -5,7 +5,10 @@ Copyright (C) 2025 TNG Technology Consulting GmbH
 
 # KernelSbom
 
-A script to generate an SPDX 3 Software Bill of Materials (SBOM) for Linux kernel builds. The eventual goal is to integrate the `sbom/` directory into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
+> **Archived:** The SBOM script has been merged into the upstream [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) kernel tree as `scripts/sbom/`. Use `make sbom` or see `Documentation/tools/sbom/sbom.rst` for documentation. Changes to the script should be submitted to the linux kernel mailing list.
+
+A script to generate an SPDX 3 Software Bill of Materials (SBOM) for Linux kernel builds.
+
 
 ## How to use
 1. Provide a linux source and object tree by cloning the [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) repo and building your own config
@@ -255,7 +258,7 @@ flowchart TD
   - [sbom_analysis/strace_kernel_build/](sbom_analysis/strace_kernel_build/README.md) - build kernel with strace and compare touched files with files found with cmd graph
 - `testdata_generation/` - Describes how the precompiled kernel builds in [KernelSbom-TestData](https://fileshare.tngtech.com/library/98e7e6f8-bffe-4a55-a8d2-817d4f3e51e8/KernelSbom-TestData/) were generated.
 
-The main contribution of this repository is the content of the `sbom` directory which eventually should be moved into the `linux/tools/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
+The main contribution of this repository is the content of the `sbom` directory which was moved into the `linux/scripts/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
 
 ## Development
 
