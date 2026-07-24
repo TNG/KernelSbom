@@ -5,14 +5,19 @@ Copyright (C) 2025 TNG Technology Consulting GmbH
 
 # KernelSbom
 
-> **Archived:** The SBOM script has been merged into the upstream
-> [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git)
-> kernel tree as `scripts/sbom/`. Use `make sbom` or see
-> `Documentation/tools/sbom/sbom.rst` for documentation. Changes to the script
-> should be submitted to the linux kernel mailing list.
+This repository contains the additional analysis and validation scripts used
+during the original development of the Linux kernel SBOM tooling.
 
-A script to generate an SPDX 3 Software Bill of Materials (SBOM) for Linux
-kernel builds.
+The SBOM generator itself is maintained in the upstream
+[linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git)
+kernel tree under `scripts/sbom/`. Use `make sbom` or see
+`Documentation/tools/sbom/sbom.rst` there for current documentation. Changes
+to the generator should be submitted upstream through the Linux kernel
+development process.
+
+The sources under `sbom/` are retained here as a useful reference for the
+analysis scripts. They are not maintained independently and should only be 
+modified through updates from upstream.
 
 
 ## How to use
