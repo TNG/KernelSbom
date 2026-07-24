@@ -23,6 +23,8 @@ jobs:
       
       - name: RUFF
         uses: astral-sh/ruff-action@v3
+        with:
+          version: 0.15.1
       
       - name: Tests
         run: python3 -m unittest discover -v -s sbom -p "test_*.py"

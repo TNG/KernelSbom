@@ -5,18 +5,35 @@ Copyright (C) 2025 TNG Technology Consulting GmbH
 
 # KernelSbom
 
-A script to generate an SPDX-format Software Bill of Materials (SBOM) for the linux kernel build.
-The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
+This repository contains the additional analysis and validation scripts used
+during the original development of the Linux kernel SBOM tooling.
+
+The SBOM generator itself is maintained in the upstream
+[linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git)
+kernel tree under `scripts/sbom/`. Use `make sbom` or see
+`Documentation/tools/sbom/sbom.rst` there for current documentation. Changes
+to the generator should be submitted upstream through the Linux kernel
+development process.
+
+The sources under `sbom/` are retained here as a useful reference for the
+analysis scripts. They are not maintained independently and should only be 
+modified through updates from upstream.
+
 
 ## How to use
-1. Provide a linux source and object tree by cloning the [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) repo and building your own config
+1. Provide a linux source and object tree by cloning the
+   [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git)
+   repo and building your own config
     ```bash
     git clone --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
     cd linux
     make <config> O=kernel_build
     make -j$(nproc) O=kernel_build
     ```
-2. Clone the repository 
+    For a minimal example use `tinyconfig` or `defconfig`. See
+    [here](https://github.com/torvalds/linux/blob/7404ce51637231382873d0b55edabc2f3b841a9d/scripts/kconfig/Makefile#L129)
+    for all available options.
+2. Next to the linux source tree clone the KernelSbom repository 
     ```
     git clone git@github.com:TNG/KernelSbom.git
     cd KernelSbom
@@ -33,20 +50,33 @@ The eventual goal is to integrate the `sbom/` directory into the `linux/tools/` 
       --debug
     ```
 
-Starting from the provided root artifact (`bzImage`), the script constructs a **cmd graph**: a directed acyclic graph whose nodes are filenames and whose edges represent build dependencies extracted from the corresponding `.<filename>.cmd` files.
+Starting from the provided root artifact (`bzImage`), the script constructs a
+**cmd graph**: a directed acyclic graph whose nodes are filenames and whose
+edges represent build dependencies extracted from the corresponding
+`.<filename>.cmd` files.
 
-Using this cmd graph, the script generates three SPDX documents and writes them to disk:
-- **`sbom-source.spdx.json`** — Describes all source files in the source tree that contributed to building the provided root artifacts (`bzImage`).
-- **`sbom-build.spdx.json`** — Describes all build artifacts and the process by which they were built from the sources in `sbom-source.spdx.json`.
-- **`sbom-output.spdx.json`** — Describes the final build outputs, i.e., the provided root artifacts.
+Using this cmd graph, the script generates three SPDX documents and writes them
+to disk:
+- **`sbom-source.spdx.json`** — Describes all source files in the source tree
+  that contributed to building the provided root artifacts (`bzImage`).
+- **`sbom-build.spdx.json`** — Describes all build artifacts and the process
+  by which they were built from the sources in `sbom-source.spdx.json`.
+- **`sbom-output.spdx.json`** — Describes the final build outputs, i.e., the
+  provided root artifacts.
 
-If the `--generate-used-files` flag is enabled, the script also produces **`sbom.used-files.txt`**, a flat list of all source files in `sbom-source.spdx.json`.
+If the `--generate-used-files` flag is enabled, the script also produces
+**`sbom.used-files.txt`**, a flat list of all source files in
+`sbom-source.spdx.json`.
 
-**Note:** If the source tree and object tree are identical, reliably distinguishing source files is not possible. In this case, the source SPDX document is merged into `sbom-build.spdx.json`, and `sbom.used-files.txt` contains all files from `sbom-build.spdx.json`.
+**Note:** If the source tree and object tree are identical, reliably
+distinguishing source files is not possible. In this case, the source SPDX
+document is merged into `sbom-build.spdx.json`, and `sbom.used-files.txt`
+contains all files from `sbom-build.spdx.json`.
 
 ### Kernel Modules
 
-To include `.ko` kernel modules in the provided root artifacts, you can use the helper script below to generate a `roots.txt` file:
+To include `.ko` kernel modules in the provided root artifacts, the following
+commands can be used to generate a `roots.txt` file:
 
 ```bash
 echo "arch/x86/boot/bzImage" >> roots.txt
@@ -65,7 +95,12 @@ SRCARCH=x86 python3 sbom/sbom.py \
 
 ## SPDX Graph Visualization
 
-The following diagrams illustrate the structure of the generated SPDX documents: `sbom-source.spdx.json`, `sbom-build.spdx.json`, and `sbom-output.spdx.json`.
+The following diagrams illustrate the structure of the generated SPDX
+documents: `sbom-source.spdx.json`, `sbom-build.spdx.json`, and
+`sbom-output.spdx.json`.
+
+**Note:** For an interactive Graph visualization
+[spdx3_viz](https://github.com/kartben/spdx3_viz) can be used.
 
 ### Separate Source and Object Trees
 ```mermaid
@@ -247,13 +282,24 @@ flowchart TD
   - `sbom.py` - The main script responsible for generating the SBOM
   - `sbom/sbom/` - Library modules used by the main script
   - `sbom/tests/` - Unit tests for the library modules
-- `sbom_analysis/` - Additional scripts for analyzing the outputs produced by the main script.
-  - [sbom_analysis/cmd_graph_based_kernel_build/](sbom_analysis/cmd_graph_based_kernel_build/README.md) - Validation of cmd graph completeness by rebuilding the linux kernel only with files referenced in the cmd graph.
-  - [sbom_analysis/cmd_graph_visualization/](sbom_analysis/cmd_graph_visualization/README.md) - Interactive visualization of the cmd graph
-  - [sbom_analysis/strace_kernel_build/](sbom_analysis/strace_kernel_build/README.md) - build kernel with strace and compare touched files with files found with cmd graph
-- `testdata_generation/` - Describes how the precompiled kernel builds in [KernelSbom-TestData](https://fileshare.tngtech.com/library/98e7e6f8-bffe-4a55-a8d2-817d4f3e51e8/KernelSbom-TestData/) were generated.
+- `sbom_analysis/` - Additional scripts for analyzing the outputs produced by
+  the main script.
+  - [sbom_analysis/cmd_graph_based_kernel_build/](sbom_analysis/cmd_graph_based_kernel_build/README.md)
+    — Validation of cmd graph completeness by rebuilding the linux kernel only
+    with files referenced in the cmd graph.
+  - [sbom_analysis/cmd_graph_visualization/](sbom_analysis/cmd_graph_visualization/README.md)
+    — Interactive visualization of the cmd graph
+  - [sbom_analysis/strace_kernel_build/](sbom_analysis/strace_kernel_build/README.md)
+    — build kernel with strace and compare touched files with files found with
+    cmd graph
+- `testdata_generation/` - Describes how the precompiled kernel builds in
+  [KernelSbom-TestData](https://fileshare.tngtech.com/library/98e7e6f8-bffe-4a55-a8d2-817d4f3e51e8/KernelSbom-TestData/)
+  were generated.
 
-The main contribution of this repository is the content of the `sbom` directory which eventually should be moved into the `linux/tools/` directory in the official [linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git) source tree.
+The main contribution of this repository is the content of the `sbom`
+directory which was moved into the `linux/scripts/` directory in the official
+[linux](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git)
+source tree.
 
 ## Development
 
@@ -265,11 +311,15 @@ pip install pre-commit reuse ruff
 pre-commit install
 ```
 
-When committing, `reuse lint` is run as a pre-commit hook to ensure all files have compliant license headers.
+When committing, `reuse lint` is run as a pre-commit hook to ensure all files
+have compliant license headers.
 
 ## Run tests
-Unit tests can be found in `sbom/tests`. These are designed to be contributed upstream to the `linux` kernel repository.
-Integration tests are located in `sbom_integration_tests`. These tests are not intended for inclusion in the kernel repository, as they require a larger number of additional files.
+Unit tests can be found in `sbom/tests`. These are designed to be contributed
+upstream to the `linux` kernel repository.
+Integration tests are located in `sbom_integration_tests`. These tests are not
+intended for inclusion in the kernel repository, as they require a larger
+number of additional files.
 
 ```bash
 # Run unit tests
