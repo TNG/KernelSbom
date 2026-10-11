@@ -1,0 +1,115 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (C) 2026 Luis Augenstein */
+
+body {
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  margin: 2rem auto;
+  max-width: 75rem;
+  padding: 0 1rem;
+  color: #1f2328;
+}
+
+h1 {
+  font-size: 1.4rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin-top: 2rem;
+  border-bottom: 1px solid #d1d9e0;
+  padding-bottom: 0.3rem;
+}
+
+.verdict {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.identical {
+  background: #dafbe1;
+  color: #055020;
+}
+
+.differ {
+  background: #fff1e5;
+  color: #9a6700;
+}
+
+.meta {
+  color: #59636e;
+  font-size: 0.9rem;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  border: 1px solid #d1d9e0;
+  padding: 0.35rem 0.8rem;
+  text-align: left;
+}
+
+th {
+  background: #f6f8fa;
+}
+
+td.num {
+  text-align: right;
+}
+
+.none {
+  color: #59636e;
+  font-style: italic;
+}
+
+pre.diff {
+  background: #f6f8fa;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  padding: 0.8rem;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.add {
+  background: #dafbe1;
+  color: #055020;
+  display: block;
+}
+
+.del {
+  background: #ffebe9;
+  color: #82071e;
+  display: block;
+}
+
+.hunk {
+  color: #8250df;
+  background: #ddf4ff;
+  display: block;
+}
+
+.filehdr {
+  color: #59636e;
+  font-weight: 600;
+  display: block;
+}
+
+.ellip {
+  color: #818b98;
+  font-style: italic;
+}
+
+footer {
+  margin-top: 2.5rem;
+  color: #59636e;
+  font-size: 0.8rem;
+}
