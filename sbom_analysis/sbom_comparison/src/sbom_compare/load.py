@@ -14,10 +14,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 DOCUMENT_FILES = (
     "sbom-output.spdx.json",
@@ -37,15 +41,63 @@ class SbomCompareError(Exception):
     """Raised when input documents cannot be loaded or compared."""
 
 
+class _Progress:
+    """Throttled progress logging for long-running loops.
+
+    Emits an INFO log line at most every `min_interval` seconds, so loops
+    over hundreds of thousands of elements produce meaningful progress
+    output without flooding the log.
+    """
+
+    def __init__(self, description: str, total: int, min_interval: float = 2.0) -> None:
+        self._description = description
+        self._total = total
+        self._min_interval = min_interval
+        self._start = time.monotonic()
+        self._last = self._start
+
+    def update(self, done: int) -> None:
+        now = time.monotonic()
+        if now - self._last < self._min_interval:
+            return
+        self._last = now
+        percent = 100.0 * done / self._total if self._total else 100.0
+        logger.info(
+            "%s: %d/%d (%.0f%%), %.1fs elapsed",
+            self._description,
+            done,
+            self._total,
+            percent,
+            now - self._start,
+        )
+
+    def finish(self) -> None:
+        logger.info(
+            "%s: done, %d items in %.1fs",
+            self._description,
+            self._total,
+            time.monotonic() - self._start,
+        )
+
+
 def load_document(path: Path) -> dict:
     """Load one spdx.json document."""
+    logger.info("loading %s", path)
+    start = time.monotonic()
     try:
         with open(path, encoding="utf-8") as file:
-            return json.load(file)
+            document = json.load(file)
     except FileNotFoundError as exc:
         raise SbomCompareError(f"missing SBOM document: {path}") from exc
     except json.JSONDecodeError as exc:
         raise SbomCompareError(f"invalid JSON in {path}: {exc}") from exc
+    logger.info(
+        "loaded %s: %d graph elements in %.1fs",
+        path.name,
+        len(document.get("@graph", [])),
+        time.monotonic() - start,
+    )
+    return document
 
 
 def _content_hash(value: Any) -> str:
@@ -74,6 +126,12 @@ def _element_identifier(element: dict) -> str | None:
     return element.get("spdxId") or element.get("@id")
 
 
+def element_ident(element: dict) -> str:
+    """The id of a normalized element; content hash fallback for id-less ones."""
+    identifier = _element_identifier(element)
+    return identifier if identifier is not None else _canonical(element)
+
+
 def _base_identity(element: dict) -> str | None:
     """Human-readable identity key for types that do not depend on references."""
     etype = element.get("type")
@@ -99,15 +157,10 @@ class _IdResolver:
 
     def __init__(self, documents: dict[str, dict]) -> None:
         self.graphs = {name: doc.get("@graph", []) for name, doc in documents.items()}
-        self.orig_ids = {
-            name: {
-                ident
-                for element in graph
-                if (ident := _element_identifier(element)) is not None
-            }
-            for name, graph in self.graphs.items()
-        }
         self.ids: dict[str, dict[str, str]] = {name: {} for name in documents}
+        # All deterministic ids assigned so far, maintained incrementally so
+        # _unique() stays O(1) per element instead of rescanning all ids.
+        self._used: set[str] = set()
         self.pending: dict[str, list[dict]] = {
             name: [e for e in graph if isinstance(e, dict) and _element_identifier(e) is not None]
             for name, graph in self.graphs.items()
@@ -115,56 +168,116 @@ class _IdResolver:
 
     def resolve(self) -> dict[str, dict[str, str]]:
         """Run the fixed-point computation, returns {doc_name: {orig_id: det_id}}."""
-        for _ in range(MAX_RESOLUTION_PASSES):
-            progress = False
+        total = sum(len(elements) for elements in self.pending.values())
+        logger.info(
+            "resolving deterministic ids: %d elements in %d document(s)",
+            total,
+            len(self.ids),
+        )
+        still_pending_total = total
+        for pass_number in range(1, MAX_RESOLUTION_PASSES + 1):
+            if not still_pending_total:
+                break
+            # Round 1 resolves every element whose identity is self-contained
+            # (files, packages, ...). Later rounds resolve the remainder:
+            # elements (mostly Relationships) whose deterministic id is
+            # derived from the resolved ids of the elements they reference.
+            label = "id resolution" if pass_number == 1 else f"id resolution round {pass_number}"
+            if pass_number > 1:
+                logger.info(
+                    "%s: %d elements depend on ids that were not yet resolved",
+                    label,
+                    still_pending_total,
+                )
+            resolved_in_pass = 0
             for name in self.ids:
-                external = {
-                    orig: det
-                    for other_name, mapping in self.ids.items()
-                    if other_name != name
-                    for orig, det in mapping.items()
-                }
+                lookup = self._lookup_for(name)
                 still_pending = []
-                for element in self.pending[name]:
-                    det = self._derive_id(name, element, external)
+                pending = self.pending[name]
+                step = _Progress(f"{label} [{name}]", len(pending))
+                for index, element in enumerate(pending):
+                    det = self._derive_id(element, lookup)
                     if det is None:
                         still_pending.append(element)
                         continue
                     det = self._unique(det)
-                    self.ids[name][self._element_identifier_of(element)] = det
-                    progress = True
+                    self.ids[name][_element_identifier(element)] = det
+                    resolved_in_pass += 1
+                    if index % 1000 == 0:
+                        step.update(index)
+                step.finish()
                 self.pending[name] = still_pending
-            if not progress:
+            still_pending_total = sum(len(elements) for elements in self.pending.values())
+            logger.info(
+                "%s: %d ids resolved, %d elements still pending",
+                label,
+                resolved_in_pass,
+                still_pending_total,
+            )
+            if not resolved_in_pass:
                 break
+        if still_pending_total:
+            logger.warning(
+                "%d elements could not be resolved within %d rounds; "
+                "falling back to pure content hashes (may show up as spurious changes)",
+                still_pending_total,
+                MAX_RESOLUTION_PASSES,
+            )
         # Anything that could not be resolved (e.g. reference cycles) falls back
         # to a pure content hash. The result may differ between the reference
         # and candidate variant in that case, which would show up as a change.
         for name in self.ids:
             for element in self.pending[name]:
-                ident = self._element_identifier_of(element)
-                self.ids[name][ident] = self._unique(f"{element.get('type', 'unknown')}:{_content_hash(element)}")
+                self.ids[name][_element_identifier(element)] = self._unique(
+                    f"{element.get('type', 'unknown')}:{_content_hash(element)}"
+                )
         return self.ids
 
-    @staticmethod
-    def _element_identifier_of(element: dict) -> str:
-        return element["spdxId"] if "spdxId" in element else element["@id"]
+    def _lookup_for(self, name: str) -> Callable[[str], str | None]:
+        """Resolve a reference against this document first, then sibling docs."""
+        own = self.ids[name]
+        others = {
+            orig: det
+            for other_name, mapping in self.ids.items()
+            if other_name != name
+            for orig, det in mapping.items()
+        }
+
+        def lookup(ref: str) -> str | None:
+            if ref in own:
+                return own[ref]
+            return others.get(ref)
+
+        return lookup
+
+    def resolver_for(self, name: str) -> Callable[[str], str]:
+        """Total resolver for the rewriting pass: unknown refs pass through."""
+        lookup = self._lookup_for(name)
+
+        def resolve(value: str) -> str:
+            return lookup(value) or value
+
+        return resolve
 
     def _unique(self, det: str) -> str:
-        used = {d for mapping in self.ids.values() for d in mapping.values()}
-        if det not in used:
+        """Disambiguate `det` against every id assigned so far (incrementally tracked)."""
+        if det not in self._used:
+            self._used.add(det)
             return det
         counter = 2
-        while f"{det}~{counter}" in used:
+        while f"{det}~{counter}" in self._used:
             counter += 1
-        return f"{det}~{counter}"
+        det = f"{det}~{counter}"
+        self._used.add(det)
+        return det
 
-    def _known_ids(self, name: str, external: dict[str, str]) -> dict[str, str]:
-        return {**external, **self.ids[name]}
+    def _derive_id(self, element: dict, lookup: Callable[[str], str | None]) -> str | None:
+        """Deterministic id for the element, or None if references are unresolved.
 
-    def _derive_id(self, name: str, element: dict, external: dict[str, str]) -> str | None:
-        """Deterministic id for the element, or None if references are unresolved."""
-        own_id = self._element_identifier_of(element)
-        known = self._known_ids(name, external)
+        `lookup` resolves references against this document's ids first, then
+        against the ids of the sibling documents.
+        """
+        own_id = _element_identifier(element)
         etype = element.get("type")
 
         if own_id.startswith("_:"):
@@ -173,12 +286,15 @@ class _IdResolver:
 
         if etype == "Relationship":
             refs = [element.get("from", ""), *(element.get("to") or [])]
-            unresolved = [r for r in refs if _is_ref_like(r) and r not in known]
-            if unresolved:
+            if any(_is_ref_like(r) and lookup(r) is None for r in refs):
                 return None
-            resolved_from = known.get(refs[0], refs[0])
-            resolved_to = sorted(known.get(r, r) for r in refs[1:])
-            return f"rel:{_content_hash([element.get('relationshipType'), resolved_from, resolved_to])}"
+            resolved_from = lookup(refs[0]) or refs[0]
+            # The identity deliberately ignores the `to` targets: a
+            # relationship that gains or loses referenced elements (files
+            # added to a directory, ...) is a *changed* element, not an
+            # unrelated removed + added pair. Multiple relationships that
+            # share type and source are disambiguated in document order.
+            return f"rel:{_content_hash([element.get('relationshipType'), resolved_from])}"
 
         base = _base_identity(element)
         if base is not None:
@@ -189,7 +305,7 @@ class _IdResolver:
         unresolved = [
             s
             for s in _iter_strings(element)
-            if s != own_id and _is_ref_like(s) and not s.startswith("_:") and s not in known
+            if s != own_id and _is_ref_like(s) and not s.startswith("_:") and lookup(s) is None
         ]
         if unresolved:
             return None
@@ -218,27 +334,22 @@ def normalize_document_set(documents: dict[str, dict]) -> dict[str, dict]:
     Returns a new mapping of document file name to a copied document in which
     every id and reference is a deterministic identifier.
     """
-    ids_per_doc = _IdResolver(documents).resolve()
-
-    def make_resolver(name: str) -> Callable[[str], str]:
-        own = ids_per_doc[name]
-        others = [ids_per_doc[other] for other in ids_per_doc if other != name]
-
-        def resolve(value: str) -> str:
-            if value in own:
-                return own[value]
-            for mapping in others:
-                if value in mapping:
-                    return mapping[value]
-            return value
-
-        return resolve
+    resolver = _IdResolver(documents)
+    resolver.resolve()
 
     normalized: dict[str, dict] = {}
     for name, document in documents.items():
-        resolve = make_resolver(name)
+        resolve = resolver.resolver_for(name)
+        graph = document.get("@graph", [])
+        step = _Progress(f"rewriting ids [{name}]", len(graph))
+        new_graph = []
+        for index, element in enumerate(graph):
+            new_graph.append(_rewrite(element, resolve))
+            if index % 1000 == 0:
+                step.update(index)
+        step.finish()
         new_document = dict(document)
-        new_document["@graph"] = [_rewrite(element, resolve) for element in document.get("@graph", [])]
+        new_document["@graph"] = new_graph
         normalized[name] = new_document
     return normalized
 
@@ -255,51 +366,57 @@ def compare_document_set(
 
     `reference` holds the SBOM documents of the trusted baseline build,
     `candidate` the documents of the build under test. Returns
-    {doc_name: {"added", "removed", "changed", "reference_text",
-    "candidate_text"}} where added/removed/changed are lists of
-    {"id", "type"} entries and *_text are the serialized, filtered documents
-    ready for diffing.
+    {doc_name: {"added", "removed", "changed"}} where `added` and `removed`
+    are the changed elements of the respective variant in document order,
+    and `changed` is a list of (reference_element, candidate_element) pairs
+    in document order — the input for the semantic diff.
     """
     result: dict[str, dict] = {}
     for name in reference.keys() & candidate.keys():
         reference_graph = reference[name].get("@graph", [])
         candidate_graph = candidate[name].get("@graph", [])
+        logger.info(
+            "comparing %s: %d reference elements, %d candidate elements",
+            name,
+            len(reference_graph),
+            len(candidate_graph),
+        )
 
-        def ident(element: dict) -> str:
-            identifier = _element_identifier(element)
-            return identifier if identifier is not None else _canonical(element)
-
-        reference_by_id = {ident(element): element for element in reference_graph}
-        candidate_by_id = {ident(element): element for element in candidate_graph}
+        reference_by_id = {element_ident(element): element for element in reference_graph}
+        candidate_by_id = {element_ident(element): element for element in candidate_graph}
 
         added_ids = candidate_by_id.keys() - reference_by_id.keys()
         removed_ids = reference_by_id.keys() - candidate_by_id.keys()
-        changed_ids = {
-            key
-            for key in reference_by_id.keys() & candidate_by_id.keys()
-            if _canonical(reference_by_id[key]) != _canonical(candidate_by_id[key])
-        }
-
-        def summary(ids, elements_by_id):
-            return sorted(
-                ({"id": key, "type": elements_by_id[key].get("type", "unknown")} for key in ids),
-                key=lambda entry: entry["id"],
-            )
-
-        filtered_reference = dict(reference[name])
-        filtered_reference["@graph"] = [
-            element for element in reference_graph if ident(element) in removed_ids | changed_ids
-        ]
-        filtered_candidate = dict(candidate[name])
-        filtered_candidate["@graph"] = [
-            element for element in candidate_graph if ident(element) in added_ids | changed_ids
-        ]
+        step = _Progress(f"finding changed elements [{name}]", len(reference_by_id))
+        changed_ids: set[str] = set()
+        for index, (key, reference_element) in enumerate(reference_by_id.items()):
+            candidate_element = candidate_by_id.get(key)
+            if candidate_element is not None and _canonical(reference_element) != _canonical(
+                candidate_element
+            ):
+                changed_ids.add(key)
+            if index % 1000 == 0:
+                step.update(index)
+        step.finish()
 
         result[name] = {
-            "added": summary(added_ids, candidate_by_id),
-            "removed": summary(removed_ids, reference_by_id),
-            "changed": summary(changed_ids, reference_by_id),
-            "reference_text": json.dumps(filtered_reference, indent=2, ensure_ascii=False) + "\n",
-            "candidate_text": json.dumps(filtered_candidate, indent=2, ensure_ascii=False) + "\n",
+            "added": [
+                element for element in candidate_graph if element_ident(element) in added_ids
+            ],
+            "removed": [
+                element for element in reference_graph if element_ident(element) in removed_ids
+            ],
+            "changed": [
+                (element, candidate_by_id[element_ident(element)])
+                for element in reference_graph
+                if element_ident(element) in changed_ids
+            ],
         }
+        logger.info(
+            "compared %s: %d added, %d removed, %d changed",
+            name,
+            len(added_ids),
+            len(removed_ids),
+            len(changed_ids),
+        )
     return result

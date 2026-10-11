@@ -12,11 +12,13 @@ JSON report) visualizing the semantic differences as a single git-style diff.
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
+import time
 from pathlib import Path
 
 from sbom_compare import report as report_module
-from sbom_compare.diff import unified_diff
+from sbom_compare.diff import semantic_unified_diff
 from sbom_compare.load import (
     DOCUMENT_FILES,
     SbomCompareError,
@@ -41,12 +43,30 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Path of the generated HTML report (default: <comparison>/sbom-compare-report.html)",
     )
     parser.add_argument(
-        "--json",
-        metavar="PATH",
-        default=None,
-        help="Also write a machine-readable JSON report to PATH",
+        "--verbose",
+        action="store_true",
+        help="Log each processing step, its progress, and its timing to stderr",
     )
     return parser.parse_args(argv)
+
+
+class _ElapsedFormatter(logging.Formatter):
+    """Prefixes each log line with the seconds elapsed since tool start."""
+
+    def __init__(self, start: float) -> None:
+        super().__init__("%(message)s")
+        self._start = start
+
+    def format(self, record: logging.LogRecord) -> str:
+        return f"[{record.created - self._start:7.1f}s] {super().format(record)}"
+
+
+def _setup_logging(start: float) -> None:
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(_ElapsedFormatter(start))
+    logger = logging.getLogger("sbom_compare")
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 
 def _load_set(comparison: Path, variant: str) -> dict:
@@ -57,42 +77,53 @@ def _load_set(comparison: Path, variant: str) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
+    start = time.time()
     args = _parse_args(argv)
+    if args.verbose:
+        _setup_logging(start)
+    logger = logging.getLogger(__name__)
     comparison = Path(args.comparison)
     output_path = (
         Path(args.output) if args.output else comparison / "sbom-compare-report.html"
     )
 
     try:
+        logger.info("comparing %s", comparison)
         reference_docs = _load_set(comparison, "reference")
         candidate_docs = _load_set(comparison, "candidate")
 
+        logger.info("normalizing reference documents (deterministic ids)")
         reference_normalized = normalize_document_set(reference_docs)
+        logger.info("normalizing candidate documents (deterministic ids)")
         candidate_normalized = normalize_document_set(candidate_docs)
+
+        logger.info("filtering unchanged elements and classifying changes")
         compared = compare_document_set(reference_normalized, candidate_normalized)
 
+        logger.info("computing unified diffs of the filtered documents")
+        documents_report: dict[str, dict] = {}
+        for name in DOCUMENT_FILES:
+            data = compared[name]
+            diff = semantic_unified_diff(
+                data,
+                fromfile=f"reference/{name}",
+                tofile=f"candidate/{name}",
+            )
+            logger.info("diffed %s: %d diff lines", name, len(diff))
+            documents_report[name] = {**data, "diff": diff}
         report = {
             "comparison_dir": str(comparison),
-            "documents": {
-                name: {
-                    **compared[name],
-                    "diff": unified_diff(
-                        compared[name]["reference_text"],
-                        compared[name]["candidate_text"],
-                        fromfile=f"reference/{name}",
-                        tofile=f"candidate/{name}",
-                    ),
-                }
-                for name in DOCUMENT_FILES
-            },
+            "documents": documents_report,
         }
     except SbomCompareError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
+    json_path = comparison / "sbom-compare-report.json"
+    logger.info("rendering HTML report")
     report_module.write_report(output_path, report_module.render_html(report))
-    if args.json:
-        report_module.write_report(Path(args.json), report_module.render_json(report))
+    logger.info("rendering JSON report")
+    report_module.write_report(json_path, report_module.render_json(report))
 
     for name in DOCUMENT_FILES:
         data = report["documents"][name]
@@ -101,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"{name}: {counts}")
     print(f"Report written to {output_path}")
+    print(f"JSON report written to {json_path}")
     return 0
 
 

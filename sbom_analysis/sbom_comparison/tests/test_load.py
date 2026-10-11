@@ -5,7 +5,7 @@
 
 import unittest
 
-from sbom_compare.load import compare_document_set, normalize_document_set
+from sbom_compare.load import compare_document_set, element_ident, normalize_document_set
 
 DOC = {
     "type": "SpdxDocument",
@@ -152,6 +152,34 @@ class TestDeterministicIds(unittest.TestCase):
         )
         self.assertNotEqual(rel_reference["spdxId"], rel_candidate["spdxId"])
 
+    def test_changed_to_targets_keep_relationship_id(self):
+        """A relationship that gains or loses `to` targets is changed, not
+        removed + added: its identity is type and source only."""
+        reference = normalize_document_set(
+            {
+                "sbom-build.spdx.json": document(
+                    [
+                        file_element("b:1", "a.c"),
+                        relationship_element("b:2", "b:1", ["b:1"]),
+                    ]
+                )
+            }
+        )
+        candidate = normalize_document_set(
+            {
+                "sbom-build.spdx.json": document(
+                    [
+                        file_element("b:1", "a.c"),
+                        relationship_element("b:2", "b:1", []),
+                    ]
+                )
+            }
+        )
+        data = compare_document_set(reference, candidate)["sbom-build.spdx.json"]
+        self.assertEqual(data["removed"], [])
+        self.assertEqual(data["added"], [])
+        self.assertEqual(len(data["changed"]), 1)
+
 
 class TestCompareDocumentSet(unittest.TestCase):
     def setUp(self):
@@ -188,7 +216,9 @@ class TestCompareDocumentSet(unittest.TestCase):
         self.result = compare_document_set(self.reference, self.candidate)
 
     def ids_of(self, entries):
-        return {entry["id"] for entry in entries}
+        """Deterministic ids of elements; `changed` entries are (ref, cand) pairs."""
+        elements = [entry[0] if isinstance(entry, tuple) else entry for entry in entries]
+        return {element_ident(element) for element in elements}
 
     def test_classification(self):
         data = self.result["sbom-build.spdx.json"]
@@ -241,14 +271,25 @@ class TestCompareDocumentSet(unittest.TestCase):
             self.assertNotIn(unchanged, self.ids_of(data["added"]))
             self.assertNotIn(unchanged, self.ids_of(data["removed"]))
 
-    def test_filtered_documents_contain_only_changes(self):
+    def test_filtered_elements_contain_only_changes(self):
         data = self.result["sbom-build.spdx.json"]
-        self.assertNotIn('"name": "kernel/sched/core.c"', data["reference_text"])
-        self.assertNotIn('"name": "kernel/sched/core.c"', data["candidate_text"])
-        self.assertIn("init/main.c", data["reference_text"])
-        self.assertNotIn("init/main.c", data["candidate_text"])
-        self.assertIn("drivers/net/loopback.c", data["candidate_text"])
-        self.assertIn("-O2", data["candidate_text"])
+        names_of = lambda elements: [e.get("name") for e in elements]
+        reference_side = names_of(data["removed"]) + [
+            ref.get("name") for ref, _ in data["changed"]
+        ]
+        candidate_side = names_of(data["added"]) + [
+            cand.get("name") for _, cand in data["changed"]
+        ]
+        self.assertNotIn("kernel/sched/core.c", reference_side)
+        self.assertNotIn("kernel/sched/core.c", candidate_side)
+        self.assertIn("init/main.c", reference_side)
+        self.assertNotIn("init/main.c", candidate_side)
+        self.assertIn("drivers/net/loopback.c", candidate_side)
+        self.assertIn(
+            "gcc -c kernel/sched/core.c -O2",
+            [e.get("comment") for e in data["added"]]
+            + [cand.get("comment") for _, cand in data["changed"]],
+        )
 
     def test_identical_documents_produce_empty_sets(self):
         result = compare_document_set(self.reference, self.reference)
@@ -256,7 +297,6 @@ class TestCompareDocumentSet(unittest.TestCase):
         self.assertEqual(data["added"], [])
         self.assertEqual(data["removed"], [])
         self.assertEqual(data["changed"], [])
-        self.assertNotIn("kernel/sched/core.c", data["reference_text"])
 
 
 if __name__ == "__main__":

@@ -69,43 +69,70 @@ td.num {
   font-style: italic;
 }
 
-pre.diff {
-  background: #f6f8fa;
-  border: 1px solid #d1d9e0;
-  border-radius: 6px;
-  padding: 0.8rem;
-  overflow-x: auto;
-  font-size: 0.8rem;
+table.diff {
+  width: 100%;
+  table-layout: fixed;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.75rem;
   line-height: 1.45;
 }
 
-.add {
+table.diff th {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #59636e;
+}
+
+table.diff td {
+  white-space: pre-wrap;
+  word-break: break-word;
+  vertical-align: top;
+  padding: 0.05rem 0.5rem;
+  border: none;
+}
+
+table.diff td + td {
+  border-left: 1px solid #d1d9e0;
+}
+
+table.diff td.add {
   background: #dafbe1;
   color: #055020;
-  display: block;
 }
 
-.del {
+table.diff td.del {
   background: #ffebe9;
   color: #82071e;
-  display: block;
 }
 
-.hunk {
-  color: #8250df;
+table.diff td.blank {
+  background: #f6f8fa;
+}
+
+table.diff .wdel {
+  background: #ffb1a9;
+  border-radius: 2px;
+}
+
+table.diff .wadd {
+  background: #7fd99a;
+  border-radius: 2px;
+}
+
+table.diff tr.hunk td {
   background: #ddf4ff;
-  display: block;
-}
-
-.filehdr {
-  color: #59636e;
+  color: #8250df;
   font-weight: 600;
-  display: block;
+  padding: 0.2rem 0.5rem;
+  border: none;
 }
 
-.ellip {
+table.diff tr.gap td {
+  background: #ffffff;
   color: #818b98;
+  text-align: center;
   font-style: italic;
+  border: none;
 }
 
 footer {

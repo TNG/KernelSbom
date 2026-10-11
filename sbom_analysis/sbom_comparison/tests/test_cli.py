@@ -54,9 +54,10 @@ class TestCli(unittest.TestCase):
         self.assertNotIn("kernel/sched/core.c", html)
 
     def test_json_report(self):
-        json_path = self.comparison / "report.json"
-        exit_code = main([str(self.comparison), "--json", str(json_path)])
+        exit_code = main([str(self.comparison)])
         self.assertEqual(exit_code, 0)
+        json_path = self.comparison / "sbom-compare-report.json"
+        self.assertTrue(json_path.is_file())
         data = json.loads(json_path.read_text(encoding="utf-8"))
         build = data["documents"]["sbom-build.spdx.json"]
         self.assertEqual(len(build["removed"]), 1)
@@ -71,6 +72,11 @@ class TestCli(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         html = (self.comparison / "sbom-compare-report.html").read_text(encoding="utf-8")
         self.assertIn("Semantically identical", html)
+
+    def test_verbose_logging(self):
+        exit_code = main([str(self.comparison), "--verbose"])
+        self.assertEqual(exit_code, 0)
+        self.assertTrue((self.comparison / "sbom-compare-report.html").is_file())
 
     def test_missing_reference_folder_fails(self):
         shutil.rmtree(self.comparison / "reference")

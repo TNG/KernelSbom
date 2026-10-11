@@ -79,4 +79,3 @@ path/to/comparison/
 ```bash
 sbom-compare path/to/comparison
 ```
-
